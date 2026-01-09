@@ -1,0 +1,46 @@
+name: Feature
+description: Create a feature (smaller consumable)
+title: "[FEATURE] "
+labels:
+  - triage
+  - feature
+projects:
+  - "Parallels/6"
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      placeholder: |-
+        Provide a clear and concise description of the feature.
+    validations:
+      required: true
+  - type: textarea
+    id: user_story
+    attributes:
+      label: User Story
+      placeholder: |-
+        As a **[type of user]**, I want **[some goal]** so that **[some reason]**.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      placeholder: |-
+        - [ ] **Criterion 1**: Detailed description.
+    validations:
+      required: true
+  - type: checkboxes
+    id: definition_of_done
+    attributes:
+      label: Definition of Done
+      options:
+        - label: Code implemented following best practices.
+        - label: Unit tests written and passing.
+        - label: Manual verification completed.
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Notes
+      placeholder: Add any other context or screenshots about the feature here.

@@ -87,7 +87,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
           {/* <LogPanel /> */}
         </main>
       </div>
-      {/* <StatusBar /> */}
+      <StatusBar />
     </div>
   );
 };

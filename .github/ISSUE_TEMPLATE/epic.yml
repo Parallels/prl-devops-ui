@@ -1,0 +1,53 @@
+name: Epic
+description: Create an epic (big work)
+title: "[EPIC] "
+labels:
+  - triage
+  - epic
+projects:
+  - "Parallels/6"
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      placeholder: |-
+        Provide a detailed description of the Epic. What is the high-level goal?
+      description: |
+        Epics represent big chunks of work that can be broken down into smaller features or tasks.
+    validations:
+      required: true
+  - type: textarea
+    id: business_value
+    attributes:
+      label: Business Value
+      placeholder: |-
+        Why are we doing this? What value does it bring to the user or the business?
+    validations:
+      required: true
+  - type: textarea
+    id: in_scope
+    attributes:
+      label: In Scope / Features
+      placeholder: |-
+        - [ ] **Feature 1**: Description of feature 1.
+        - [ ] **Feature 2**: Description of feature 2.
+    validations:
+      required: true
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of Scope
+      placeholder: |-
+        - What is explicitly NOT included in this Epic?
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies & Assumptions
+      placeholder: |-
+        - Are there any external dependencies or major assumptions?
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Notes
+      placeholder: Add any other context, screenshots, or links here.

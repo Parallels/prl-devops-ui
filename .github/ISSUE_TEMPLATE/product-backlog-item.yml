@@ -1,0 +1,54 @@
+name: Product Backlog Item
+description: Create a product backlog item (consumable unit of work)
+title: "[PBI] "
+labels:
+  - triage
+  - pbi
+type: task
+projects:
+  - "Parallels/6"
+body:
+  - type: input
+    id: parent_feature
+    attributes:
+      label: Parent Feature
+      description: Link to the parent Feature issue (e.g. #123)
+      placeholder: "#123"
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      placeholder: |-
+        Provide a clear and concise description of the PBI.
+    validations:
+      required: true
+  - type: textarea
+    id: user_story
+    attributes:
+      label: User Story
+      placeholder: |-
+        As a **[type of user]**, I want **[some goal]** so that **[some reason]**.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      placeholder: |-
+        - [ ] **Criterion 1**: Detailed description.
+    validations:
+      required: true
+  - type: checkboxes
+    id: definition_of_done
+    attributes:
+      label: Definition of Done
+      options:
+        - label: Code implemented following best practices.
+        - label: Unit tests written and passing.
+        - label: Code reviewed and approved.
+        - label: Merged into the main branch.
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Notes
+      placeholder: Add any other context or screenshots about the item here.
