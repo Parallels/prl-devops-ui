@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { IConfigService } from '../services/config/interfaces';
 import { ConfigFactory } from '../services/config/ConfigFactory';
+import { amplitudeService } from '../services/AmplitudeService';
 
 const ConfigContext = createContext<IConfigService | null>(null);
 
@@ -12,6 +13,7 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             try {
                 const service = ConfigFactory.getConfigService();
                 await service.initialize();
+                await amplitudeService.initializeWithConfig(service);
                 setConfigService(service);
             } catch (error) {
                 console.error("Failed to initialize ConfigService:", error);

@@ -99,7 +99,7 @@ export const SpinnerDemo: React.FC = () => {
                         thickness={spinnerThickness}
                         label={spinnerLabel ? 'Deploying update' : undefined}
                     />
-                    <Loader overlay={false} title="Syncing capsules" spinnerVariant="segments" />
+                    <Loader overlay={false} title="Syncing..." spinnerVariant="segments" />
                 </div>
             }
         />

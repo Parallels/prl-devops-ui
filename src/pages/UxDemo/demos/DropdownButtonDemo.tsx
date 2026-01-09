@@ -135,7 +135,7 @@ export const DropdownButtonDemo: React.FC = () => {
             preview={
                 <div className="space-y-4">
                     <DropdownButton
-                        label="Deploy capsule"
+                        label="Something"
                         options={dropdownButtonOptions}
                         variant={dropdownButtonVariant}
                         color={dropdownButtonColor}

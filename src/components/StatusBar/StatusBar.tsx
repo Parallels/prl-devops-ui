@@ -124,13 +124,13 @@ export const StatusBar: React.FC = () => {
       <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusBarSection
-            label="Capsule Agent"
+            label="Something"
             size="sm"
             variant="minimal"
             value={backendStatusText}
             intent={backendChecking ? 'warning' : backendHealthy ? 'success' : 'danger'}
             loading={backendChecking}
-            popoverTitle="Capsule agent"
+            popoverTitle="Something"
             popoverContent={buildDetailsList(agentDetails)}
             rounded={false}
           />

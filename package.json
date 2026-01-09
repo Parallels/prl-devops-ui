@@ -10,6 +10,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
+    "@amplitude/analytics-browser": "^2.33.1",
     "@base-ui-components/react": "^1.0.0-beta.2",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.2",

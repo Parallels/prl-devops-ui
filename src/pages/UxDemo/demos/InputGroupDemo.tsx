@@ -66,7 +66,7 @@ export const InputGroupDemo: React.FC = () => {
                     tone={inputGroupTone}
                     size={inputGroupSize}
                     leadingAddon={inputGroupLeading ? 'https://' : undefined}
-                    trailingAddon={inputGroupTrailing ? '.capsule.dev' : undefined}
+                    trailingAddon={inputGroupTrailing ? '.example.com' : undefined}
                 >
                     <Input placeholder="workspace" />
                 </InputGroup>

@@ -7,7 +7,16 @@ fn greet(name: &str) -> String {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_stronghold::Builder::new(|pass| todo!()).build())
+        .plugin(
+            tauri_plugin_stronghold::Builder::new(|password| {
+                use sha2::{Digest, Sha256};
+                let mut hasher = Sha256::new();
+                hasher.update(password.as_bytes());
+                let result = hasher.finalize();
+                result.to_vec()
+            })
+            .build(),
+        )
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())

@@ -59,10 +59,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       return;
     }
     abortRef.current = new AbortController();
+    void amplitudeService.logEvent('APP::SEARCH', { query: value });
     onSearchRef.current(trimmed, abortRef.current.signal);
-    void amplitudeService.emitEvent('CAPSULES::APP::SEARCH', [
-      { key: 'query', value: trimmed },
-    ]);
   };
 
   useEffect(() => {
