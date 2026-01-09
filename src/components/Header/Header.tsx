@@ -1,10 +1,10 @@
 import React from 'react';
 import { GLOBAL_NOTIFICATION_CHANNEL } from '@/constants/constants';
-import { HeaderGroup } from '../../controls/HeaderGroup';
+import { HeaderGroup } from '@/controls/HeaderGroup';
 import { NotificationWrapper } from '../Notification/NotificationWrapper';
 import logo from '@/assets/images/parallels-bars-small.png';
-import { useLayout } from '../../contexts/LayoutContext';
-import { IconButton } from '../../controls/IconButton';
+import { useLayout } from '@/contexts/LayoutContext';
+import { IconButton } from '@/controls';
 
 
 interface HeaderProps {
@@ -27,7 +27,7 @@ export const Header: React.FC<HeaderProps> = () => {
             </div>
             <div className="flex items-start font-medium text-black dark:text-gray-300 ml-3 text-lg">
               <span className="text-[#6c757d] dark:text-black pr-2">Parallels Desktop</span>
-              <span className="text-gray-900 dark:text-gray-300">Capsule Hub</span>
+              <span className="text-gray-900 dark:text-gray-300">DevOps</span>
             </div>
           </div>
           <div className="flex flex-grow"></div>

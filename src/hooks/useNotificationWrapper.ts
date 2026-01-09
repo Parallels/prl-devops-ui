@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useNotifications } from '../contexts/NotificationContext';
-import LogService from '@/services/LogService';
 
 export const useNotificationWrapper = (
   channelFilter: string,
@@ -15,11 +14,6 @@ export const useNotificationWrapper = (
 
   const applyOpenState = useCallback(
     (open: boolean) => {
-      void LogService.debug('useNotificationWrapper', 'applyOpenState', {
-        channel: channelFilter,
-        open,
-        hasExternalHandler: Boolean(setOpenState),
-      });
       if (setOpenState) {
         setOpenState(open);
       } else {
@@ -34,9 +28,6 @@ export const useNotificationWrapper = (
     const div = document.createElement('div');
     div.className = 'pointer-events-none fixed top-0 left-0 z-[1000] h-0 w-0 overflow-visible';
     div.setAttribute('data-channel', channelFilter);
-    void LogService.debug('useNotificationWrapper', 'create portal container', {
-      channel: channelFilter,
-    });
 
     const currentWrapper = wrapperRef.current;
     if (currentWrapper) {
@@ -63,9 +54,6 @@ export const useNotificationWrapper = (
         panelRef.current &&
         !panelRef.current.contains(target)
       ) {
-        void LogService.debug('useNotificationWrapper', 'click outside detected', {
-          channel: channelFilter,
-        });
         applyOpenState(false);
       }
     };
@@ -93,12 +81,6 @@ export const useNotificationWrapper = (
       if (buttonRect.right > maxRight) {
         portalContainer.style.right = `${minLeft}px`;
       }
-
-      void LogService.debug('useNotificationWrapper', 'position update', {
-        channel: channelFilter,
-        top: portalContainer.style.top,
-        right: portalContainer.style.right,
-      });
     }
   }, [state.openPanels, channelFilter, portalContainer, zIndex]);
 

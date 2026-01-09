@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import CustomIcon from '../Controls/CustomIcon';
-import { useLogs } from '@/contexts/LogContext';
-import { useApplicationSse } from '@/hooks/useApplicationSse';
-import { useAppStartup } from '@/contexts/AppStartupContextDefinition';
-import { configService } from '@/services/ConfigService';
+import CustomIcon from '../../controls/CustomIcon';
+import { useWebSocketContext } from '@/contexts/WebSocketContext';
+// import { useAppStartup } from '@/contexts/AppStartupContextDefinition';
+// import { configService } from '@/services/ConfigService';
 import type { AppBehaviorConfig } from '@/interfaces/AppConfig';
 import { StatusBarDivider, StatusBarSection } from './StatusBarSection';
-import LogService from '@/services/LogService';
+import { WebSocketState } from '@/types/WebSocket';
+
 
 const formatTimestamp = (timestamp?: number): string => {
   if (!timestamp) {
@@ -23,17 +23,23 @@ const formatTimestamp = (timestamp?: number): string => {
 type ReleaseChannel = 'stable' | 'beta' | 'canary';
 
 export const StatusBar: React.FC = () => {
-  const { isConnected, healthState } = useApplicationSse();
-  const { backendHealth } = useAppStartup();
-  const { isExpanded, toggleExpanded } = useLogs();
+  //   const { isConnected, healthState } = useApplicationSse();
+  const { states } = useWebSocketContext();
+  // Simple aggregation for checking if *any* is connected or checking status
+  const isConnected = Object.values(states).some(s => s === WebSocketState.OPEN);
+  const connectionStatus = isConnected ? 'connected' : 'disconnected';
+
+  //   const { backendHealth } = useAppStartup();
+  const backendHealth = { healthy: true, version: '1.0.0', lastUpdated: Date.now() }; // Stub
 
   const [isDevelopmentEnv, setIsDevelopmentEnv] = useState(false);
   const [environment, setEnvironment] = useState<string>('unknown');
-  const [appVersion, setAppVersion] = useState<string>('');
+  const [appVersion, setAppVersion] = useState<string>('1.0.0');
   const [channel, setChannel] = useState<ReleaseChannel>('stable');
   const [isDebugEnabled, setIsDebugEnabled] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const backendChecking = backendHealth.lastUpdated === 0;
+  const backendChecking = false; // backendHealth.lastUpdated === 0;
   const backendHealthy = backendHealth.healthy;
   const backendVersion = backendHealth.version ? `v${backendHealth.version}` : 'Unknown';
   const backendStatusText = backendChecking
@@ -42,24 +48,27 @@ export const StatusBar: React.FC = () => {
       ? `${backendVersion}`
       : 'Agent offline';
 
-  const sseStatusText = isConnected ? 'connected' : `${healthState.status}`;
+  const sseStatusText = connectionStatus;
   const channelBadge = channel === 'stable' ? undefined : channel;
 
   const loadConfig = async () => {
     try {
-      const appConfig = await configService.get<AppBehaviorConfig>('app');
-      const currentEnvironment = await configService.getEnvironment();
-      const devEnv = await configService.DevEnvironment();
-      let versionLabel = await configService.getVersion();
+      //   const appConfig = await configService.get<AppBehaviorConfig>('app');
+      //   const currentEnvironment = await configService.getEnvironment();
+      const currentEnvironment = 'production';
+      //   const devEnv = await configService.DevEnvironment();
+      const devEnv = true; // For demo
+      //   let versionLabel = await configService.getVersion();
+      let versionLabel = '1.0.0';
 
       let channelLabel: ReleaseChannel = 'stable';
-      if (appConfig?.isCanary) {
-        versionLabel += ' (canary)';
-        channelLabel = 'canary';
-      } else if (appConfig?.isBeta) {
-        versionLabel += ' (beta)';
-        channelLabel = 'beta';
-      }
+      //   if (appConfig?.isCanary) {
+      //     versionLabel += ' (canary)';
+      //     channelLabel = 'canary';
+      //   } else if (appConfig?.isBeta) {
+      //     versionLabel += ' (beta)';
+      //     channelLabel = 'beta';
+      //   }
 
       setEnvironment(currentEnvironment);
       setIsDevelopmentEnv(devEnv);
@@ -73,14 +82,14 @@ export const StatusBar: React.FC = () => {
   useEffect(() => {
     void loadConfig();
 
-    const unsubscribe = configService.subscribe('debug.enabled', (value) => {
-      void loadConfig();
-      setIsDebugEnabled(Boolean(value));
-      void LogService.info(`StatusBar is debugging: ${value as boolean}  and isDebugEnabled: ${isDebugEnabled}`);
-    });
-    return () => {
-      unsubscribe();
-    };
+    // const unsubscribe = configService.subscribe('debug.enabled', (value) => {
+    //   void loadConfig();
+    //   setIsDebugEnabled(Boolean(value));
+    // });
+    // return () => {
+    //   unsubscribe();
+    // };
+    setIsDebugEnabled(true); // Enable for demo
   }, []);
 
   const agentDetails = useMemo(
@@ -94,12 +103,12 @@ export const StatusBar: React.FC = () => {
 
   const sseDetails = useMemo(
     () => [
-      { label: 'Status', value: healthState.status },
+      { label: 'Status', value: connectionStatus },
       { label: 'Connected', value: isConnected ? 'Yes' : 'No' },
-      { label: 'Last check', value: formatTimestamp(healthState.lastChecked) },
-      { label: 'Last healthy', value: formatTimestamp(healthState.lastHealthy) },
+      //   { label: 'Last check', value: formatTimestamp(healthState.lastChecked) },
+      //   { label: 'Last healthy', value: formatTimestamp(healthState.lastHealthy) },
     ],
-    [healthState.lastChecked, healthState.lastHealthy, healthState.status, isConnected]
+    [connectionStatus, isConnected]
   );
 
   const buildDetailsList = (items: Array<{ label: string; value: string }>) => (
@@ -115,6 +124,10 @@ export const StatusBar: React.FC = () => {
 
   const showDebugSections = () => isDevelopmentEnv && isDebugEnabled;
   const showDevelopmentSections = () => isDevelopmentEnv;
+
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded);
+  }
 
   return (
     <footer className="sticky bottom-0 z-30 w-full border-t border-neutral-200/70 bg-white/80 px-2 py-1.5 text-[11px] text-neutral-700 shadow-[0_-6px_18px_rgba(15,23,42,0.18)] backdrop-blur dark:border-white/10 dark:bg-neutral-950/80 dark:text-neutral-200">
@@ -137,13 +150,11 @@ export const StatusBar: React.FC = () => {
             size="sm"
             value={sseStatusText}
             intent={
-              healthState.status === 'healthy'
+              isConnected
                 ? 'success'
-                : healthState.status === 'checking'
-                  ? 'warning'
-                  : 'danger'
+                : 'danger'
             }
-            loading={healthState.status === 'checking'}
+            loading={false}
             popoverTitle="SSE channel"
             popoverContent={buildDetailsList(sseDetails)}
             rounded={false}

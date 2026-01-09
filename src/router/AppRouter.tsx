@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { MainLayout } from '../layouts/MainLayout';
+import { MainLayout } from '../layout/MainLayout';
 import { Home } from '../pages/Home';
 import { UxDemo } from '../pages/UxDemo/UxDemo';
 

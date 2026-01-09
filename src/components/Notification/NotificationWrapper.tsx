@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import classNames from 'classnames';
 import NotificationPanel from './NotificationPanel';
-import { useNotificationWrapper } from '../../hooks/useNotificationWrapper';
+import { useNotificationWrapper } from '@/hooks/useNotificationWrapper';
 import { Popover } from '@base-ui-components/react/popover';
-import { type ButtonColor, type ButtonVariant } from '../Controls/Button';
+import { type ButtonColor, type ButtonVariant } from '@/controls/Button';
 import { useLayout } from '@/contexts/LayoutContext';
 import { type LayoutModal } from '@/interfaces/LayoutContext';
 import { useNotifications } from '@/contexts/NotificationContext';
@@ -11,13 +11,12 @@ import {
   NotificationPopoverProvider,
   type NotificationPopoverContextValue,
 } from './NotificationPopoverContext';
-import LogService from '@/services/LogService';
 import type { ComponentPropsWithoutRef, MutableRefObject } from 'react';
-import Badge from '../Controls/Badge';
+import Badge from '@/controls/Badge';
 import { renderIcon } from '@/utils/icon';
-import type { IconSize } from '../Controls/CustomIcon';
-import { getButtonColorClasses } from '../Controls/Theme';
-import { iconAccentHover, iconAccentRing } from '../Controls/ButtonTypes';
+import type { IconSize } from '@/types/Icon';
+import { getButtonColorClasses } from '@/controls/Theme';
+import { iconAccentHover, iconAccentRing } from '@/controls/ButtonTypes';
 
 interface NotificationWrapperProps {
   channelFilter: string;
@@ -52,11 +51,6 @@ export const NotificationWrapper: React.FC<NotificationWrapperProps> = ({
 
   const handleOpenState = useCallback(
     (open: boolean) => {
-      void LogService.debug('NotificationWrapper', 'handleOpenState', {
-        channel: channelFilter,
-        open,
-        layoutKey,
-      });
       togglePanelContext(channelFilter, open);
       if (layoutEnabled) {
         layout.setModalState(layoutKey!, open);
@@ -82,17 +76,12 @@ export const NotificationWrapper: React.FC<NotificationWrapperProps> = ({
       return;
     }
     if (layoutOpen !== isOpen) {
-      void LogService.debug('NotificationWrapper', 'sync layout->context', {
-        channel: channelFilter,
-        layoutOpen,
-        contextOpen: isOpen,
-      });
       togglePanelContext(channelFilter, layoutOpen);
     }
   }, [layoutEnabled, layoutOpen, isOpen, togglePanelContext, channelFilter]);
 
   useEffect(() => {
-    void LogService.debug('NotificationWrapper', 'resolvedIsOpen changed', {
+    console.log('NotificationWrapper', 'resolvedIsOpen changed', {
       channel: channelFilter,
       resolvedIsOpen,
       layoutKey: layoutEnabled ? layoutKey : null,
@@ -158,11 +147,6 @@ export const NotificationWrapper: React.FC<NotificationWrapperProps> = ({
         <Popover.Root
           open={resolvedIsOpen}
           onOpenChange={(next) => {
-            void LogService.debug('NotificationWrapper', 'onOpenChange', {
-              channel: channelFilter,
-              next,
-              resolvedIsOpen,
-            });
             requestOpenState(next);
           }}
         >
@@ -198,7 +182,7 @@ export const NotificationWrapper: React.FC<NotificationWrapperProps> = ({
                   buttonRef.current = node;
                 };
 
-                void LogService.debug('NotificationWrapper', 'trigger render', {
+                console.log('NotificationWrapper', 'trigger render', {
                   channel: channelFilter,
                   resolvedIsOpen,
                 });
@@ -237,7 +221,7 @@ export const NotificationWrapper: React.FC<NotificationWrapperProps> = ({
                         return;
                       }
                       const nextState = !resolvedIsOpen;
-                      void LogService.debug('NotificationWrapper', 'manual toggle via trigger', {
+                      console.log('NotificationWrapper', 'manual toggle via trigger', {
                         channel: channelFilter,
                         next: nextState,
                       });

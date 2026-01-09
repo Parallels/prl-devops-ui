@@ -46,29 +46,34 @@ class NotificationService {
    * Setup listener for global notification events from WebSocket
    */
   private setupGlobalListener(): void {
-    // Subscribe to global notifications
+    // Subscribe to global notifications from ANY server
     this.wsUnsubscribe = this.wsService.subscribe('notification', (message: WebSocketMessage<any>) => {
       this.handleWebSocketMessage(message);
     });
-
-    // Also potentially subscribe to a 'global' channel if backend uses that concept
-    // this.subscribeToChannel('global'); 
   }
 
-  public subscribeToChannel(channel: string): void {
-    if (this.channelUnsubscribes.has(channel)) return;
+  public subscribeToChannel(channel: string, serverId?: string): void {
+    const key = serverId ? `${channel}:${serverId}` : channel;
+    if (this.channelUnsubscribes.has(key)) return;
 
     const unsubscribe = this.wsService.subscribe(`notification:${channel}`, (message: WebSocketMessage<any>) => {
       this.handleWebSocketMessage(message);
-    });
+    }, serverId);
 
-    this.channelUnsubscribes.set(channel, unsubscribe);
+    this.channelUnsubscribes.set(key, unsubscribe);
 
-    // Ideally we also tell backend we want to subscribe to this channel if it's not purely client-side filtering
-    this.wsService.send(BackendMessageType.GLOBAL, {
-      client_id: 'ui',
-      subscriptions: [channel]
-    });
+    // If serverId provided, send subscription only to that server
+    if (serverId) {
+      this.wsService.send(serverId, BackendMessageType.GLOBAL, {
+        client_id: 'ui',
+        subscriptions: [channel]
+      });
+    } else {
+      // Broadcast? Or we need serverId to send. 
+      // For now, if no serverId, maybe we don't send or send to all?
+      // Let's assume we need serverId to send.
+      // TODO: iterate connections if we want to subscribe properly on all?
+    }
   }
 
   public unsubscribeFromChannel(channel: string): void {
@@ -83,6 +88,8 @@ class NotificationService {
     const payload = message.body;
     if (!payload) return;
 
+    const sourceServerId = (message as any)._serverId; // Captured from WebSocketService augmentation
+
     // Handle Modal payloads
     if (payload.type === 'modal' || payload.isModal) {
       this.showModal({
@@ -91,7 +98,7 @@ class NotificationService {
         message: payload.message || '',
         state: payload.state,
         size: payload.size,
-        data: payload.data
+        data: { ...payload.data, sourceServerId }
       });
       return;
     }
