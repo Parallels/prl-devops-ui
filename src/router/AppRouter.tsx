@@ -3,7 +3,7 @@ import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { Home } from '../pages/Home';
-import { UxDemo } from '../components/UxDemo/UxDemo';
+import { UxDemo } from '../pages/UxDemo/UxDemo';
 
 export const router = createBrowserRouter([
     {
