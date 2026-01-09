@@ -3,9 +3,10 @@ import CustomIcon from '../../controls/CustomIcon';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 // import { useAppStartup } from '@/contexts/AppStartupContextDefinition';
 // import { configService } from '@/services/ConfigService';
-import type { AppBehaviorConfig } from '@/interfaces/AppConfig';
+import type { AppBehaviorConfig, DebugConfig } from '@/interfaces/AppConfig';
 import { StatusBarDivider, StatusBarSection } from './StatusBarSection';
 import { WebSocketState } from '@/types/WebSocket';
+import { useConfig } from '@/contexts/ConfigContext';
 
 
 const formatTimestamp = (timestamp?: number): string => {
@@ -25,6 +26,8 @@ type ReleaseChannel = 'stable' | 'beta' | 'canary';
 export const StatusBar: React.FC = () => {
   //   const { isConnected, healthState } = useApplicationSse();
   const { states } = useWebSocketContext();
+  const config = useConfig();
+
   // Simple aggregation for checking if *any* is connected or checking status
   const isConnected = Object.values(states).some(s => s === WebSocketState.OPEN);
   const connectionStatus = isConnected ? 'connected' : 'disconnected';
@@ -53,27 +56,23 @@ export const StatusBar: React.FC = () => {
 
   const loadConfig = async () => {
     try {
-      //   const appConfig = await configService.get<AppBehaviorConfig>('app');
-      //   const currentEnvironment = await configService.getEnvironment();
-      const currentEnvironment = 'production';
-      //   const devEnv = await configService.DevEnvironment();
-      const devEnv = true; // For demo
-      //   let versionLabel = await configService.getVersion();
-      let versionLabel = '1.0.0';
+      const appConfig = await config.get<AppBehaviorConfig>('app_behavior');
+      const debugConfig = await config.get<DebugConfig>('debug');
+      const env = await config.get<string>('environment') || 'production';
+      // For now we can assume dev if env is locally set or explicitly in config
+      const isDev = env === 'development' || (await config.get<boolean>('is_dev')) || false;
+      const version = await config.get<string>('version') || '1.0.0';
 
-      let channelLabel: ReleaseChannel = 'stable';
-      //   if (appConfig?.isCanary) {
-      //     versionLabel += ' (canary)';
-      //     channelLabel = 'canary';
-      //   } else if (appConfig?.isBeta) {
-      //     versionLabel += ' (beta)';
-      //     channelLabel = 'beta';
-      //   }
+      let channelLabel: ReleaseChannel = appConfig?.releaseChannel || 'stable';
+      if (appConfig?.isCanary) channelLabel = 'canary';
+      if (appConfig?.isBeta) channelLabel = 'beta';
 
-      setEnvironment(currentEnvironment);
-      setIsDevelopmentEnv(devEnv);
-      setAppVersion(versionLabel);
+      setEnvironment(env);
+      setIsDevelopmentEnv(isDev);
+      setAppVersion(version);
       setChannel(channelLabel);
+      setIsDebugEnabled(debugConfig?.enabled ?? false);
+
     } catch (error) {
       console.error('Failed to load status bar config', error);
     }
@@ -81,16 +80,7 @@ export const StatusBar: React.FC = () => {
 
   useEffect(() => {
     void loadConfig();
-
-    // const unsubscribe = configService.subscribe('debug.enabled', (value) => {
-    //   void loadConfig();
-    //   setIsDebugEnabled(Boolean(value));
-    // });
-    // return () => {
-    //   unsubscribe();
-    // };
-    setIsDebugEnabled(true); // Enable for demo
-  }, []);
+  }, [config]);
 
   const agentDetails = useMemo(
     () => [

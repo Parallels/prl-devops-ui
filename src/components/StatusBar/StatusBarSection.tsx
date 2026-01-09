@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 import classNames from 'classnames';
-import { StatusSpinner } from '../Controls';
+import { StatusSpinner } from '@/controls';
 
 type StatusIntent = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 type PopoverAlign = 'left' | 'center' | 'right';
@@ -308,9 +308,9 @@ export const StatusBarSection: React.FC<StatusBarSectionProps> = ({
           className={classNames(
             baseButtonClasses,
             isOpen &&
-              (variant === 'solid'
-                ? 'border-neutral-300 bg-white dark:border-white/30 dark:bg-white/10'
-                : 'bg-neutral-100/80 text-neutral-800 dark:bg-white/10 dark:text-neutral-50')
+            (variant === 'solid'
+              ? 'border-neutral-300 bg-white dark:border-white/30 dark:bg-white/10'
+              : 'bg-neutral-100/80 text-neutral-800 dark:bg-white/10 dark:text-neutral-50')
           )}
           onClick={() => setIsOpen((prev) => !prev)}
           aria-expanded={isOpen}
