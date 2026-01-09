@@ -11,12 +11,12 @@ import remarkGfm from 'remark-gfm';
 import ReactMarkdown from 'react-markdown';
 import { Toast as ToastType, ToastAction } from '../../types/Toast';
 import { getToastTimestamp } from '../../utils/toastUtils';
-import IconButton from '../Controls/IconButton';
-import Button from '../Controls/Button';
-import type { ButtonColor } from '../Controls/Button';
-import type { IconName } from '@/types/IconRegistry';
+import IconButton from '../../controls/IconButton';
+import Button from '../../controls/Button';
+import type { ButtonColor } from '../../controls/Button';
+import type { IconName } from '@/types/Icon';
 import type { Components as MarkdownComponents } from 'react-markdown';
-import { Progress } from '../Controls';
+import { Progress } from '../../controls';
 
 interface ToastProps {
   toast: ToastType;

@@ -1,11 +1,6 @@
-import React, { useEffect, useState, useCallback } from 'react';
-// import { WebSocketService } from '../../services/WebSocketService';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Toast } from './Toast';
 import { Toast as ToastType } from '../../types/Toast';
-// import { ERROR_SUBJECT, LOG_SUBJECT, NOTIFICATION_SUBJECT } from '../../constants/constants';
-// import { WsErrorMessage, WsLogMessage, WsNotificationMessage } from '@/types/websocket';
-// import { WsMessage } from '../../types/WSMessage';
-// import { listen } from '@tauri-apps/api/event';
 import toastService from '../../services/ToastService';
 
 const TOAST_DURATION = 5000; // 5 seconds
