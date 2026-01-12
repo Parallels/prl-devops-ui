@@ -63,6 +63,13 @@ export const Home: React.FC = () => {
             >
                 Go to UX Demo
             </Button>
+            <Button
+                variant="solid"
+                color="indigo"
+                onClick={() => void callxxx()}
+            >
+                Call API
+            </Button>
         </div>
     );
 };
