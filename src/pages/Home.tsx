@@ -21,7 +21,7 @@ export const Home: React.FC = () => {
         try {
             const token = await authService.getAccessToken('localhost');
             console.log("Token retrieved successfully");
-            const hwInfo = await devopsService.getHardwareInfo();
+            const hwInfo = await devopsService.getHardwareInfo("localhost");
             console.log("Hardware Info:", hwInfo);
         } catch (error) {
             console.error("Authentication failed:", error);

@@ -1,4 +1,5 @@
 import { Subject } from 'rxjs';
+import { ApiError, ApiErrorResponse } from '../interfaces/api';
 
 /**
  * Login request matching API specification
@@ -15,15 +16,6 @@ interface LoginResponse {
   token: string;
   email: string;
   expires_at: string;
-}
-
-/**
- * API error response
- */
-interface ApiError {
-  error: {
-    message: string;
-  };
 }
 
 /**
@@ -85,20 +77,19 @@ class AuthService {
     // const url = await configService.get<string>(`auth::${hostname}::url`);
     // const username = await configService.get<string>(`auth::${hostname}::username`);
     // const password = await configService.get<string>(`auth::${hostname}::password`);
-    // const tenant_id = await configService.get<string>(`auth::${hostname}::tenant_id`);
-    // const license_key = await configService.get<string>(`auth::${hostname}::license_key`);
     // const email = await configService.get<string>(`auth::${hostname}::email`);
     
-    // In development mode (browser), use relative URL to leverage Vite proxy
-    // In production (Tauri app), use absolute URL
-    const isDev = window.location.hostname === 'localhost' && window.location.port === '1421';
-    const url = isDev ? '' : 'http://localhost:5680'; // Relative URL for dev, absolute for production
-    const username = "root"; // Placeholder
-    const password = "VeryStr0ngPassw0rd"; // Placeholder
-    const email = "root"; // Placeholder
+    // Load from environment variables
+    // In development mode (browser), use empty string to leverage Vite proxy
+    // In production (Tauri app), use absolute URL from env
+    const isDev = window.location.hostname === 'localhost' && window.location.port === (import.meta.env.VITE_DEV_PORT || '1421');
+    const url = isDev ? '' : (import.meta.env.VITE_DEVOPS_API_URL || 'http://localhost:5680');
+    const username = import.meta.env.VITE_DEVOPS_USERNAME || 'root';
+    const password = import.meta.env.VITE_DEVOPS_PASSWORD || 'VeryStr0ngPassw0rd';
+    const email = import.meta.env.VITE_DEVOPS_EMAIL || 'root';
 
     if (!username || !password) {
-      throw new Error(`Credentials not configured for hostname: ${hostname}. Please configure in config service.`);
+      throw new Error(`Credentials not configured for hostname: ${hostname}. Please configure environment variables.`);
     }
 
     const credentials: HostCredentials = {
@@ -185,15 +176,25 @@ class AuthService {
 
       if (!response.ok) {
         const errorText = await response.text();
+        let errorMessage = `Login failed: ${response.statusText}`;
+        
         try {
-          const errorData = JSON.parse(errorText) as ApiError;
+          const errorData = JSON.parse(errorText) as ApiErrorResponse;
           if (errorData.error?.message) {
-            throw new Error(errorData.error.message);
+            errorMessage = errorData.error.message;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
           }
         } catch (e) {
-          // Parsing failed
+          // JSON parsing failed, use default error message
         }
-        throw new Error(`Login failed: ${response.statusText}`);
+        
+        const apiError: ApiError = {
+          message: errorMessage,
+          statusCode: response.status,
+          details: errorText
+        };
+        throw apiError;
       }
 
       const data = await response.json() as LoginResponse;
@@ -208,10 +209,17 @@ class AuthService {
       this.saveTokenToStorage(hostname, tokenData);
       return tokenData.token;
     } catch (error) {
-      if (error instanceof Error) {
+      // If it's already an ApiError, re-throw it
+      if (this.isApiError(error)) {
         throw error;
       }
-      throw new Error(`Login failed. Please check your credentials.`);
+      
+      // Convert to ApiError
+      const apiError: ApiError = {
+        message: error instanceof Error ? error.message : 'Login failed. Please check your credentials.',
+        details: error
+      };
+      throw apiError;
     }
   }
 
@@ -337,6 +345,27 @@ class AuthService {
   async forceReauth(hostname: string): Promise<string> {
     this.clearTokenByHost(hostname);
     return this.getAccessToken(hostname);
+  }
+
+  /**
+   * Get the base URL for a hostname
+   * This is used by API services to determine which server to connect to
+   */
+  async getHostUrl(hostname: string): Promise<string> {
+    const credentials = await this.fetchCredentialsForHost(hostname);
+    return credentials.url;
+  }
+
+  /**
+   * Check if an object is an ApiError
+   */
+  private isApiError(error: unknown): error is ApiError {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error &&
+      typeof (error as ApiError).message === 'string'
+    );
   }
 }
 
