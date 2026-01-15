@@ -140,3 +140,49 @@ export interface CatalogPushRequest {
   description?: string;
   [key: string]: unknown;
 }
+
+/**
+ * Roles and claims entity
+ */
+export interface DevOpsRolesAndClaims {
+  id?: string;
+  name?: string;
+  description?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Create role or claim request
+ */
+export interface DevOpsRolesAndClaimsCreateRequest {
+  name: string;
+  description?: string;
+}
+
+/**
+ * Add orchestrator host request
+ */
+export interface AddOrchestratorHostRequest {
+  host: string;
+  description?: string;
+  authentication?: {
+    username?: string;
+    password?: string;
+    api_key?: string;
+  };
+  [key: string]: unknown;
+}
+
+/**
+ * Update orchestrator host request
+ */
+export interface UpdateOrchestratorHostRequest {
+  host?: string;
+  description?: string;
+  authentication?: {
+    username?: string;
+    password?: string;
+    api_key?: string;
+  };
+  [key: string]: unknown;
+}
