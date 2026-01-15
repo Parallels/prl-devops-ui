@@ -4,6 +4,8 @@ import reactLogo from "../assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "../controls";
 import { useNavigate } from "react-router-dom";
+import { authService } from "../services/authService";
+import { devopsService } from '@/services/devopsService';
 
 export const Home: React.FC = () => {
     const [greetMsg, setGreetMsg] = useState("");
@@ -13,6 +15,17 @@ export const Home: React.FC = () => {
     async function greet() {
         // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
         setGreetMsg(await invoke("greet", { name }));
+    }
+
+    async function callAPI() {
+        try {
+            const token = await authService.getAccessToken('localhost');
+            console.log("Token retrieved successfully");
+            const hwInfo = await devopsService.getHardwareInfo("localhost");
+            console.log("Hardware Info:", hwInfo);
+        } catch (error) {
+            console.error("Authentication failed:", error);
+        }
     }
 
     return (
@@ -66,7 +79,7 @@ export const Home: React.FC = () => {
             <Button
                 variant="solid"
                 color="indigo"
-                onClick={() => void callxxx()}
+                onClick={() => void callAPI()}
             >
                 Call API
             </Button>
