@@ -5,7 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button } from "../controls";
 import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
-import { devopsService } from '@/services/devopsService';
+import { devopsService } from '@/services/devops';
 
 export const Home: React.FC = () => {
     const [greetMsg, setGreetMsg] = useState("");
@@ -21,8 +21,10 @@ export const Home: React.FC = () => {
         try {
             const token = await authService.getAccessToken('localhost');
             console.log("Token retrieved successfully");
-            const hwInfo = await devopsService.getHardwareInfo("localhost");
+            const hwInfo = await devopsService.config.getHardwareInfo("localhost");
             console.log("Hardware Info:", hwInfo);
+            const users = await devopsService.users.getUsers("localhost");
+            console.log("Users:", users);
         } catch (error) {
             console.error("Authentication failed:", error);
         }
