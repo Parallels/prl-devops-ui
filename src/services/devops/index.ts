@@ -12,6 +12,8 @@
  * - orchestrator: Orchestrator and host management
  * - config: Configuration and system information
  * - cache: Catalog cache operations
+ * - reverseProxy: Reverse proxy configuration and routing
+ * - packer: Packer template management
  * 
  * Usage:
  * ```typescript
@@ -35,7 +37,9 @@ import { rolesService } from './rolesService';
 import { claimsService } from './claimsService';
 import { orchestratorService } from './orchestratorService';
 import { configService } from './configService';
+import { packerService } from './packerService';
 import { cacheService } from './cacheService';
+import { reverseProxyService } from './reverseProxyService';
 
 /**
  * Unified DevOps service with composition pattern
@@ -65,6 +69,12 @@ export const devopsService = {
   
   /** Catalog cache operations */
   cache: cacheService,
+
+  /** Reverse proxy configuration and management */
+  reverseProxy: reverseProxyService,
+
+  /** Packer template management */
+  packer: packerService,
 };
 
 /**
@@ -73,9 +83,11 @@ export const devopsService = {
 export {
   catalogService,
   machinesService,
-  usersService,
-  rolesService,
-  claimsService,
+  orchestratorService,
+  configService,
+  cacheService,
+  reverseProxyService,
+  packerseProxyService,
   orchestratorService,
   configService,
   cacheService,
