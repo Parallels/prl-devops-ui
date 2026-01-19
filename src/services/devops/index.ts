@@ -13,7 +13,7 @@
  * - config: Configuration and system information
  * - cache: Catalog cache operations
  * - reverseProxy: Reverse proxy configuration and routing
- * - packer: Packer template management
+
  * 
  * Usage:
  * ```typescript
@@ -30,67 +30,62 @@
  * ```
  */
 
-import { catalogService } from './catalogService';
-import { machinesService } from './machinesService';
-import { usersService } from './usersService';
-import { rolesService } from './rolesService';
-import { claimsService } from './claimsService';
-import { orchestratorService } from './orchestratorService';
-import { configService } from './configService';
-import { packerService } from './packerService';
 import { cacheService } from './cacheService';
+import { catalogService } from './catalogService';
+import { claimsService } from './claimsService';
+import { configService } from './configService';
+import { machinesService } from './machinesService';
+import { orchestratorService } from './orchestratorService';
 import { reverseProxyService } from './reverseProxyService';
+import { rolesService } from './rolesService';
+import { usersService } from './usersService';
 
 /**
  * Unified DevOps service with composition pattern
  * Provides access to all DevOps API operations through organized sub-services
  */
 export const devopsService = {
+  /** Catalog cache operations */
+  cache: cacheService,
+  
   /** Catalog management operations */
   catalog: catalogService,
-  
-  /** Virtual machine lifecycle operations */
-  machines: machinesService,
-  
-  /** User management operations */
-  users: usersService,
-  
-  /** Role management operations */
-  roles: rolesService,
   
   /** Claim management operations */
   claims: claimsService,
   
-  /** Orchestrator and host management operations */
-  orchestrator: orchestratorService,
-  
   /** Configuration and system information */
   config: configService,
   
-  /** Catalog cache operations */
-  cache: cacheService,
+  /** Virtual machine lifecycle operations */
+  machines: machinesService,
+  
+  /** Orchestrator and host management operations */
+  orchestrator: orchestratorService,
 
   /** Reverse proxy configuration and management */
   reverseProxy: reverseProxyService,
 
-  /** Packer template management */
-  packer: packerService,
+  /** Role management operations */
+  roles: rolesService,
+
+  /** User management operations */
+  users: usersService,
 };
 
 /**
  * Export individual services for direct access if needed
  */
 export {
+  cacheService,
   catalogService,
+  claimsService,
+  configService,
   machinesService,
   orchestratorService,
-  configService,
-  cacheService,
   reverseProxyService,
-  packerseProxyService,
-  orchestratorService,
-  configService,
-  cacheService,
+  rolesService,
+  usersService
 };
 
 /**

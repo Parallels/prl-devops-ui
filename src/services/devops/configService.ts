@@ -1,13 +1,6 @@
 import { apiService } from '../api';
 import { HostHardwareInfo } from '../../interfaces/devops';
-
-/**
- * Version response from API
- */
-interface VersionResponse {
-  version: string;
-}
-
+import { VersionResponse } from '../../interfaces/devops';
 /**
  * Config Service - Handles configuration and system information operations
  * Manages hardware info, version, and general system config
