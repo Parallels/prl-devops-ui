@@ -80,7 +80,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
           />
           <LayoutModals />
           <div className="flex h-full min-w-[400px] flex-1 flex-col overflow-hidden">
-            <div className="flex-1 overflow-hidden bg-white dark:bg-neutral-900">
+            <div className="flex-1 overflow-y-auto bg-white dark:bg-neutral-900">
               {children || <Outlet />}
             </div>
           </div>
