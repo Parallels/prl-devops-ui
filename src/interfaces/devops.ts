@@ -186,3 +186,123 @@ export interface UpdateOrchestratorHostRequest {
   };
   [key: string]: unknown;
 }
+
+/**
+ * Catalog cache manifest item
+ */
+export interface CatalogCacheManifestItem {
+  catalog_id?: string;
+  version?: string;
+  architecture?: string;
+  size?: number;
+  path?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Catalog cache response
+ */
+export interface CatalogCacheResponse {
+  total_size?: number;
+  manifests?: CatalogCacheManifestItem[];
+  [key: string]: unknown;
+}
+
+/**
+ * Version response from API
+ */
+export interface VersionResponse {
+  version: string;
+}
+
+/**
+ * Virtual machine operation interface
+ */
+export interface VmOperation {
+  group: string;
+  operation: string;
+  value?: string;
+  options?: Array<{ flag: string; value: string }>;
+}
+
+/**
+ * Virtual machine configuration request
+ */
+export interface VmConfigureRequest {
+  operations: VmOperation[];
+}
+
+/**
+ * Reverse Proxy Configuration
+ */
+export interface ReverseProxyConfig {
+  enabled?: boolean;
+  host?: string;
+  port?: string;
+}
+
+/**
+ * Reverse Proxy Host HTTP Route
+ */
+export interface ReverseProxyHostHttpRoute {
+  id?: string;
+  path?: string;
+  pattern?: string;
+  schema?: string;
+  target_host?: string;
+  target_port?: string;
+  target_vm_id?: string;
+  request_headers?: Record<string, string>;
+  response_headers?: Record<string, string>;
+}
+
+/**
+ * Reverse Proxy Host TCP Route
+ */
+export interface ReverseProxyHostTcpRoute {
+  id?: string;
+  target_host?: string;
+  target_port?: string;
+  target_vm_id?: string;
+}
+
+/**
+ * Reverse Proxy Host CORS Configuration
+ */
+export interface ReverseProxyHostCors {
+  enabled?: boolean;
+  allowed_origins?: string[];
+  allowed_methods?: string[];
+  allowed_headers?: string[];
+}
+
+/**
+ * Reverse Proxy Host TLS Configuration
+ */
+export interface ReverseProxyHostTls {
+  enabled?: boolean;
+  cert?: string;
+  key?: string;
+}
+
+/**
+ * Reverse Proxy Host
+ */
+export interface ReverseProxyHost {
+  id?: string;
+  host?: string;
+  port?: string;
+  http_routes?: ReverseProxyHostHttpRoute[];
+  tcp_route?: ReverseProxyHostTcpRoute;
+  cors?: ReverseProxyHostCors;
+  tls?: ReverseProxyHostTls;
+}
+
+/**
+ * Complete Reverse Proxy Response
+ */
+export interface ReverseProxyResponse {
+  reverse_proxy_config?: ReverseProxyConfig;
+  reverse_proxy_hosts?: ReverseProxyHost[];
+}
+

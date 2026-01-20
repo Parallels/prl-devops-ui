@@ -1,22 +1,7 @@
 import { apiService } from '../api';
 import { VirtualMachine } from '../../interfaces/devops';
+import { VmConfigureRequest } from '../../interfaces/devops';
 
-/**
- * Virtual machine operation interface
- */
-interface VmOperation {
-  group: string;
-  operation: string;
-  value?: string;
-  options?: Array<{ flag: string; value: string }>;
-}
-
-/**
- * Virtual machine configuration request
- */
-interface VmConfigureRequest {
-  operations: VmOperation[];
-}
 
 /**
  * Machines Service - Handles virtual machine operations for Parallels DevOps API

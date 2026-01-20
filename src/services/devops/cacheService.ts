@@ -1,26 +1,5 @@
 import { apiService } from '../api';
-
-/**
- * Catalog cache manifest item
- */
-interface CatalogCacheManifestItem {
-  catalog_id?: string;
-  version?: string;
-  architecture?: string;
-  size?: number;
-  path?: string;
-  [key: string]: unknown;
-}
-
-/**
- * Catalog cache response
- */
-interface CatalogCacheResponse {
-  total_size?: number;
-  manifests?: CatalogCacheManifestItem[];
-  [key: string]: unknown;
-}
-
+import { CatalogCacheResponse } from '../../interfaces/devops';
 /**
  * Cache Service - Handles catalog cache operations
  * Manages catalog cache retrieval and cleanup
