@@ -1,5 +1,5 @@
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Toast, ToastAction } from '../types/Toast';
+import { Toast, ToastAction } from '@prl/ui-kit';
 
 // Define interfaces for our API parameters
 export interface BaseToastOptions {

@@ -1,0 +1,26 @@
+import { forwardRef, type SVGProps } from 'react';
+
+export const LXCOld = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg  version="1.1" baseProfile="full"   xmlns="http://www.w3.org/2000/svg" {...props} ref={ref}>
+<g stroke="white" >
+<g transform="rotate(30) skewX(30)">
+<rect x="110" y="-72" width="175" height="75" fill="currentColor" transform="skewX(-50)"/>
+<rect x="110" y="3" width="87.5" height="75" fill="currentColor" transform="skewX(-50)"/>
+<rect x="16.5" y="78.9" width="87.5" height="25" fill="currentColor" />
+<rect x="16.5" y="104.5" width="175" height="25" fill="currentColor" />
+<rect x="16.5" y="130" width="175" height="50" fill="currentColor" />
+<rect x="104" y="166" width="89.5" height="25" fill="currentColor" transform="skewY(-40)"/>
+<rect x="228.3" y="29.5" width="87.5" height="75" fill="currentColor" transform="skewX(-50)"/>
+<rect x="191.8" y="266" width="89.5" height="25" fill="currentColor" transform="skewY(-40)"/>
+<rect x="192" y="291" width="179.5" height="50" fill="currentColor" transform="skewY(-40)"/>
+<rect x="282.3" y="240" width="89.1" height="50" fill="currentColor" transform="skewY(-40)"/>
+<rect x="194" y="3.7" width="87.5" height="25" fill="currentColor" />
+</g>
+<line x1="93" y1="57" x2="93" y2="88" />
+<line x1="169" y1="131" x2="92" y2="88" />
+<line x1="92" y1="88" x2="14" y2="128" />
+</g>
+</svg>
+));
+
+LXCOld.displayName = 'LXCOld';

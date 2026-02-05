@@ -1,0 +1,17 @@
+import { forwardRef, type SVGProps } from 'react';
+
+export const ArrowRight = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg 
+  viewBox="0 0 24 24"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+   {...props} ref={ref}>
+
+  <path
+    
+    d="m 13,7 a 1,1 0 0 0 -0.707031,0.2929687 1,1 0 0 0 0,1.4140626 L 14.585938,11 H 7 a 1,1 0 0 0 -1,1 1,1 0 0 0 1,1 h 7.585938 l -2.292969,2.292969 a 1,1 0 0 0 0,1.414062 1,1 0 0 0 1.414062,0 l 4,-4 a 1,1 0 0 0 0.259766,-0.447265 1,1 0 0 0 0,-0.179688 A 1,1 0 0 0 18,12 a 1,1 0 0 0 -0.0332,-0.166016 1,1 0 0 0 -0.02734,-0.142578 1,1 0 0 0 -0.232422,-0.398437 l -4,-4.0000003 A 1,1 0 0 0 13,7 Z"
+    id="Vector" />
+</svg>
+));
+
+ArrowRight.displayName = 'ArrowRight';
