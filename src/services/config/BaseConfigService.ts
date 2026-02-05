@@ -43,4 +43,8 @@ export class BaseConfigService implements IConfigService {
     async removeSecret(key: string): Promise<void> {
         await this.secretStore.removeSecret(key);
     }
+
+    async flushSecrets(): Promise<void> {
+        await this.secretStore.flushSecrets();
+    }
 }

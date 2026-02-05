@@ -106,4 +106,8 @@ export class SpaSecretStore implements ISecretStore {
         const db = await this.dbPromise;
         await db.delete('secrets', key);
     }
+
+    async flushSecrets(): Promise<void> {
+        // IndexedDB auto-commits — no-op
+    }
 }

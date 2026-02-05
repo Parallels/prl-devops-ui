@@ -5,7 +5,7 @@ import { StatusBar } from '../components/StatusBar/StatusBar';
 import { Route } from '../types/Header';
 
 import { LayoutProvider, useLayout } from '../contexts/LayoutContext';
-import { BottomSheetProvider } from '../contexts/BottomSheetContext';
+import { BottomSheetProvider } from '@prl/ui-kit';
 import { WebSocketProvider } from '../contexts/WebSocketContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 
@@ -48,8 +48,8 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
     }
   }, [location.pathname]);
 
-  const handleNavChange = (route: Route) => {
-    setCurrentRoute(route);
+  const handleNavChange = (route: string) => {
+    setCurrentRoute(route as Route);
     if (route === 'home') {
       navigate('/');
     } else if (route === 'ux-demo') {

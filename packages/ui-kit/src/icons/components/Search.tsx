@@ -1,0 +1,12 @@
+import { forwardRef, type SVGProps } from 'react';
+
+export const Search = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg  viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props} ref={ref}>
+  <path
+    
+    d="m 10,2 c -4.4064311,0 -8,3.5935689 -8,8 0,4.40644 3.5935706,8 8,8 1.837571,0 3.455411,-0.729126 4.808594,-1.777344 l 5.484375,5.484375 a 1,1 0 0 0 1.414062,0 1,1 0 0 0 0,-1.414062 L 16.222656,14.808594 C 17.270874,13.455411 18,11.837571 18,10 18,5.5935706 14.40644,2 10,2 Z m 0,2 c 3.32556,0 6,2.6744494 6,6 0,3.325562 -2.674438,6 -6,6 C 6.6744494,16 4,13.32556 4,10 4,6.6744511 6.6744511,4 10,4 Z"
+    id="Vector" />
+</svg>
+));
+
+Search.displayName = 'Search';

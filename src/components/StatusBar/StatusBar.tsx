@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import CustomIcon from '../../controls/CustomIcon';
+import { CustomIcon } from '@/controls';
 import { useWebSocketContext } from '@/contexts/WebSocketContext';
 // import { useAppStartup } from '@/contexts/AppStartupContextDefinition';
 // import { configService } from '@/services/ConfigService';

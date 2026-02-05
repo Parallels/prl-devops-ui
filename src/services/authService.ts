@@ -36,6 +36,7 @@ export interface HostCredentials {
   username: string;
   password: string;
   email: string;
+  api_key: string;
 }
 
 // API_BASE_URL is no longer needed as URLs are configured per host
@@ -78,7 +79,7 @@ class AuthService {
     // const username = await configService.get<string>(`auth::${hostname}::username`);
     // const password = await configService.get<string>(`auth::${hostname}::password`);
     // const email = await configService.get<string>(`auth::${hostname}::email`);
-    
+
     // Load from environment variables
     // In development mode (browser), use empty string to leverage Vite proxy
     // In production (Tauri app), use absolute URL from env
@@ -86,6 +87,7 @@ class AuthService {
     const url = isDev ? '' : (import.meta.env.VITE_DEVOPS_API_URL || 'http://localhost:5680');
     const username = import.meta.env.VITE_DEVOPS_USERNAME || 'root';
     const password = import.meta.env.VITE_DEVOPS_PASSWORD || 'VeryStr0ngPassw0rd';
+    const api_key = import.meta.env.VITE_DEVOPS_API_KEY || 'VeryStr0ngPassw0rd';
     const email = import.meta.env.VITE_DEVOPS_EMAIL || 'root';
 
     if (!username || !password) {
@@ -97,6 +99,7 @@ class AuthService {
       username: username,
       password: password,
       email: email,
+      api_key: api_key,
     };
 
     // Cache for future use
@@ -120,7 +123,7 @@ class AuthService {
     try {
       // Check if we have a valid token
       const tokenData = this.tokens.get(hostname);
-      
+
       if (tokenData?.token) {
         // Check if token is expired using expires_at from response
         if (this.isTokenExpired(tokenData)) {
@@ -130,7 +133,7 @@ class AuthService {
             const newTokenData = this.tokens.get(hostname);
             return newTokenData!.token;
           }
-          
+
           // Re-auth failed
           console.error(`Re-authentication failed for ${hostname}`);
         } else if (this.shouldRefreshToken(tokenData)) {
@@ -146,7 +149,7 @@ class AuthService {
       // No valid token, perform login
       const credentials = await this.fetchCredentialsForHost(hostname);
       const token = await this.performLogin(hostname, credentials);
-      
+
       return token;
     } catch (error) {
       console.error(`Failed to get access token for ${hostname}:`, error);
@@ -161,7 +164,7 @@ class AuthService {
     const loginUrl = this.buildLoginUrl(credentials.url);
 
     const loginCredentials: LoginRequest = {
-      email: credentials.email ,
+      email: credentials.email,
       password: credentials.password,
     };
 
@@ -177,7 +180,7 @@ class AuthService {
       if (!response.ok) {
         const errorText = await response.text();
         let errorMessage = `Login failed: ${response.statusText}`;
-        
+
         try {
           const errorData = JSON.parse(errorText) as ApiErrorResponse;
           if (errorData.error?.message) {
@@ -188,7 +191,7 @@ class AuthService {
         } catch (e) {
           // JSON parsing failed, use default error message
         }
-        
+
         const apiError: ApiError = {
           message: errorMessage,
           statusCode: response.status,
@@ -213,7 +216,7 @@ class AuthService {
       if (this.isApiError(error)) {
         throw error;
       }
-      
+
       // Convert to ApiError
       const apiError: ApiError = {
         message: error instanceof Error ? error.message : 'Login failed. Please check your credentials.',
@@ -297,19 +300,19 @@ class AuthService {
 
   // Check if token is expired using expires_at from API response
   private isTokenExpired(tokenData: TokenData): boolean {
-    const expiresAt = typeof tokenData.expires_at === 'number' 
-      ? tokenData.expires_at * 1000 
+    const expiresAt = typeof tokenData.expires_at === 'number'
+      ? tokenData.expires_at * 1000
       : parseInt(tokenData.expires_at) * 1000;
-    
+
     return Date.now() >= expiresAt;
   }
 
   // Check if token should be refreshed proactively (1 minute before expiry)
   private shouldRefreshToken(tokenData: TokenData): boolean {
-    const expiresAt = typeof tokenData.expires_at === 'number' 
-      ? tokenData.expires_at * 1000 
+    const expiresAt = typeof tokenData.expires_at === 'number'
+      ? tokenData.expires_at * 1000
       : parseInt(tokenData.expires_at) * 1000;
-    
+
     const oneMinuteInMs = 60 * 1000;
     return expiresAt < Date.now() + oneMinuteInMs;
   }

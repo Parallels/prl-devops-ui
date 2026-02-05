@@ -1,5 +1,5 @@
 
-import { ToastAction } from './Toast';
+import { ToastAction } from '@prl/ui-kit';
 
 export type NotificationType = 'info' | 'success' | 'warning' | 'error' | 'progress';
 

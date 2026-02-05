@@ -25,11 +25,18 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@prl/ui-kit": [
+        "./packages/ui-kit/src"
+      ],
+      "@prl/ui-kit/*": [
+        "./packages/ui-kit/src/*"
       ]
     }
   },
   "include": [
-    "src"
+    "src",
+    "packages/ui-kit/src"
   ],
   "references": [
     {

@@ -8,7 +8,7 @@ import {
 } from '../types/Notification';
 import toastService from './ToastService';
 import { WebSocketService } from './WebSocketService';
-import { ToastAction } from '../types/Toast';
+import { ToastAction } from '@prl/ui-kit';
 import { WebSocketMessage } from '../types/WebSocket';
 import { BackendMessageType } from '../types/BackendMessages';
 

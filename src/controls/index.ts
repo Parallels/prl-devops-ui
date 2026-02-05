@@ -1,47 +1,98 @@
-export { default as Badge } from './Badge';
-export { default as AppDivider } from './AppDivider';
-export { default as CustomIcon } from './CustomIcon';
-export { default as DetailItemCard } from './DetailItemCard';
-export { default as DropdownMenu } from './DropdownMenu';
-export { default as DropdownButton } from './DropdownButton';
-export { default as DynamicImg } from './DynamicImg';
-export { default as Modal } from './Modal';
+// Re-export from @prl/ui-kit for migrated pure UI components
+export {
+  // Primitives
+  Alert,
+  AppDivider,
+  Badge,
+  BadgeIcon,
+  Pill,
+  Progress,
+  Spinner,
+  StatusSpinner,
+  Loader,
+  EmptyState,
+  DynamicImg,
+  // Buttons
+  Button,
+  IconButton,
+  DropdownButton,
+  // Form Controls
+  Input,
+  Textarea,
+  Select,
+  Combobox,
+  Checkbox,
+  Toggle,
+  MultiToggle,
+  FormField,
+  FormLayout,
+  FormSection,
+  InputGroup,
+  MultiSelectPills,
+  SearchBar,
+  // Layout
+  Panel,
+  CollapsiblePanel,
+  HeaderGroup,
+  DetailItemCard,
+  InfiniteScrollPanel,
+  CollapsibleHelpText,
+  // Dropdown
+  DropdownMenu,
+  // Complex
+  Accordion,
+  Tabs,
+  // Hooks
+  useAccordion,
+  useStepper,
+} from "@prl/ui-kit";
 
-export { ModalActions as UIModalActions, ConfirmModal as UIModalConfirm } from './Modal';
-export { default as MultiSelectPills } from './MultiSelectPills';
-export { default as BadgeIcon } from './BadgeIcon';
-export { default as Panel } from './Panel';
-export { default as Pill } from './Pill';
-export { default as EmptyState } from './EmptyState';
-export { default as Loader } from './Loader';
-export { default as Spinner } from './Spinner';
-export { default as StatusSpinner } from './StatusSpinner';
-export { default as Progress } from './Progress';
-export { default as Alert } from './Alert';
-export { default as Button } from './Button';
-export { default as Checkbox } from './Checkbox';
-export { default as IconButton } from './IconButton';
-export { default as CollapsibleHelpText } from './CollapsibleHelpText';
-export { default as CollapsiblePanel } from './CollapsiblePanel';
-export { default as KeyValueArrayField } from './KeyValueArrayField';
-export { HeaderGroup } from './HeaderGroup';
-export { InfiniteScrollPanel } from './InfiniteScrollPanel';
-export { BottomSheetProvider, useBottomSheet } from '../contexts/BottomSheetContext';
-export { default as Toggle } from './Toggle';
-export { default as MultiToggle } from './MultiToggle';
-export { default as Accordion } from './Accordion';
-export { default as useAccordion } from './useAccordion';
-export { default as Table } from './Table';
-export { default as Stepper } from './Stepper';
-export { useStepper } from './useStepper';
-export { default as Tabs } from './Tabs';
-export { default as Input } from './Input';
-export { default as Select } from './Select';
-export { default as InputGroup } from './InputGroup';
-export { default as FormField } from './FormField';
-export { default as FormLayout } from './FormLayout';
-export { default as FormSection } from './FormSection';
-export { default as Textarea } from './Textarea';
-export { default as SearchBar } from './SearchBar';
-export { StartupStageStepper } from './StartupStageStepper';
+// Re-export types from @prl/ui-kit
+export type {
+  AlertProps,
+  BadgeProps,
+  ButtonProps,
+  ButtonVariant,
+  ButtonColor,
+  ButtonSize,
+  PanelProps,
+  TabsProps,
+  TabItem,
+  AccordionProps,
+  AccordionItem,
+  DropdownMenuOption,
+  MultiToggleOption,
+} from "@prl/ui-kit";
 
+// Local app-specific components that depend on app code
+// Local app-specific components that depend on app code
+// Re-export moved components
+export {
+  Modal, ModalActions as UIModalActions, ConfirmModal as UIModalConfirm,
+  ApiErrorState,
+  CustomIcon,
+  DynamicFormField,
+  NotificationModal,
+  Table,
+  Stepper,
+  KeyValueArrayField,
+  StatTile,
+  StatGoalTile,
+  type StatGoalTileProps,
+  StatChartTile,
+  type StatChartTileProps, type StatChartDataset, type StatChartItem,
+  StatGraphTile,
+  type StatGraphTileProps, type StatGraphSeries,
+  StatCountTile,
+  type StatCountTileProps, type StatCountTileBreakdown,
+  StartupStageStepper,
+  MarkdownEditor,
+  UserAvatar,
+  VariablePicker,
+  SmartInput,
+  SmartValue
+} from "@prl/ui-kit";
+
+
+// Context exports
+export { BottomSheetProvider, useBottomSheet } from "@prl/ui-kit";

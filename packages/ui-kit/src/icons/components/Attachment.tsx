@@ -1,0 +1,11 @@
+import { forwardRef, type SVGProps } from 'react';
+
+export const Attachment = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg    viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" {...props} ref={ref}>
+  <path fillRule="evenodd" clipRule="evenodd"
+    d="M9.5 7.45C9.5 5.54462 11.0446 4 12.95 4C14.8554 4 16.4 5.54462 16.4 7.45V14.7C16.4 17.2957 14.2957 19.4 11.7 19.4C9.10426 19.4 7 17.2957 7 14.7V8.2C7 7.8134 7.3134 7.5 7.7 7.5C8.0866 7.5 8.4 7.8134 8.4 8.2V14.7C8.4 16.5225 9.87746 18 11.7 18C13.5225 18 15 16.5225 15 14.7V7.45C15 6.31782 14.0822 5.4 12.95 5.4C11.8178 5.4 10.9 6.31782 10.9 7.45V14.2C10.9 14.6418 11.2582 15 11.7 15C12.1418 15 12.5 14.6418 12.5 14.2V8.2C12.5 7.8134 12.8134 7.5 13.2 7.5C13.5866 7.5 13.9 7.8134 13.9 8.2V14.2C13.9 15.415 12.915 16.4 11.7 16.4C10.485 16.4 9.5 15.415 9.5 14.2V7.45Z"
+    fill="currentColor" />
+</svg>
+));
+
+Attachment.displayName = 'Attachment';
