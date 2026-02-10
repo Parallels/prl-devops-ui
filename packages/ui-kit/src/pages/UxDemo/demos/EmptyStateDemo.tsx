@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { EmptyState, type EmptyStateProps, MultiToggle, Toggle, type ButtonVariant, type ButtonColor, type ButtonSize } from '../../..';
-import { IconName } from '@/types/Icon';
+import type { IconName } from '../../../icons/registry';
 
 type EmptyStateTone = EmptyStateProps['tone'];
 import { PlaygroundSection } from '../PlaygroundSection';

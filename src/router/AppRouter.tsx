@@ -4,9 +4,11 @@ import { createBrowserRouter, RouterProvider, useLocation } from 'react-router-d
 import { MainLayout } from '../layout/MainLayout';
 import { Home } from '../pages/Home';
 import { UxDemo } from '@prl/ui-kit';
-
+import { Libraries } from '../pages/Libraries';
+import { Vms } from '../pages/Vms/Vms';
 import { StartupGuard } from '../components/StartupGuard';
 import { Onboarding, OnboardingPrefill } from '../pages/Onboarding/Onboarding';
+import { Hosts } from '@/pages/Hosts/Hosts';
 
 const OnboardingRoute: React.FC = () => {
     const location = useLocation();
@@ -35,6 +37,18 @@ export const router = createBrowserRouter([
             {
                 path: '/ux-demo',
                 element: <UxDemo />,
+            },
+            {
+                path: '/library',
+                element: <Libraries />,
+            },
+            {
+                path: '/vms',
+                element: <Vms />,
+            },
+            {
+                path: '/hosts',
+                element: <Hosts />,
             },
         ],
     },

@@ -76,8 +76,17 @@ import { Users } from './components/Users';
 import { Verified } from './components/Verified';
 import { ViewGrid } from './components/ViewGrid';
 import { ViewRows } from './components/ViewRows';
+import { Library } from './components/Library';
+import { Host } from './components/Host';
+import { VirtualMachine } from './components/VirtualMachine';
+import { Role } from './components/Role';
+import { Roles } from './components/Roles';
+import { Cache } from './components/Cache';
+import { Claim } from './components/Claim';
+import { Claims } from './components/Claims';
+import { KeyManagement } from './components/KeyManagement';
 
-export type IconName = 
+export type IconName =
     | "Add"
     | "ArrowDown"
     | "ArrowLeft"
@@ -154,7 +163,16 @@ export type IconName =
     | "Users"
     | "Verified"
     | "ViewGrid"
-    | "ViewRows";
+    | "ViewRows"
+    | "Library"
+    | "Host"
+    | "VirtualMachine"
+    | "Role"
+    | "Roles"
+    | "Cache"
+    | "Claim"
+    | "Claims"
+    | "KeyManagement";
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
     "Add": Add,
@@ -234,4 +252,13 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
     "Verified": Verified,
     "ViewGrid": ViewGrid,
     "ViewRows": ViewRows,
+    "Library": Library,
+    "Host": Host,
+    "VirtualMachine": VirtualMachine,
+    "Role": Role,
+    "Roles": Roles,
+    "Cache": Cache,
+    "Claim": Claim,
+    "Claims": Claims,
+    "KeyManagement": KeyManagement,
 };

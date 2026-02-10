@@ -1,6 +1,7 @@
 import { apiService } from '../api';
 import { VirtualMachine } from '../../interfaces/devops';
 import { VmConfigureRequest } from '../../interfaces/devops';
+import { authService } from '../authService';
 
 
 /**
@@ -11,19 +12,24 @@ class MachinesService {
   /**
    * Get all virtual machines from remote host
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param isOrchestrator - Whether this is an orchestrator endpoint
    * @returns Array of virtual machines
    * @throws ApiError
    */
-  async getVirtualMachines(hostname: string, isOrchestrator = false): Promise<VirtualMachine[]> {
+  async getVirtualMachines(hostname?: string, isOrchestrator = false): Promise<VirtualMachine[]> {
     try {
-      const endpoint = isOrchestrator 
+      const targetHost = hostname || authService.currentHostname;
+      if (!targetHost) {
+        throw new Error('No hostname provided and no active session found');
+      }
+
+      const endpoint = isOrchestrator
         ? '/api/v1/orchestrator/machines'
         : '/api/v1/machines';
 
       const vms = await apiService.get<VirtualMachine[]>(
-        hostname,
+        targetHost,
         endpoint,
         { errorPrefix: 'Failed to get virtual machines' }
       );
@@ -40,12 +46,17 @@ class MachinesService {
    * Helper method for common state operations
    */
   private async executeVmStateOperation(
-    hostname: string,
+    hostname: string | undefined,
     vmId: string,
     operation: string,
     isOrchestrator = false
   ): Promise<boolean> {
     try {
+      const targetHost = hostname || authService.currentHostname;
+      if (!targetHost) {
+        throw new Error('No hostname provided and no active session found');
+      }
+
       const endpoint = isOrchestrator
         ? `/api/v1/orchestrator/machines/${vmId}/set`
         : `/api/v1/machines/${vmId}/set`;
@@ -61,7 +72,7 @@ class MachinesService {
       };
 
       await apiService.put(
-        hostname,
+        targetHost,
         endpoint,
         request,
         { errorPrefix: `Failed to ${operation} VM ${vmId}` }
@@ -77,85 +88,90 @@ class MachinesService {
   /**
    * Start a virtual machine
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param vmId - Virtual machine ID
    * @param isOrchestrator - Whether this is an orchestrator endpoint
    * @returns true if successful
    * @throws ApiError
    */
-  async startVirtualMachine(hostname: string, vmId: string, isOrchestrator = false): Promise<boolean> {
+  async startVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
     return this.executeVmStateOperation(hostname, vmId, 'start', isOrchestrator);
   }
 
   /**
    * Stop a virtual machine
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param vmId - Virtual machine ID
    * @param isOrchestrator - Whether this is an orchestrator endpoint
    * @returns true if successful
    * @throws ApiError
    */
-  async stopVirtualMachine(hostname: string, vmId: string, isOrchestrator = false): Promise<boolean> {
+  async stopVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
     return this.executeVmStateOperation(hostname, vmId, 'stop', isOrchestrator);
   }
 
   /**
    * Pause a virtual machine
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param vmId - Virtual machine ID
    * @param isOrchestrator - Whether this is an orchestrator endpoint
    * @returns true if successful
    * @throws ApiError
    */
-  async pauseVirtualMachine(hostname: string, vmId: string, isOrchestrator = false): Promise<boolean> {
+  async pauseVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
     return this.executeVmStateOperation(hostname, vmId, 'pause', isOrchestrator);
   }
 
   /**
    * Resume a virtual machine
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param vmId - Virtual machine ID
    * @param isOrchestrator - Whether this is an orchestrator endpoint
    * @returns true if successful
    * @throws ApiError
    */
-  async resumeVirtualMachine(hostname: string, vmId: string, isOrchestrator = false): Promise<boolean> {
+  async resumeVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
     return this.executeVmStateOperation(hostname, vmId, 'resume', isOrchestrator);
   }
 
   /**
    * Suspend a virtual machine
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param vmId - Virtual machine ID
    * @param isOrchestrator - Whether this is an orchestrator endpoint
    * @returns true if successful
    * @throws ApiError
    */
-  async suspendVirtualMachine(hostname: string, vmId: string, isOrchestrator = false): Promise<boolean> {
+  async suspendVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
     return this.executeVmStateOperation(hostname, vmId, 'suspend', isOrchestrator);
   }
 
   /**
    * Remove a virtual machine
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param vmId - Virtual machine ID
    * @param isOrchestrator - Whether this is an orchestrator endpoint
    * @returns true if successful
    * @throws ApiError
    */
-  async removeVirtualMachine(hostname: string, vmId: string, isOrchestrator = false): Promise<boolean> {
+  async removeVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
     try {
+      const targetHost = hostname || authService.currentHostname;
+      if (!targetHost) {
+        throw new Error('No hostname provided and no active session found');
+      }
+
       const endpoint = isOrchestrator
         ? `/api/v1/orchestrator/machines/${vmId}`
         : `/api/v1/machines/${vmId}`;
 
       await apiService.delete(
-        hostname,
+        targetHost,
         endpoint,
         { errorPrefix: `Failed to remove VM ${vmId}` }
       );
@@ -170,7 +186,7 @@ class MachinesService {
   /**
    * Unregister a virtual machine (remove from API without deleting)
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param vmId - Virtual machine ID
    * @param hostId - Host ID (required for orchestrator mode)
    * @param isOrchestrator - Whether this is an orchestrator endpoint
@@ -179,15 +195,20 @@ class MachinesService {
    * @throws ApiError
    */
   async unregisterVirtualMachine(
-    hostname: string,
+    hostname: string | undefined,
     vmId: string,
     hostId?: string,
     isOrchestrator = false,
     cleanSourceUuid = true
   ): Promise<boolean> {
     try {
+      const targetHost = hostname || authService.currentHostname;
+      if (!targetHost) {
+        throw new Error('No hostname provided and no active session found');
+      }
+
       let endpoint = `/api/v1/machines/${vmId}/unregister`;
-      
+
       if (isOrchestrator) {
         if (!hostId) {
           throw new Error('Host ID is required for orchestrator mode');
@@ -201,7 +222,7 @@ class MachinesService {
       };
 
       await apiService.post(
-        hostname,
+        targetHost,
         endpoint,
         request,
         { errorPrefix: `Failed to unregister VM ${vmId}` }
@@ -217,7 +238,7 @@ class MachinesService {
   /**
    * Clone a virtual machine
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param vmId - Virtual machine ID to clone
    * @param cloneName - Name for the new cloned VM
    * @param isOrchestrator - Whether this is an orchestrator endpoint
@@ -225,12 +246,17 @@ class MachinesService {
    * @throws ApiError
    */
   async cloneVirtualMachine(
-    hostname: string,
+    hostname: string | undefined,
     vmId: string,
     cloneName: string,
     isOrchestrator = false
   ): Promise<boolean> {
     try {
+      const targetHost = hostname || authService.currentHostname;
+      if (!targetHost) {
+        throw new Error('No hostname provided and no active session found');
+      }
+
       if (!cloneName) {
         throw new Error('Clone name is required');
       }
@@ -255,7 +281,7 @@ class MachinesService {
       };
 
       await apiService.put(
-        hostname,
+        targetHost,
         endpoint,
         request,
         { errorPrefix: `Failed to clone VM ${vmId}` }
@@ -271,14 +297,14 @@ class MachinesService {
   /**
    * Create a virtual machine from catalog
    * 
-   * @param hostname - The hostname identifier for the target server
+   * @param hostname - The hostname identifier for the target server (optional, uses current session if omitted)
    * @param request - Catalog machine creation request
    * @param isOrchestrator - Whether this is an orchestrator endpoint
    * @returns Created virtual machine
    * @throws ApiError
    */
   async createVirtualMachineFromCatalog(
-    hostname: string,
+    hostname: string | undefined,
     request: {
       catalog_id: string;
       version?: string;
@@ -290,12 +316,17 @@ class MachinesService {
     isOrchestrator = false
   ): Promise<VirtualMachine> {
     try {
+      const targetHost = hostname || authService.currentHostname;
+      if (!targetHost) {
+        throw new Error('No hostname provided and no active session found');
+      }
+
       const endpoint = isOrchestrator
         ? '/api/v1/orchestrator/machines'
         : '/api/v1/machines';
 
       const vm = await apiService.post<VirtualMachine>(
-        hostname,
+        targetHost,
         endpoint,
         request,
         { errorPrefix: 'Failed to create VM from catalog' }

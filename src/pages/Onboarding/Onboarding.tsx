@@ -247,6 +247,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
         console.log(`[Onboarding] Total: ${((t8 - t0) / 1000).toFixed(2)}s`);
 
         // Set session data
+        authService.currentHostname = hostname;
         setSession({
           serverUrl: normalizedUrl,
           hostname,

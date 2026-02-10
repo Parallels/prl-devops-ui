@@ -3,7 +3,7 @@ import { PlaygroundSection } from '../PlaygroundSection';
 import { Tabs, MultiToggle, Toggle, Button } from '../../..';
 import { TabsVariant, TabsSize, TabsOrientation, TabsJustify, TabItem } from '../../..';
 import { ButtonColor } from '../../..';
-import type { IconName } from '@/types/Icon';
+import type { IconName } from '../../../icons/registry';
 import {
     tabVariantOptions,
     tabSizeOptions,

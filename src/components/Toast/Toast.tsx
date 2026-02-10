@@ -16,9 +16,9 @@ import {
   Progress,
   type Toast as ToastType,
   type ToastAction,
+  type IconName,
   getToastTimestamp
 } from '@prl/ui-kit';
-import type { IconName } from '@/types/Icon';
 import type { Components as MarkdownComponents } from 'react-markdown';
 
 interface ToastProps {

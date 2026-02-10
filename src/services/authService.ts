@@ -59,6 +59,16 @@ class AuthService {
   private logoutSubject = new Subject<void>();
   public readonly onLogout$ = this.logoutSubject.asObservable();
 
+  private _currentHostname: string | null = null;
+
+  public get currentHostname(): string | null {
+    return this._currentHostname;
+  }
+
+  public set currentHostname(value: string | null) {
+    this._currentHostname = value;
+  }
+
   constructor() {
     this.loadTokensFromStorage();
   }
@@ -73,12 +83,19 @@ class AuthService {
       return this.credentialsCache.get(hostname)!;
     }
 
-    // Try to fetch from config service
-    // Format: "auth::{hostname}::url", "auth::{hostname}::username", etc.
-    // const url = await configService.get<string>(`auth::${hostname}::url`);
-    // const username = await configService.get<string>(`auth::${hostname}::username`);
-    // const password = await configService.get<string>(`auth::${hostname}::password`);
-    // const email = await configService.get<string>(`auth::${hostname}::email`);
+    // If hostname looks like a URL, try extracting the actual hostname and look up again.
+    // This prevents mismatches when callers pass a full URL instead of a hostname.
+    if (hostname.includes('://')) {
+      try {
+        const extracted = new URL(hostname).hostname;
+        if (extracted && this.credentialsCache.has(extracted)) {
+          console.warn(`[AuthService] "${hostname}" resolved to cached hostname "${extracted}"`);
+          return this.credentialsCache.get(extracted)!;
+        }
+      } catch {
+        // Not a valid URL, continue with normal flow
+      }
+    }
 
     // Load from environment variables
     // In development mode (browser), use empty string to leverage Vite proxy
@@ -120,6 +137,9 @@ class AuthService {
    *   fetch('/api/data', { headers: { Authorization: `Bearer ${token}` } });
    */
   async getAccessToken(hostname: string): Promise<string> {
+    // Normalize: if a full URL was passed, extract the hostname
+    hostname = this.normalizeHostname(hostname);
+
     try {
       // Check if we have a valid token
       const tokenData = this.tokens.get(hostname);
@@ -330,6 +350,7 @@ class AuthService {
     } else {
       this.clearAllTokens();
       this.credentialsCache.clear();
+      this._currentHostname = null;
       console.log('Logged out from all hosts');
     }
   }
@@ -355,8 +376,24 @@ class AuthService {
    * This is used by API services to determine which server to connect to
    */
   async getHostUrl(hostname: string): Promise<string> {
+    hostname = this.normalizeHostname(hostname);
     const credentials = await this.fetchCredentialsForHost(hostname);
     return credentials.url;
+  }
+
+  /**
+   * Normalize a hostname parameter: if a full URL is passed, extract the hostname portion.
+   * This prevents cache misses when callers accidentally pass serverUrl instead of hostname.
+   */
+  private normalizeHostname(hostname: string): string {
+    if (hostname.includes('://')) {
+      try {
+        return new URL(hostname).hostname;
+      } catch {
+        // Not a valid URL, return as-is
+      }
+    }
+    return hostname;
   }
 
   /**

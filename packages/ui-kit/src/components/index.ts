@@ -63,6 +63,8 @@ export { default as Tabs, type TabsProps, type TabItem, type TabItemAction } fro
 export { default as MarkdownEditor } from "./MarkdownEditor";
 export { default as Modal, type ModalProps, ModalActions, ConfirmModal } from "./Modal";
 export { default as SideMenu, type SideMenuProps, type SideMenuItem } from "./SideMenu";
+export { default as SideMenuLayout, type SideMenuLayoutProps } from "./SideMenuLayout";
+export { default as SplitView, type SplitViewProps, type SplitViewItem, type SplitViewItemBadge, type SplitViewSize } from "./SplitView";
 export { default as SmartInput, type SmartInputProps } from "./SmartInput";
 export { default as SmartValue, type SmartValueProps } from "./SmartValue";
 export { default as StartupStageStepper, type StartupStageStepperProps } from "./StartupStageStepper";

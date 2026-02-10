@@ -69,6 +69,7 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
 
                 if (!cancelled) {
                     // Set session data for the connected host
+                    authService.currentHostname = host.hostname;
                     setSession({
                         serverUrl: host.baseUrl,
                         hostname: host.hostname,
