@@ -229,7 +229,9 @@ class NotificationService {
       ...notification,
       ...options,
       updatedAt: Date.now(),
-      progress: options.progress ? { ...notification.progress, ...options.progress } : notification.progress,
+      progress: options.progress
+        ? { ...(notification.progress ?? { current: 0, total: 0, status: 'running' as const }), ...options.progress }
+        : notification.progress,
     };
 
     this.notifications.set(id, updatedNotification);

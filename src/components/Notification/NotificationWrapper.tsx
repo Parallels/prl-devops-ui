@@ -12,7 +12,7 @@ import {
   type NotificationPopoverContextValue,
 } from './NotificationPopoverContext';
 import type { ComponentPropsWithoutRef, MutableRefObject } from 'react';
-import { renderIcon, type Toast, getToastTimestamp, type IconSize } from '@prl/ui-kit';
+import { renderIcon, type IconSize } from '@prl/ui-kit';
 
 interface NotificationWrapperProps {
   channelFilter: string;

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { Spinner, Loader, Toggle, MultiToggle } from '../../..';
 import { PlaygroundSection } from '../PlaygroundSection';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Toast } from './Toast';
-import { Toast as ToastType } from '../../types/Toast';
+import { type Toast as ToastType } from '@prl/ui-kit';
 import toastService from '../../services/ToastService';
 
 const TOAST_DURATION = 5000; // 5 seconds

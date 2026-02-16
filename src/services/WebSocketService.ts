@@ -31,7 +31,7 @@ export class WebSocketService {
     public connect(serverId: string, url: string): void {
         const currentState = this.connectionStates.get(serverId) || WebSocketState.CLOSED;
 
-        if (currentState === WebSocketState.OPEN || currentState === WebSocketState.CONNECTING) {
+        if (currentState === WebSocketState.OPEN || currentState === (WebSocketState.CONNECTING as WebSocketState)) {
             return;
         }
 

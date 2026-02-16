@@ -250,9 +250,9 @@ class CatalogService {
         {
           method: 'DELETE',
           body: JSON.stringify({ required_roles: roles }),
-          headers: { 'Content-Type': 'application/json' }
-        },
-        { errorPrefix: `Failed to remove roles from catalog manifest ${manifestId}` }
+          headers: { 'Content-Type': 'application/json' },
+          errorPrefix: `Failed to remove roles from catalog manifest ${manifestId}`
+        }
       );
 
       return true;
@@ -328,9 +328,9 @@ class CatalogService {
         {
           method: 'DELETE',
           body: JSON.stringify({ required_claims: claims }),
-          headers: { 'Content-Type': 'application/json' }
-        },
-        { errorPrefix: `Failed to remove claims from catalog manifest ${manifestId}` }
+          headers: { 'Content-Type': 'application/json' },
+          errorPrefix: `Failed to remove claims from catalog manifest ${manifestId}`
+        }
       );
 
       return true;
@@ -406,9 +406,9 @@ class CatalogService {
         {
           method: 'DELETE',
           body: JSON.stringify({ tags }),
-          headers: { 'Content-Type': 'application/json' }
-        },
-        { errorPrefix: `Failed to remove tags from catalog manifest ${manifestId}` }
+          headers: { 'Content-Type': 'application/json' },
+          errorPrefix: `Failed to remove tags from catalog manifest ${manifestId}`
+        }
       );
 
       return true;

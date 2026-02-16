@@ -42,16 +42,6 @@ export interface HostCredentials {
 // API_BASE_URL is no longer needed as URLs are configured per host
 const AUTH_STORAGE_KEY = 'auth_tokens';
 
-interface JwtPayload {
-  username: string;
-  role: string;
-  tenant_id: string;
-  exp: number;
-  iat: number;
-  iss: string;
-  is_admin: boolean;
-}
-
 class AuthService {
   private tokens: Map<string, TokenData> = new Map();
   private credentialsCache: Map<string, HostCredentials> = new Map();
@@ -298,24 +288,6 @@ class AuthService {
     this.tokens.delete(hostname);
     const allTokens = Array.from(this.tokens.entries());
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(allTokens));
-  }
-
-  // JWT token parsing
-  private parseJwtPayload(token: string): JwtPayload | null {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
-      return JSON.parse(jsonPayload) as JwtPayload;
-    } catch (error) {
-      console.error('Failed to parse JWT:', error);
-      return null;
-    }
   }
 
   // Check if token is expired using expires_at from API response

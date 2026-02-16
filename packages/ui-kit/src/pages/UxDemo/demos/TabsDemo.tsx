@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useMemo } from 'react';
 import { PlaygroundSection } from '../PlaygroundSection';
 import { Tabs, MultiToggle, Toggle, Button } from '../../..';

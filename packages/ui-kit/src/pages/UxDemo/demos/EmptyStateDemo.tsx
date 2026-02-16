@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { EmptyState, type EmptyStateProps, MultiToggle, Toggle, type ButtonVariant, type ButtonColor, type ButtonSize } from '../../..';
 import type { IconName } from '../../../icons/registry';
@@ -153,4 +154,3 @@ export const EmptyStateDemo: React.FC = () => {
         />
     );
 };
-

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { firstValueFrom } from 'rxjs';

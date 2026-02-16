@@ -52,7 +52,7 @@ class ToastService {
    * @param options Toast configuration options
    * @returns The ID of the created or updated toast
    */
-  public showToast(options: Omit<Toast, 'id'> & { id?: string }): string {
+  public showToast(options: Omit<Toast, 'id' | 'timestamp'> & { id?: string; timestamp?: number }): string {
     const id = options.id ?? this.generateToastId();
 
     // DEBUGGING: Log the caller stack trace to find where undefined messages come from
@@ -67,6 +67,7 @@ class ToastService {
     const finalToast: Toast = {
       ...options,
       id,
+      timestamp: options.timestamp ?? Date.now(),
       _updateTimestamp: Date.now(),
     };
 
@@ -265,8 +266,9 @@ class ToastService {
     // Create a special removal notification with the _remove flag
     const removalToast: Toast = {
       id,
-      message: '', // Required by interface but not used
-      type: 'info', // Required by interface but not used
+      message: '',
+      type: 'info',
+      timestamp: Date.now(),
       _remove: true,
     };
 

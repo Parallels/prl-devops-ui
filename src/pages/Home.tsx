@@ -19,7 +19,7 @@ export const Home: React.FC = () => {
 
     async function callAPI() {
         try {
-            const token = await authService.getAccessToken('localhost');
+            await authService.getAccessToken('localhost');
             console.log("Token retrieved successfully");
             const hwInfo = await devopsService.config.getHardwareInfo("localhost");
             console.log("Hardware Info:", hwInfo);

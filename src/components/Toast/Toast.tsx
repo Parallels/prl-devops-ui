@@ -6,6 +6,7 @@ import {
   FaExclamationCircle,
   FaExclamationTriangle,
   FaInfoCircle,
+  FaSpinner,
 } from 'react-icons/fa';
 import remarkGfm from 'remark-gfm';
 import ReactMarkdown from 'react-markdown';
@@ -75,6 +76,15 @@ const toneMap: Record<
     indeterminatePrimary: 'bg-sky-400/40 dark:bg-sky-400/30',
     indeterminateSecondary: 'bg-sky-300/25 dark:bg-sky-300/20',
   },
+  loading: {
+    border: 'border-slate-400',
+    iconBg: 'bg-slate-100 dark:bg-slate-500/20',
+    iconText: 'text-slate-600 dark:text-slate-300',
+    progress: 'bg-slate-500 dark:bg-slate-400',
+    accent: 'text-slate-500 dark:text-slate-300',
+    indeterminatePrimary: 'bg-slate-400/40 dark:bg-slate-400/30',
+    indeterminateSecondary: 'bg-slate-300/25 dark:bg-slate-300/20',
+  },
 };
 
 const iconMap: Record<ToastType['type'], React.ComponentType<{ className?: string }>> = {
@@ -82,6 +92,7 @@ const iconMap: Record<ToastType['type'], React.ComponentType<{ className?: strin
   error: FaExclamationCircle,
   warning: FaExclamationTriangle,
   info: FaInfoCircle,
+  loading: FaSpinner,
 };
 
 const actionColorMap: Record<NonNullable<ToastAction['variant']>, ButtonColor> = {
