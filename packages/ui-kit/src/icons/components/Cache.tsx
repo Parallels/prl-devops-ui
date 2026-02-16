@@ -1,0 +1,14 @@
+import { forwardRef, type SVGProps } from 'react';
+
+export const Cache = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>catalog_cache</title>
+    <g id="catalog_cache" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+      <path
+        d="M8.5,1 C12.0898509,1 15,3.91014913 15,7.5 C15,11.0898509 12.0898509,14 8.5,14 C4.91014913,14 2,11.0898509 2,7.5 C2,3.91014913 4.91014913,1 8.5,1 Z M8.5,2 C5.46243388,2 3,4.46243388 3,7.5 C3,10.5375661 5.46243388,13 8.5,13 C11.5375661,13 14,10.5375661 14,7.5 C14,4.46243388 11.5375661,2 8.5,2 Z M9.0001365,4 L8.99872252,7 L12,7 L12,8 L8,8 L8,4 L9.0001365,4 Z"
+        id="Combined-Shape" fill="currentColor" fill-rule="nonzero"></path>
+    </g>
+  </svg>
+));
+
+Cache.displayName = 'Cache';

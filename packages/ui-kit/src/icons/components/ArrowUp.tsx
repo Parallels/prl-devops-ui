@@ -1,0 +1,12 @@
+import { forwardRef, type SVGProps } from 'react';
+
+export const ArrowUp = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg    viewBox="0 0 24 24" fill="currentColor"
+  xmlns="http://www.w3.org/2000/svg" {...props} ref={ref}>
+  <path
+    d="m 12.137985,8.9997632 c 0.27,0 0.516,0.11 0.739,0.328 l 5.147,5.2639998 a 1.013,1.013 0 0 1 0.198,0.293 0.95,0.95 0 0 1 0.062,0.35 0.925,0.925 0 0 1 -0.451,0.8 0.91,0.91 0 0 1 -0.465,0.122 0.93,0.93 0 0 1 -0.67,-0.28 l -4.874,-5.004 h 0.622 l -4.8600002,5.004 a 0.93,0.93 0 0 1 -1.128,0.157 0.909,0.909 0 0 1 -0.458,-0.8 c 0,-0.25 0.089,-0.462 0.266,-0.636 L 11.399985,9.3277632 c 0.11,-0.11 0.226,-0.191 0.349,-0.246 a 1.08,1.08 0 0 1 0.39,-0.082 z"
+    fill="currentColor" />
+</svg>
+));
+
+ArrowUp.displayName = 'ArrowUp';

@@ -1,0 +1,14 @@
+import { forwardRef, type SVGProps } from 'react';
+
+export const VirtualMachine = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>virtual_machine</title>
+    <g id="virtual_machine" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+      <path
+        d="M4.5,14 C4.22385763,14 4,13.7761424 4,13.5 C4,13.2238576 4.22385763,13 4.5,13 L6,13 L6,12 L3,12 C1.8954305,12 1,11.1045695 1,10 L1,4 C1,2.8954305 1.8954305,2 3,2 L13,2 C14.1045695,2 15,2.8954305 15,4 L15,10 C15,11.1045695 14.1045695,12 13,12 L10,12 L10,13 L11.5,13 C11.7761424,13 12,13.2238576 12,13.5 C12,13.7761424 11.7761424,14 11.5,14 L4.5,14 Z M13,3 L3,3 C2.44771525,3 2,3.44771525 2,4 L2,10 C2,10.5522847 2.44771525,11 3,11 L13,11 C13.5522847,11 14,10.5522847 14,10 L14,4 C14,3.44771525 13.5522847,3 13,3 Z"
+        id="Shape" fill="currentColor"></path>
+    </g>
+  </svg>
+));
+
+VirtualMachine.displayName = 'VirtualMachine';

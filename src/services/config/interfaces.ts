@@ -48,6 +48,13 @@ export interface ISecretStore {
      * @param key The key of the secret to remove.
      */
     removeSecret(key: string): Promise<void>;
+
+    /**
+     * Flush any pending secret writes to disk.
+     * For backends that batch writes (e.g. Stronghold), this triggers
+     * a single save. For auto-committing backends, this is a no-op.
+     */
+    flushSecrets(): Promise<void>;
 }
 
 export interface IConfigService extends IDataStore, ISecretStore {

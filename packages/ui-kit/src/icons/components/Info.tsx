@@ -1,0 +1,20 @@
+import { forwardRef, type SVGProps } from 'react';
+
+export const Info = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+  <svg 
+  
+  
+  viewBox="0 0 24 24"
+  fill="currentColor"
+  xmlns="http://www.w3.org/2000/svg" {...props} ref={ref}>
+  <path
+    d="M 12 1.25 C 6.0718224 1.25 1.25 6.0718224 1.25 12 1.25 17.928178 6.0718224 22.75 12 22.75 17.928178 22.75 22.75 17.928178 22.75 12 22.75 6.0718224 17.928178 1.25 12 1.25 Z m 0 1.5 c 5.117517 0 9.25 4.1324826 9.25 9.25 0 5.117517 -4.132483 9.25 -9.25 9.25 C 6.8824826 21.25 2.75 17.117517 2.75 12 2.75 6.8824826 6.8824826 2.75 12 2.75 Z" />
+  <path
+    d="M 12 10.25 A 0.75 0.75 0 0 0 11.25 11 v 6 A 0.75 0.75 0 0 0 12 17.75 0.75 0.75 0 0 0 12.75 17 V 11 A 0.75 0.75 0 0 0 12 10.25 Z" />
+  <path
+    transform="matrix(1 0 0 -1 11 9)"
+    d="M 2 1 A 1 1 0 0 1 1 2 1 1 0 0 1 0 1 1 1 0 0 1 1 0 1 1 0 0 1 2 1 Z" />
+</svg>
+));
+
+Info.displayName = 'Info';

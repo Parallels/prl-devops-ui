@@ -4,11 +4,9 @@ import {
   Notification,
   CreateNotificationOptions,
   UpdateNotificationOptions,
-  NotificationProgress,
 } from '../types/Notification';
 import toastService from './ToastService';
 import { WebSocketService } from './WebSocketService';
-import { ToastAction } from '../types/Toast';
 import { WebSocketMessage } from '../types/WebSocket';
 import { BackendMessageType } from '../types/BackendMessages';
 

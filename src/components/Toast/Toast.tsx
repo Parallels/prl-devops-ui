@@ -9,14 +9,17 @@ import {
 } from 'react-icons/fa';
 import remarkGfm from 'remark-gfm';
 import ReactMarkdown from 'react-markdown';
-import { Toast as ToastType, ToastAction } from '../../types/Toast';
-import { getToastTimestamp } from '../../utils/toastUtils';
-import IconButton from '../../controls/IconButton';
-import Button from '../../controls/Button';
-import type { ButtonColor } from '../../controls/Button';
-import type { IconName } from '@/types/Icon';
+import {
+  IconButton,
+  Button,
+  type ButtonColor,
+  Progress,
+  type Toast as ToastType,
+  type ToastAction,
+  type IconName,
+  getToastTimestamp
+} from '@prl/ui-kit';
 import type { Components as MarkdownComponents } from 'react-markdown';
-import { Progress } from '../../controls';
 
 interface ToastProps {
   toast: ToastType;

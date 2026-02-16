@@ -1,4 +1,4 @@
-import { IconName } from './IconRegistry';
+import { IconName } from '@prl/ui-kit';
 
 export interface HeaderNavigationItem {
   id: string;

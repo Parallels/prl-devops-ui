@@ -8,7 +8,8 @@
             "url": "http://localhost:1421",
             "webRoot": "${workspaceFolder}/src",
             "sourceMaps": true,
-            "preLaunchTask": "tauri: dev"
+            "preLaunchTask": "tauri: dev",
+            "envFile": "${workspaceFolder}/.env"
         },
         {
             "type": "lldb",
@@ -21,7 +22,13 @@
                     "--no-default-features"
                 ]
             },
-            "task": "tauri: dev"
+            "task": "tauri: dev",
+            "env": {
+                "VITE_DEVOPS_API_URL": "${env:VITE_DEVOPS_API_URL}",
+                "VITE_DEVOPS_USERNAME": "${env:VITE_DEVOPS_USERNAME}",
+                "VITE_DEVOPS_PASSWORD": "${env:VITE_DEVOPS_PASSWORD}",
+                "VITE_DEVOPS_EMAIL": "${env:VITE_DEVOPS_EMAIL}"
+            }
         }
     ]
 }
