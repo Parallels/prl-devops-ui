@@ -78,13 +78,6 @@ export const Header: React.FC<HeaderProps> = () => {
       <header className="flex items-center sticky w-full h-20 top-0 z-50 bg-white dark:bg-neutral-500 border-b border-gray-200 dark:border-gray-200">
         <div className="flex w-full items-center px-4 py-4">
           <div className="flex items-center">
-            <div className="h-[28px] w-[28px] flex items-center justify-center">
-              <img className="h-full" src={logo} alt="Parallels Logo" />
-            </div>
-            <div className="flex items-start font-medium text-black dark:text-gray-300 ml-3 text-lg">
-              <span className="text-[#6c757d] dark:text-black pr-2">Parallels</span>
-              <span className="text-gray-900 dark:text-gray-300">DevOps</span>
-            </div>
             {session && (
               <div className="flex items-center ml-6 px-3 py-1 bg-gray-100 dark:bg-neutral-600 rounded-md">
                 <span className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[300px]" title={session.serverUrl}>
