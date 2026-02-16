@@ -1,7 +1,7 @@
 import { forwardRef, type SVGProps } from 'react';
 
 export const Host = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
-  <svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" {...props} ref={ref}>
     <title>catalog_provider</title>
     <g id="catalog_provider" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
       <path

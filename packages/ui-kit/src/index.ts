@@ -20,6 +20,3 @@ export * from "./types";
 
 // Icons
 export * from "./icons";
-
-// Pages
-export * from "./pages/UxDemo/UxDemo";

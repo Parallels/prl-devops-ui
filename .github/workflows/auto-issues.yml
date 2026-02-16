@@ -1,0 +1,209 @@
+name: Bot - Issues
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to process"
+        required: true
+        type: number
+      issue_title:
+        description: "Issue title (with template prefix like [BUG], [FEATURE], [PBI])"
+        required: true
+        type: string
+      issue_body:
+        description: "Issue body content"
+        required: false
+        type: string
+        default: ""
+
+env:
+  PROJECT_ID: "6"
+  DEFAULT_ASSIGNEE: "cjlapao"
+
+jobs:
+  automate-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+      pull-requests: read
+      repository-projects: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Analyze issue template and automate
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_number || github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_title || github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_body || github.event.issue.body }}
+        run: |
+          # Initialize variables
+          LABELS=""
+          PROJECT=""
+          MILESTONE=""
+          ISSUE_TYPE="Task"  # Always set to Task
+
+          echo "Processing issue #$ISSUE_NUMBER: $ISSUE_TITLE"
+
+          # Determine assignee with priority order
+          # Method 1: Use global DEFAULT_ASSIGNEE if set
+          ASSIGNEE="${{ env.DEFAULT_ASSIGNEE }}"
+
+          if [[ -n "$ASSIGNEE" ]]; then
+            echo "Using configured default assignee: $ASSIGNEE"
+          else
+            echo "No default assignee configured, auto-detecting..."
+
+            # Method 2: Get the first collaborator with admin permissions
+            ASSIGNEE=$(gh api repos/${{ github.repository }}/collaborators --jq '.[] | select(.permissions.admin == true) | .login' | head -1)
+
+            # Method 3: Fallback to repository owner if it's a user (not org)
+            if [[ -z "$ASSIGNEE" ]]; then
+              REPO_OWNER_TYPE=$(gh api repos/${{ github.repository }} --jq '.owner.type')
+              if [[ "$REPO_OWNER_TYPE" == "User" ]]; then
+                ASSIGNEE="${{ github.repository_owner }}"
+              fi
+            fi
+
+            # Method 4: Final fallback to a default maintainer
+            if [[ -z "$ASSIGNEE" ]]; then
+              ASSIGNEE="cjlapao"  # Ultimate fallback
+            fi
+
+            echo "Auto-detected assignee: $ASSIGNEE"
+          fi
+
+          # Get the current milestone (most recent open milestone)
+          CURRENT_MILESTONE=$(gh api repos/${{ github.repository }}/milestones --jq '.[] | select(.state == "open") | .title' | head -1)
+          if [[ -n "$CURRENT_MILESTONE" ]]; then
+            MILESTONE="$CURRENT_MILESTONE"
+            echo "Using current milestone: $MILESTONE"
+          else
+            echo "No open milestone found, will not set milestone"
+          fi
+
+          # Detect template based on title prefix and body content
+          if [[ "$ISSUE_TITLE" == *"[BUG]"* ]]; then
+            echo "Detected: Bug Report Template"
+            LABELS="bug,needs-triage,priority:medium,type:task"
+            PROJECT="Bug Tracking"
+
+            # Add additional labels based on content
+            if echo "$ISSUE_BODY" | grep -i "critical\|urgent\|production"; then
+              LABELS="$LABELS,priority:high"
+            fi
+
+          elif [[ "$ISSUE_TITLE" == *"[FEATURE]"* ]]; then
+            echo "Detected: Feature Request Template"
+            LABELS="feature-request,needs-triage,priority:low,type:task"
+            PROJECT="Feature Backlog"
+
+            # Estimate based on content complexity
+            if echo "$ISSUE_BODY" | grep -i "simple\|small\|minor"; then
+              LABELS="$LABELS,size:small"
+            elif echo "$ISSUE_BODY" | grep -i "complex\|large\|major"; then
+              LABELS="$LABELS,size:large"
+            else
+              LABELS="$LABELS,size:medium"
+            fi
+
+          elif [[ "$ISSUE_TITLE" == *"[PBI]"* ]]; then
+            echo "Detected: Product Backlog Item Template"
+            LABELS="pbi,needs-refinement,priority:medium,type:task"
+            PROJECT="Product Backlog"
+
+          else
+            echo "No specific template detected, applying default automation"
+            LABELS="triage,needs-classification,type:task"
+            PROJECT="General Issues"
+          fi
+
+          # Apply labels
+          if [[ -n "$LABELS" ]]; then
+            echo "Applying labels: $LABELS"
+            IFS=',' read -ra LABEL_ARRAY <<< "$LABELS"
+            for label in "${LABEL_ARRAY[@]}"; do
+              gh issue edit "$ISSUE_NUMBER" --add-label "$label"
+            done
+          fi
+
+          # Assign to default assignee
+          echo "Assigning to: $ASSIGNEE"
+          gh issue edit "$ISSUE_NUMBER" --add-assignee "$ASSIGNEE"
+
+          # Assign to current milestone if one exists
+          if [[ -n "$MILESTONE" ]]; then
+            echo "Assigning to milestone: $MILESTONE"
+            gh issue edit "$ISSUE_NUMBER" --milestone "$MILESTONE"
+          fi
+
+          # Add comment with automation info
+          MILESTONE_INFO=""
+          if [[ -n "$MILESTONE" ]]; then
+            MILESTONE_INFO="- **Milestone**: $MILESTONE"
+          else
+            MILESTONE_INFO="- **Milestone**: None (no open milestone found)"
+          fi
+
+          gh issue comment "$ISSUE_NUMBER" --body "🤖 **Automated Processing Complete**
+
+          This issue has been automatically processed based on its template:
+
+          - **Labels Applied**: $LABELS
+          - **Issue Type**: $ISSUE_TYPE (always set to Task)
+          - **Assignee**: $ASSIGNEE
+          - **Suggested Project**: $PROJECT
+          $MILESTONE_INFO
+
+          Please review and adjust as needed. The issue is now ready for triage."
+
+      - name: Set priority estimates
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_number || github.event.issue.number }}
+          ISSUE_BODY: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_body || github.event.issue.body }}
+          ISSUE_TITLE: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_title || github.event.issue.title }}
+        run: |
+          # Set story points or effort estimates based on template and content
+          STORY_POINTS=""
+
+          if [[ "$ISSUE_TITLE" == *"[BUG]"* ]]; then
+            # Bug severity-based estimation
+            if echo "$ISSUE_BODY" | grep -i "critical\|severe\|production down"; then
+              STORY_POINTS="8"  # High priority bug
+            elif echo "$ISSUE_BODY" | grep -i "major\|significant"; then
+              STORY_POINTS="5"  # Medium priority bug
+            else
+              STORY_POINTS="3"  # Low priority bug
+            fi
+
+          elif [[ "$ISSUE_TITLE" == *"[FEATURE]"* ]]; then
+            # Feature complexity-based estimation
+            if echo "$ISSUE_BODY" | grep -i "simple\|small\|quick"; then
+              STORY_POINTS="2"
+            elif echo "$ISSUE_BODY" | grep -i "complex\|large\|extensive"; then
+              STORY_POINTS="13"
+            else
+              STORY_POINTS="5"  # Default medium
+            fi
+
+          elif [[ "$ISSUE_TITLE" == *"[PBI]"* ]]; then
+            # PBI gets standard estimation
+            STORY_POINTS="8"  # Default PBI size
+          fi
+
+          if [[ -n "$STORY_POINTS" ]]; then
+            echo "Estimated story points: $STORY_POINTS"
+            # Add as comment since we can't directly set custom fields via CLI
+            gh issue comment "$ISSUE_NUMBER" --body "📊 **Automated Estimation**: $STORY_POINTS story points
+
+            This estimate is based on the issue template and content analysis. Please adjust during sprint planning as needed."
+          fi

@@ -3,7 +3,7 @@ import React from 'react';
 import { createBrowserRouter, RouterProvider, useLocation } from 'react-router-dom';
 import { MainLayout } from '../layout/MainLayout';
 import { Home } from '../pages/Home';
-import { UxDemo } from '@prl/ui-kit';
+import { UxDemo } from '@prl/ui-kit/pages/UxDemo/UxDemo';
 import { Libraries } from '../pages/Libraries';
 import { Vms } from '../pages/Vms/Vms';
 import { StartupGuard } from '../components/StartupGuard';
