@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { GLOBAL_NOTIFICATION_CHANNEL } from '@/constants/constants';
 import { HeaderGroup } from '@prl/ui-kit';
 import { NotificationWrapper } from '../Notification/NotificationWrapper';
-import logo from '@/assets/images/parallels-bars-small.png';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSession } from '@/contexts/SessionContext';

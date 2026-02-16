@@ -1,4 +1,5 @@
-.PHONY: help install dev build build-all build-windows build-macos build-linux ios android check clean
+.PHONY: help install dev build build-web build-all build-windows build-macos build-linux ios android check clean
+.PHONY: lint test ui-kit-lint ui-kit-build
 
 # Default target
 .DEFAULT_GOAL := help
@@ -30,13 +31,33 @@ install:
 	npm install
 	cd src-tauri && cargo fetch
 
+## Lint the application (type check)
+lint:
+	npm run lint
+
+## Run tests
+test:
+	npm run test
+
 ## Start development server (Desktop)
 dev:
 	npm run tauri dev
 
-## Build for current OS
+## Build for current OS (Tauri desktop app)
 build:
 	npm run tauri build
+
+## Build web application only
+build-web:
+	npm run build:web
+
+## Lint the UI Kit
+ui-kit-lint:
+	npm run lint -w packages/ui-kit
+
+## Build the UI Kit
+ui-kit-build:
+	npm run build -w packages/ui-kit
 
 ## Build for macOS (Universal)
 build-macos:
@@ -84,3 +105,5 @@ check:
 ## Clean build artifacts
 clean:
 	rm -rf src-tauri/target
+	rm -rf dist
+	rm -rf packages/ui-kit/dist

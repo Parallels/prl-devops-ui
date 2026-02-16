@@ -1,0 +1,51 @@
+name: Bot - Labels
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  assign-security-issue:
+    if: ${{ github.event_name == 'issues' }}
+    name: Assign Security Label
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Assign Security Label
+        if: ${{ contains(github.event.issue.title, 'security')}}
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+        run: |
+          gh issue edit ${{ github.event.issue.number }} --add-label "security"
+  assign-security-pr:
+    if: ${{ github.event_name == 'pull_request' }}
+    name: Assign Security Label
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Assign Security Label
+        if: ${{ github.event.pull_request.draft == false && contains(github.event.pull_request.title, 'security')}}
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+        run: |
+          gh pr edit ${{ github.event.number }} --add-label "security"
+  assign-triage-pr:
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.author_association != 'COLLABORATOR' && !startsWith(github.event.pull_request.title, 'BUMP') && !startsWith(github.event.pull_request.title, 'Bump') }}
+    name: Assign Triage Label
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Assign Triage Label
+        if: ${{ github.event.pull_request.draft == false }}
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+        run: |
+          gh pr edit ${{ github.event.number }} --add-label "triage"

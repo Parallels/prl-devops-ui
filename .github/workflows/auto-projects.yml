@@ -1,0 +1,260 @@
+name: Bot - Projects
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Issue number to process"
+        required: true
+        type: number
+      issue_title:
+        description: "Issue title (with template prefix like [BUG], [FEATURE], [PBI])"
+        required: true
+        type: string
+      issue_body:
+        description: "Issue body content"
+        required: false
+        type: string
+        default: ""
+
+env:
+  PROJECT_ID: "6"
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+      repository-projects: write
+
+    steps:
+      - name: Check if issue is already in project
+        id: check-project
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_number || github.event.issue.number }}
+          GITHUB_EVENT_REPOSITORY_NAME: ${{ github.event.repository.name }}
+        run: |
+          # Check if issue is already in the project
+          PROJECT_ID="${{ env.PROJECT_ID }}"
+          ISSUE_URL="https://github.com/${{ github.repository }}/issues/$ISSUE_NUMBER"
+
+          # Use GraphQL to check if issue exists in project
+          # shellcheck disable=SC2016
+          QUERY='query($projectNumber: Int!, $owner: String!, $repo: String!, $issueNumber: Int!) {
+            repository(owner: $owner, name: $repo) {
+              issue(number: $issueNumber) {
+                id
+                projectItems(first: 10) {
+                  nodes {
+                    project {
+                      number
+                    }
+                  }
+                }
+              }
+            }
+            organization(login: $owner) {
+              projectV2(number: $projectNumber) {
+                id
+              }
+            }
+          }'
+
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${GITHUB_EVENT_REPOSITORY_NAME}"
+
+          RESULT=$(gh api graphql -f query="$QUERY" -F projectNumber=$PROJECT_ID -F owner="$REPO_OWNER" -F repo="$REPO_NAME" -F issueNumber=$ISSUE_NUMBER)
+
+          # Check if issue is already in the project
+          IN_PROJECT=$(echo "$RESULT" | jq -r --arg projectNum "$PROJECT_ID" '.data.repository.issue.projectItems.nodes[] | select(.project.number == ($projectNum | tonumber)) | .project.number')
+
+          if [[ -n "$IN_PROJECT" ]]; then
+            echo "Issue #$ISSUE_NUMBER is already in project $PROJECT_ID"
+            echo "skip_add=true" >> $GITHUB_OUTPUT
+          else
+            echo "Issue #$ISSUE_NUMBER is not in project $PROJECT_ID, will add it"
+            echo "skip_add=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Add issue to project based on template
+        if: steps.check-project.outputs.skip_add == 'false'
+        uses: actions/add-to-project@v0.5.0
+        with:
+          project-url: https://github.com/orgs/${{ github.repository_owner }}/projects/${{ env.PROJECT_ID }}
+          github-token: ${{ secrets.GH_WORKFLOW_TOKEN }}
+
+      - name: Skip adding to project
+        if: steps.check-project.outputs.skip_add == 'true'
+        run: |
+          echo "Skipped adding to project - issue already exists in project"
+
+      - name: Set project fields based on issue template
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_number || github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_title || github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event_name == 'workflow_dispatch' && inputs.issue_body || github.event.issue.body }}
+        run: |
+          PROJECT_ID="${{ env.PROJECT_ID }}"
+
+          # Get the project item ID for this issue
+          echo "Getting project item ID for issue #$ISSUE_NUMBER in project $PROJECT_ID"
+
+          # GraphQL query to get the project item ID
+          # shellcheck disable=SC2016
+          QUERY='query($projectNumber: Int!, $owner: String!) {
+            organization(login: $owner) {
+              projectV2(number: $projectNumber) {
+                id
+                items(first: 500) {
+                  nodes {
+                    id
+                    content {
+                      ... on Issue {
+                        number
+                      }
+                    }
+                  }
+                }
+                fields(first: 20) {
+                  nodes {
+                    ... on ProjectV2SingleSelectField {
+                      id
+                      name
+                      options {
+                        id
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }'
+
+          REPO_OWNER="${{ github.repository_owner }}"
+
+          RESULT=$(gh api graphql -f query="$QUERY" -F projectNumber=$PROJECT_ID -F owner="$REPO_OWNER")
+
+          # Extract project item ID for this issue
+          ITEM_ID=$(echo "$RESULT" | jq -r --arg issueNum "$ISSUE_NUMBER" '.data.organization.projectV2.items.nodes[] | select(.content.number == ($issueNum | tonumber)) | .id')
+
+          if [[ -z "$ITEM_ID" || "$ITEM_ID" == "null" ]]; then
+            echo "Could not find project item ID for issue #$ISSUE_NUMBER. Make sure the issue is added to the project first."
+            exit 0
+          fi
+
+          echo "Found project item ID: $ITEM_ID"
+
+          # Get field IDs
+          STATUS_FIELD_ID=$(echo "$RESULT" | jq -r '.data.organization.projectV2.fields.nodes[] | select(.name == "Status") | .id')
+          PRIORITY_FIELD_ID=$(echo "$RESULT" | jq -r '.data.organization.projectV2.fields.nodes[] | select(.name == "Priority") | .id')
+          TEAM_FIELD_ID=$(echo "$RESULT" | jq -r '.data.organization.projectV2.fields.nodes[] | select(.name == "Team") | .id')
+
+          # Set status based on template - default to "Backlog"
+          STATUS="Backlog"  # Default status
+          if [[ "$ISSUE_TITLE" == *"[BUG]"* ]]; then
+            STATUS="Backlog"  # Changed from "Needs Triage" to "Backlog"
+            echo "Setting bug status to: $STATUS"
+          elif [[ "$ISSUE_TITLE" == *"[FEATURE]"* ]]; then
+            STATUS="Backlog"
+            echo "Setting feature status to: $STATUS"
+          elif [[ "$ISSUE_TITLE" == *"[PBI]"* ]]; then
+            STATUS="Backlog"  # Changed from "Ready" to "Backlog"
+            echo "Setting PBI status to: $STATUS"
+          fi
+
+          # Get status option ID
+          STATUS_OPTION_ID=$(echo "$RESULT" | jq -r --arg statusName "$STATUS" '.data.organization.projectV2.fields.nodes[] | select(.name == "Status") | .options[] | select(.name == $statusName) | .id')
+
+          if [[ -n "$STATUS_FIELD_ID" && -n "$STATUS_OPTION_ID" && "$STATUS_OPTION_ID" != "null" ]]; then
+            echo "Setting status to '$STATUS' (ID: $STATUS_OPTION_ID)"
+            # shellcheck disable=SC2016
+            gh api graphql -f query='
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $projectId
+                  itemId: $itemId
+                  fieldId: $fieldId
+                  value: {
+                    singleSelectOptionId: $optionId
+                  }
+                }) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }' -f projectId="$(echo "$RESULT" | jq -r '.data.organization.projectV2.id')" -f itemId="$ITEM_ID" -f fieldId="$STATUS_FIELD_ID" -f optionId="$STATUS_OPTION_ID"
+          else
+            echo "Could not set status - missing field or option IDs"
+          fi
+
+          # Set priority based on content
+          PRIORITY="Medium"  # default
+          if echo "$ISSUE_BODY" | grep -i "critical\|urgent"; then
+            PRIORITY="High"  # Changed from "Urgent" to "High"
+          elif echo "$ISSUE_BODY" | grep -i "high priority"; then
+            PRIORITY="High"
+          elif echo "$ISSUE_BODY" | grep -i "low priority\|nice to have"; then
+            PRIORITY="Low"
+          fi
+
+          echo "Setting priority to: $PRIORITY"
+
+          # Get priority option ID
+          PRIORITY_OPTION_ID=$(echo "$RESULT" | jq -r --arg priorityName "$PRIORITY" '.data.organization.projectV2.fields.nodes[] | select(.name == "Priority") | .options[] | select(.name == $priorityName) | .id')
+
+          if [[ -n "$PRIORITY_FIELD_ID" && -n "$PRIORITY_OPTION_ID" && "$PRIORITY_OPTION_ID" != "null" ]]; then
+            echo "Setting priority to '$PRIORITY' (ID: $PRIORITY_OPTION_ID)"
+            # shellcheck disable=SC2016
+            gh api graphql -f query='
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $projectId
+                  itemId: $itemId
+                  fieldId: $fieldId
+                  value: {
+                    singleSelectOptionId: $optionId
+                  }
+                }) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }' -f projectId="$(echo "$RESULT" | jq -r '.data.organization.projectV2.id')" -f itemId="$ITEM_ID" -f fieldId="$PRIORITY_FIELD_ID" -f optionId="$PRIORITY_OPTION_ID"
+          else
+            echo "Could not set priority - missing field or option IDs"
+          fi
+
+          # Set team to Engineering
+          TEAM="Engineering"
+          echo "Setting team to: $TEAM"
+
+          # Get team option ID
+          TEAM_OPTION_ID=$(echo "$RESULT" | jq -r --arg teamName "$TEAM" '.data.organization.projectV2.fields.nodes[] | select(.name == "Team") | .options[] | select(.name == $teamName) | .id')
+
+          if [[ -n "$TEAM_FIELD_ID" && -n "$TEAM_OPTION_ID" && "$TEAM_OPTION_ID" != "null" ]]; then
+            echo "Setting team to '$TEAM' (ID: $TEAM_OPTION_ID)"
+            # shellcheck disable=SC2016
+            gh api graphql -f query='
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $projectId
+                  itemId: $itemId
+                  fieldId: $fieldId
+                  value: {
+                    singleSelectOptionId: $optionId
+                  }
+                }) {
+                  projectV2Item {
+                    id
+                  }
+                }
+              }' -f projectId="$(echo "$RESULT" | jq -r '.data.organization.projectV2.id')" -f itemId="$ITEM_ID" -f fieldId="$TEAM_FIELD_ID" -f optionId="$TEAM_OPTION_ID"
+          else
+            echo "Could not set team - missing field or option IDs"
+          fi
