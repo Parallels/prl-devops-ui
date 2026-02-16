@@ -103,8 +103,8 @@ export const SmartValue: React.FC<SmartValueProps> = ({ value = "", globalParame
   }
 
   return (
-    <div className={`flex items-center gap-1 group ${className}`}>
-      <div className="truncate flex-1">{renderParts()}</div>
+    <div className={`flex items-start gap-1 group ${className}`}>
+      <div className="flex-1 min-w-0 flex flex-wrap items-center gap-y-1 max-h-[80px] overflow-y-auto">{renderParts()}</div>
       <IconButton
         icon={viewMode === "token" ? "EyeOpen" : "EyeClosed"}
         variant="ghost"
