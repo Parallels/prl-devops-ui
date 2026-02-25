@@ -1,7 +1,8 @@
 import { apiService } from '../api';
-import { VirtualMachine } from '../../interfaces/devops';
-import { VmConfigureRequest } from '../../interfaces/devops';
+import { VirtualMachine } from '../../interfaces/VirtualMachine';
+import { VmCloneRequest } from '../../interfaces/devops';
 import { authService } from '../authService';
+import { MachineStateResponse } from '@/interfaces/Machine';
 
 
 /**
@@ -42,6 +43,28 @@ class MachinesService {
   }
 
   /**
+   * Get a single virtual machine by ID
+   *
+   * @param hostname - The hostname identifier for the target server
+   * @param vmId - Virtual machine ID
+   * @param isOrchestrator - Whether this is an orchestrator endpoint
+   * @returns The virtual machine
+   * @throws ApiError
+   */
+  async getVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<VirtualMachine> {
+    const targetHost = hostname || authService.currentHostname;
+    if (!targetHost) throw new Error('No hostname provided and no active session found');
+
+    const endpoint = isOrchestrator
+      ? `/api/v1/orchestrator/machines/${vmId}`
+      : `/api/v1/machines/${vmId}`;
+
+    return apiService.get<VirtualMachine>(targetHost, endpoint, {
+      errorPrefix: `Failed to get VM ${vmId}`,
+    });
+  }
+
+  /**
    * Execute a state operation on a virtual machine
    * Helper method for common state operations
    */
@@ -49,36 +72,38 @@ class MachinesService {
     hostname: string | undefined,
     vmId: string,
     operation: string,
+    force = false,
     isOrchestrator = false
-  ): Promise<boolean> {
+  ): Promise<MachineStateResponse> {
     try {
       const targetHost = hostname || authService.currentHostname;
       if (!targetHost) {
         throw new Error('No hostname provided and no active session found');
       }
 
-      const endpoint = isOrchestrator
-        ? `/api/v1/orchestrator/machines/${vmId}/set`
-        : `/api/v1/machines/${vmId}/set`;
+      let endpoint = isOrchestrator
+        ? `/api/v1/orchestrator/machines/${vmId}/${operation}`
+        : `/api/v1/machines/${vmId}/${operation}`;
 
-      const request: VmConfigureRequest = {
-        operations: [
-          {
-            group: 'state',
-            operation,
-            value: ''
-          }
-        ]
-      };
+      if (force) {
+        endpoint += '?force=true';
+      }
+      if (isOrchestrator) {
+        const response = await apiService.put<MachineStateResponse>(
+          targetHost,
+          endpoint,
+          { errorPrefix: `Failed to ${operation} VM ${vmId}` }
+        );
+        return response;
+      } else {
+        const response = await apiService.get<MachineStateResponse>(
+          targetHost,
+          endpoint,
+          { errorPrefix: `Failed to ${operation} VM ${vmId}` }
+        );
+        return response;
+      }
 
-      await apiService.put(
-        targetHost,
-        endpoint,
-        request,
-        { errorPrefix: `Failed to ${operation} VM ${vmId}` }
-      );
-
-      return true;
     } catch (error) {
       console.error(`Failed to ${operation} VM ${vmId}:`, error);
       throw error;
@@ -94,8 +119,8 @@ class MachinesService {
    * @returns true if successful
    * @throws ApiError
    */
-  async startVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
-    return this.executeVmStateOperation(hostname, vmId, 'start', isOrchestrator);
+  async startVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<MachineStateResponse> {
+    return this.executeVmStateOperation(hostname, vmId, 'start', false, isOrchestrator);
   }
 
   /**
@@ -107,8 +132,8 @@ class MachinesService {
    * @returns true if successful
    * @throws ApiError
    */
-  async stopVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
-    return this.executeVmStateOperation(hostname, vmId, 'stop', isOrchestrator);
+  async stopVirtualMachine(hostname: string | undefined, vmId: string, force = false, isOrchestrator = false): Promise<MachineStateResponse> {
+    return this.executeVmStateOperation(hostname, vmId, 'stop', force, isOrchestrator);
   }
 
   /**
@@ -120,8 +145,8 @@ class MachinesService {
    * @returns true if successful
    * @throws ApiError
    */
-  async pauseVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
-    return this.executeVmStateOperation(hostname, vmId, 'pause', isOrchestrator);
+  async pauseVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<MachineStateResponse> {
+    return this.executeVmStateOperation(hostname, vmId, 'pause', false, isOrchestrator);
   }
 
   /**
@@ -133,8 +158,8 @@ class MachinesService {
    * @returns true if successful
    * @throws ApiError
    */
-  async resumeVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
-    return this.executeVmStateOperation(hostname, vmId, 'resume', isOrchestrator);
+  async resumeVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<MachineStateResponse> {
+    return this.executeVmStateOperation(hostname, vmId, 'resume', false, isOrchestrator);
   }
 
   /**
@@ -146,8 +171,8 @@ class MachinesService {
    * @returns true if successful
    * @throws ApiError
    */
-  async suspendVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
-    return this.executeVmStateOperation(hostname, vmId, 'suspend', isOrchestrator);
+  async suspendVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<MachineStateResponse> {
+    return this.executeVmStateOperation(hostname, vmId, 'suspend', false, isOrchestrator);
   }
 
   /**
@@ -249,6 +274,7 @@ class MachinesService {
     hostname: string | undefined,
     vmId: string,
     cloneName: string,
+    destinationPath: string,
     isOrchestrator = false
   ): Promise<boolean> {
     try {
@@ -262,22 +288,12 @@ class MachinesService {
       }
 
       const endpoint = isOrchestrator
-        ? `/api/v1/orchestrator/machines/${vmId}/set`
-        : `/api/v1/machines/${vmId}/set`;
+        ? `/api/v1/orchestrator/machines/${vmId}/clone`
+        : `/api/v1/machines/${vmId}/clone`;
 
-      const request: VmConfigureRequest = {
-        operations: [
-          {
-            group: 'machine',
-            operation: 'clone',
-            options: [
-              {
-                flag: 'name',
-                value: cloneName
-              }
-            ]
-          }
-        ]
+      const request: VmCloneRequest = {
+        clone_name: cloneName,
+        destination_path: destinationPath,
       };
 
       await apiService.put(

@@ -45,6 +45,10 @@ class UsersService {
         { errorPrefix: 'Failed to create user' }
       );
 
+      if (!user) {
+        throw new Error('API returned empty response when creating user');
+      }
+
       return user;
     } catch (error) {
       console.error('Failed to create user:', error);
@@ -73,6 +77,21 @@ class UsersService {
         request,
         { errorPrefix: `Failed to update user ${userId}` }
       );
+
+      // If API returns 204 No Content (empty response), construct response from request
+      // This is a valid success response - the update succeeded but server didn't return the updated resource
+      if (!user) {
+        return {
+          id: userId,
+          ...request,
+          // These fields are not in the request, so we include empty defaults
+          // Note: Username cannot be updated, so we use userId as fallback
+          username: userId,
+          roles: [],
+          claims: [],
+          isSuperUser: false,
+        } as DevOpsUser;
+      }
 
       return user;
     } catch (error) {

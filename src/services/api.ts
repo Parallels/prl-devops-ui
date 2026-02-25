@@ -27,7 +27,7 @@ class ApiService {
     // Try to parse as ApiErrorResponse
     if (typeof error === 'object' && error !== null) {
       const errorResponse = error as ApiErrorResponse;
-      
+
       // Check for nested error object
       if (errorResponse.error?.message) {
         return {
@@ -37,7 +37,7 @@ class ApiService {
           details: error
         };
       }
-      
+
       // Check for direct message
       if (errorResponse.message) {
         return {
@@ -77,18 +77,18 @@ class ApiService {
   async buildUrl(hostname: string, endpoint: string): Promise<string> {
     // Get the base URL for this hostname from authService
     const baseUrl = await authService.getHostUrl(hostname);
-    
+
     // Ensure endpoint starts with /
     const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    
+
     // If baseUrl is empty (dev mode with Vite proxy), return just the endpoint
     if (!baseUrl) {
       return normalizedEndpoint;
     }
-    
+
     // Remove trailing slash from baseUrl
     const normalizedBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    
+
     return `${normalizedBaseUrl}${normalizedEndpoint}`;
   }
 
@@ -105,7 +105,7 @@ class ApiService {
     endpoint: string,
     options: ApiRequestOptions = {}
   ): Promise<T> {
-    const { skipAuth, errorPrefix, ...fetchOptions } = options;
+    const { skipAuth, errorPrefix, expectNoContent, ...fetchOptions } = options;
 
     try {
       // Get access token from authService (unless skipAuth is true)
@@ -113,7 +113,7 @@ class ApiService {
       if (!skipAuth) {
         token = await authService.getAccessToken(hostname);
       }
-      
+
       // Build full URL using hostname
       const url = await this.buildUrl(hostname, endpoint);
 
@@ -139,7 +139,7 @@ class ApiService {
       if (!response.ok) {
         const errorText = await response.text();
         let apiError: ApiError;
-        
+
         try {
           const errorData = JSON.parse(errorText) as ApiErrorResponse;
           apiError = this.parseApiError(errorData, response.status);
@@ -155,17 +155,47 @@ class ApiService {
         if (errorPrefix) {
           apiError.message = `${errorPrefix}: ${apiError.message}`;
         }
-        
+
         throw apiError;
       }
 
-      // Parse and return response
+      // Handle no-content responses (204 No Content, 205 Reset Content)
+      if (response.status === 204 || response.status === 205) {
+        return undefined as unknown as T;
+      }
+
+      // Handle explicit expectNoContent flag (e.g., async operations)
+      // Only check this for 202 Accepted or when explicitly set
+      if (expectNoContent && response.status === 202) {
+        const contentLength = response.headers.get('content-length');
+        const contentType = response.headers.get('content-type');
+
+        // If content-length is 0 or no content-type header, assume no content
+        if (contentLength === '0' || !contentType) {
+          return undefined as unknown as T;
+        }
+      }
+
+      // Parse response content
       const contentType = response.headers.get('content-type');
       if (contentType?.includes('application/json')) {
-        const data = await response.json();
-        return data as T;
+        const text = await response.text();
+
+        // Handle empty response body gracefully
+        if (!text || text.trim() === '') {
+          return undefined as unknown as T;
+        }
+
+        try {
+          const data = JSON.parse(text);
+          return data as T;
+        } catch (e) {
+          // JSON parsing failed on non-empty text
+          console.warn('Failed to parse JSON response:', text);
+          return text as unknown as T;
+        }
       }
-      
+
       // For non-JSON responses, return as text
       const text = await response.text();
       return text as unknown as T;
@@ -174,7 +204,7 @@ class ApiService {
       if (this.isApiError(error)) {
         throw error;
       }
-      
+
       // Parse and throw as ApiError
       const apiError = this.parseApiError(
         error,
@@ -229,9 +259,11 @@ class ApiService {
 
   /**
    * Make DELETE request
+   * DELETE typically returns 204 No Content
    */
-  async delete<T>(hostname: string, endpoint: string, options?: ApiRequestOptions): Promise<T> {
+  async delete<T = void>(hostname: string, endpoint: string, options?: ApiRequestOptions): Promise<T> {
     return this.request<T>(hostname, endpoint, {
+      expectNoContent: true,
       ...options,
       method: 'DELETE'
     });

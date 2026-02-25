@@ -30,6 +30,7 @@ const colors: ThemeColor[] = [
   "warning",
   "danger",
   "theme",
+  "parallels",
 ];
 
 const resolveColor = (color: ThemeColor): string => {
@@ -46,6 +47,8 @@ const resolveColor = (color: ThemeColor): string => {
       return "rose";
     case "theme":
       return "neutral";
+    case "parallels":
+      return "red";
     default:
       return color;
   }

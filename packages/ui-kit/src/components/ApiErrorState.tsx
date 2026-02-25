@@ -27,7 +27,7 @@ const ApiErrorState: React.FC<ApiErrorStateProps> = ({
       icon={"CloudOff" as IconName}
       tone="danger"
       onAction={onRetry}
-      buttonText={onRetry ? buttonText : undefined}
+      actionLabel={onRetry ? buttonText : undefined}
       actionLeadingIcon={actionLeadingIcon}
       {...rest}
     />

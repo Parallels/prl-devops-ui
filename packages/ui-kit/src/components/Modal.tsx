@@ -1,5 +1,5 @@
 import classNames from "classnames";
-import React, { type ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
+import React, { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Loader, Tabs, type TabsProps, IconButton, Button, type ButtonColor, type ButtonProps, type ButtonVariant } from ".";
 import type { ModalSize } from "../theme";
@@ -423,14 +423,89 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   );
 };
 
+interface DeleteConfirmModalProps extends Omit<ConfirmModalProps, "confirmLabel" | "confirmVariant" | "confirmColor"> {
+  /** The exact string the user must type to enable the delete button. */
+  confirmValue: string;
+  /** Human-readable label shown in the instruction, e.g. "key name". Default: "name" */
+  confirmValueLabel?: string;
+  confirmLabel?: ReactNode;
+}
+
+const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
+  confirmValue,
+  confirmValueLabel = "name",
+  confirmLabel = "Delete",
+  onConfirm,
+  onClose,
+  isConfirmDisabled,
+  children,
+  cancelLabel = "Cancel",
+  cancelButtonProps,
+  confirmButtonProps,
+  ...props
+}) => {
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isMatch = inputValue === confirmValue;
+
+  useEffect(() => {
+    if (!props.isOpen) setInputValue("");
+  }, [props.isOpen]);
+
+  return (
+    <Modal
+      {...props}
+      onClose={onClose}
+      role="alertdialog"
+      initialFocusRef={inputRef as React.RefObject<HTMLElement>}
+      footer={
+        <ModalActions>
+          <Button variant="soft" color="slate" onClick={onClose} {...cancelButtonProps}>
+            {cancelLabel}
+          </Button>
+          <Button
+            variant="solid"
+            color="danger"
+            onClick={onConfirm}
+            disabled={!isMatch || isConfirmDisabled}
+            {...confirmButtonProps}
+          >
+            {confirmLabel}
+          </Button>
+        </ModalActions>
+      }
+    >
+      {children}
+      <div className="flex flex-col gap-2 pt-1">
+        <label className="text-sm text-neutral-600 dark:text-neutral-400">
+          Type the {confirmValueLabel} <span className="font-mono font-semibold text-neutral-800 dark:text-neutral-200">{confirmValue}</span> to confirm:
+        </label>
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && isMatch && !isConfirmDisabled) onConfirm(); }}
+          placeholder={confirmValue}
+          className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm font-mono text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-400/30"
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
+    </Modal>
+  );
+};
+
 type ModalComponentType = typeof Modal & {
   Actions: typeof ModalActions;
   Confirm: typeof ConfirmModal;
+  DeleteConfirm: typeof DeleteConfirmModal;
 };
 
 (Modal as ModalComponentType).Actions = ModalActions;
 (Modal as ModalComponentType).Confirm = ConfirmModal;
+(Modal as ModalComponentType).DeleteConfirm = DeleteConfirmModal;
 
-export { ModalActions, ConfirmModal };
-export type { ModalActionsProps };
+export { ModalActions, ConfirmModal, DeleteConfirmModal };
+export type { ModalActionsProps, DeleteConfirmModalProps };
 export default Modal as ModalComponentType;

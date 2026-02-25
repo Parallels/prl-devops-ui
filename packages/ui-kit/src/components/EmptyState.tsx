@@ -3,10 +3,50 @@ import React from "react";
 import Button, { type ButtonVariant, type ButtonSize, type ButtonColor } from "./Button";
 import { type IconSize } from "../types/Icon";
 import { useIconRenderer } from "../contexts/IconContext";
+import { ThemeSize, type ThemeColor } from "../theme/Theme";
+export type TextSize = "xs" | "sm" | "md" | "lg" | "xl";
 
-export type EmptyStateTone = "neutral" | "info" | "success" | "warning" | "danger";
 
-const toneClasses: Record<EmptyStateTone, { border: string; text: string; bg: string; icon: string }> = {
+const iconSizes: Record<IconSize, string> = {
+  xs: "h-6 w-6",
+  sm: "h-8 w-8",
+  md: "h-10 w-10",
+  lg: "h-12 w-12",
+  xl: "h-16 w-16",
+};
+
+const textSizes: Record<TextSize, string> = {
+  xs: "text-xs",
+  sm: "text-sm",
+  md: "text-lg",
+  lg: "text-xl",
+  xl: "text-2xl",
+};
+
+
+/** Accepts all theme colors. The original five semantic names (neutral/info/success/warning/danger) are preserved unchanged. */
+export type EmptyStateTone = ThemeColor;
+
+// ── Color resolution (mirrors Theme.ts) ────────────────────────────────────
+
+const resolveColor = (color: ThemeColor): string => {
+  switch (color) {
+    case "brand": return "blue";
+    case "info": return "sky";
+    case "success": return "emerald";
+    case "warning": return "amber";
+    case "danger": return "rose";
+    case "theme": return "neutral";
+    case "parallels": return "red";
+    default: return color;
+  }
+};
+
+type ToneConfig = { border: string; text: string; bg: string; icon: string };
+
+// ── Preserved original semantic entries (static strings — Tailwind picks these up directly) ──
+
+const semanticTones: Partial<Record<ThemeColor, ToneConfig>> = {
   neutral: {
     border: "border-slate-300/70 dark:border-slate-700/60",
     text: "text-slate-600 dark:text-slate-300",
@@ -39,66 +79,123 @@ const toneClasses: Record<EmptyStateTone, { border: string; text: string; bg: st
   },
 };
 
+const sizes: Record<ThemeSize, string> = {
+  xs: "h-[30%] w-[30%]",
+  sm: "h-[35%] w-[35%]",
+  md: "h-[40%] w-[40%]",
+  lg: "h-[45%] w-[45%]",
+  xl: "h-[50%] w-[50%]",
+  xxl: "h-[55%] w-[55%]",
+  xxxl: "h-[60%] w-[60%]",
+  full: "h-full w-full",
+  "2xl": "h-[65%] w-[65%]",
+  "3xl": "h-[70%] w-[70%]",
+};
+
+// ── Dynamic builder for all other ThemeColor values ────────────────────────
+// Uses only class patterns already declared in tailwind-safelist.ts:
+//   border-{c}-200            (border200)
+//   dark:border-{c}-500/40    (darkBorder500_40)
+//   text-{c}-700              (text700)
+//   dark:text-{c}-200         (darkText200)
+//   bg-{c}-50/80              (bg50_80)
+//   dark:bg-{c}-500/10        (darkBg500_10)
+//   text-{c}-500              (text500)
+//   dark:text-{c}-300         (darkText300)
+
+function buildToneClasses(color: ThemeColor): ToneConfig {
+  if (semanticTones[color]) return semanticTones[color]!;
+  if (color === "white" || color === "theme") return semanticTones.neutral!;
+
+  const c = resolveColor(color);
+  return {
+    border: `border-${c}-200 dark:border-${c}-500/40`,
+    text: `text-${c}-700 dark:text-${c}-200`,
+    bg: `bg-${c}-50/80 dark:bg-${c}-500/10`,
+    icon: `text-${c}-500 dark:text-${c}-300`,
+  };
+}
+
+// ── Props ───────────────────────────────────────────────────────────────────
+
 export interface EmptyStateProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
-  buttonText?: string;
+  actionLabel?: string;
   onAction?: () => void;
   actionVariant?: ButtonVariant;
   actionColor?: ButtonColor;
   icon?: string | React.ReactElement;
   iconSize?: IconSize;
+  textSize?: TextSize;
   showIcon?: boolean;
   tone?: EmptyStateTone;
+  disableBorder?: boolean;
   fullWidth?: boolean;
+  fullHeight?: boolean;
   actionSize?: ButtonSize;
   actionLeadingIcon?: string | React.ReactElement;
+  size?: ThemeSize;
 }
+
+// ── Component ───────────────────────────────────────────────────────────────
 
 const EmptyState: React.FC<EmptyStateProps> = ({
   title,
   subtitle,
-  buttonText,
+  actionLabel,
   onAction,
   actionVariant = "soft",
   actionColor = "blue",
   icon = "Plus",
   iconSize = "xl",
+  textSize = "md",
   showIcon = true,
   tone = "neutral",
   fullWidth = false,
+  fullHeight = false,
   actionSize = "sm",
+  size = "md",
   actionLeadingIcon,
   className,
+  disableBorder = false,
   ...rest
 }) => {
   const renderIcon = useIconRenderer();
-  const palette = toneClasses[tone] ?? toneClasses.neutral;
+  const palette = buildToneClasses(tone);
+
+  // lets make the subtitle text size smaller than the title text size
+  const subtitleTextSize = textSize === "xs" ? "xs" : textSize === "sm" ? "xs" : textSize === "md" ? "sm" : textSize === "lg" ? "md" : "lg";
 
   return (
     <section
       className={classNames(
-        "flex flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed px-6 py-10 text-center shadow-sm transition",
+        "flex flex-col items-center justify-center gap-1 rounded-3xl px-6 py-10 text-center transition",
+        !disableBorder && "border-2 border-dashed shadow-sm",
         palette.border,
         palette.bg,
+        sizes[size],
         fullWidth && "w-full",
+        fullHeight && "h-full",
         className
       )}
       {...rest}
     >
       {showIcon && (
-        <div className={classNames("p-2 text-4xl dark:bg-white/5", palette.icon)}>
-          {React.isValidElement(icon) ? icon : renderIcon(icon, iconSize, "h-12 w-12")}
+        <div className={classNames("p-2 dark:bg-white/5", palette.icon)}>
+          {React.isValidElement(icon) ? icon : renderIcon(icon, iconSize, iconSizes[iconSize])}
         </div>
       )}
-      <div className="space-y-2">
-        <p className={classNames("text-lg font-semibold", palette.text)}>{title}</p>
-        {subtitle && <p className={classNames("text-sm leading-relaxed", palette.text)}>{subtitle}</p>}
+      <div className="space-y-1">
+        <p className={classNames(textSizes[textSize], "font-semibold", palette.text)}>{title}</p>
+        {subtitle && <p className={classNames(textSizes[subtitleTextSize], "leading-relaxed", palette.text)}>{subtitle}</p>}
       </div>
-      {buttonText && onAction && (
-        <Button size={actionSize} variant={actionVariant} color={actionColor} onClick={onAction} leadingIcon={actionLeadingIcon}>
-          {buttonText}
-        </Button>
+      {actionLabel && onAction && (
+        <div className="mt-4">
+          <Button size={actionSize} variant={actionVariant} color={actionColor} onClick={onAction} leadingIcon={actionLeadingIcon}>
+            {actionLabel}
+          </Button>
+        </div>
       )}
     </section>
   );

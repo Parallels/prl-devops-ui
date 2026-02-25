@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { WebSocketService } from '../services/WebSocketService';
-import { WebSocketState } from '../types/WebSocket';
+import { WebSocketService, type WsUrlFactory } from '../services/WebSocketService';
+import { WebSocketMessage, WebSocketState } from '../types/WebSocket';
 
 interface WebSocketContextType {
-    connect: (serverId: string, url: string) => void;
+    connect: (serverId: string, urlOrFactory: WsUrlFactory) => void;
     disconnect: (serverId: string) => void;
     getState: (serverId: string) => WebSocketState;
     send: (serverId: string, type: string, payload: any) => void;
-    states: Record<string, WebSocketState>; // Use Record for easier React consumption
+    subscribeRaw: (serverId: string, listener: (msg: WebSocketMessage, serverId: string) => void) => () => void;
+    states: Record<string, WebSocketState>;
     service: WebSocketService;
 }
 
@@ -15,18 +16,14 @@ const WebSocketContext = createContext<WebSocketContextType | null>(null);
 
 interface WebSocketProviderProps {
     children: ReactNode;
-    // url: string; // Removed default single URL
 }
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
-    // We use a Record to track states for reactivity
     const [states, setStates] = useState<Record<string, WebSocketState>>({});
 
-    // Initialize instance once
     const service = WebSocketService.getInstance();
 
     useEffect(() => {
-        // Subscribe to state changes
         const unsubscribe = service.onStateChange((serverId, newState) => {
             setStates((prev) => ({
                 ...prev,
@@ -36,15 +33,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
 
         return () => {
             unsubscribe();
-            // We might not want to auto-disconnect everything on unmount if this provider 
-            // is at the root, but for cleanup safety:
-            // service.disconnectAll(); // If we had such a method. 
-            // Ideally we let connections persist or user manages them.
         };
     }, [service]);
 
-    const connect = useCallback((serverId: string, url: string) => {
-        service.connect(serverId, url);
+    const connect = useCallback((serverId: string, urlOrFactory: WsUrlFactory) => {
+        service.connect(serverId, urlOrFactory);
     }, [service]);
 
     const disconnect = useCallback((serverId: string) => {
@@ -59,11 +52,19 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
         return states[serverId] || WebSocketState.CLOSED;
     }, [states]);
 
+    const subscribeRaw = useCallback(
+        (serverId: string, listener: (msg: WebSocketMessage, serverId: string) => void) => {
+            return service.subscribeRaw(serverId, listener);
+        },
+        [service]
+    );
+
     const value: WebSocketContextType = {
         connect,
         disconnect,
         getState,
         send,
+        subscribeRaw,
         states,
         service,
     };

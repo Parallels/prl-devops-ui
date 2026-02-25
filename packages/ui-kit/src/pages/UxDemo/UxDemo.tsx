@@ -37,6 +37,7 @@ import { TextareaDemo } from './demos/TextareaDemo';
 import { SearchBarDemo } from './demos/SearchBarDemo';
 import { FormDemo } from './demos/FormDemo';
 import { BottomSheetDemo } from './demos/BottomSheetDemo';
+import { BottomSheetProvider } from '../../contexts/BottomSheetContext';
 import { CollapsibleHelpDemo } from './demos/CollapsibleHelpDemo';
 import { CollapsiblePanelDemo } from './demos/CollapsiblePanelDemo';
 import { KeyValueFieldDemo } from './demos/KeyValueFieldDemo';
@@ -55,7 +56,7 @@ export const UxDemo: React.FC = () => {
     { id: 'sections-search-bar', title: 'Search Bar', render: () => <SearchBarDemo /> },
     { id: 'sections-form', title: 'Form Components', render: () => <FormDemo /> },
     { id: 'sections-panels', title: 'Panel Controls', render: () => <PanelDemo /> },
-    { id: 'sections-bottom-sheet', title: 'Bottom Sheet', render: () => <BottomSheetDemo /> },
+    { id: 'sections-bottom-sheet', title: 'Bottom Sheet', render: () => <BottomSheetProvider><BottomSheetDemo /></BottomSheetProvider> },
     { id: 'sections-help-text', title: 'Collapsible Help Text', render: () => <CollapsibleHelpDemo /> },
     { id: 'sections-collapsible-panel', title: 'Collapsible Panel', render: () => <CollapsiblePanelDemo /> },
     { id: 'sections-key-value', title: 'Key/Value Array', render: () => <KeyValueFieldDemo /> },

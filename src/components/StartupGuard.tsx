@@ -6,10 +6,11 @@ import { HostConfig } from '../interfaces/Host';
 import { authService } from '../services/authService';
 import { getPasswordKey, getApiKeyKey } from '../utils/secretKeys';
 import { OnboardingPrefill } from '../pages/Onboarding/Onboarding';
+import { decodeToken } from '../utils/tokenUtils';
 
 export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const config = useConfig();
-    const { setSession } = useSession();
+    const { session, setSession } = useSession();
     const navigate = useNavigate();
     const [isReady, setIsReady] = useState(false);
 
@@ -32,6 +33,19 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                 if (!Array.isArray(hosts) || hosts.length === 0) {
                     redirectToOnboarding('no hosts');
                     return;
+                }
+
+                // If there's already an active session (e.g. just set by Onboarding),
+                // validate the host still exists in config and proceed without re-selecting.
+                if (session) {
+                    const sessionHost = hosts.find((h) => h.hostname === session.hostname);
+                    if (sessionHost) {
+                        console.log('[StartupGuard] reusing active session for', session.hostname);
+                        authService.currentHostname = session.hostname;
+                        if (!cancelled) setIsReady(true);
+                        return;
+                    }
+                    console.log('[StartupGuard] active session host removed from config, re-selecting');
                 }
 
                 // Prefer the default host, fall back to most recently used
@@ -70,6 +84,15 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                 if (!cancelled) {
                     // Set session data for the connected host
                     authService.currentHostname = host.hostname;
+
+                    // Try to get and decode the token
+                    const token = authService.getToken(host.hostname);
+                    const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
+
+                    if (!tokenPayload) {
+                        console.warn('[StartupGuard] Failed to decode token, session will have limited functionality');
+                    }
+
                     setSession({
                         serverUrl: host.baseUrl,
                         hostname: host.hostname,
@@ -77,6 +100,8 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                         authType: host.authType,
                         hostId: host.id,
                         connectedAt: new Date().toISOString(),
+                        tokenPayload,
+                        hardwareInfo: host.hardwareInfo,
                     });
                     console.log('[StartupGuard] ready');
                     setIsReady(true);

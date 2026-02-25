@@ -1,46 +1,105 @@
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GLOBAL_NOTIFICATION_CHANNEL } from '@/constants/constants';
-import { HeaderGroup } from '@prl/ui-kit';
+import { HeaderGroup, UserAvatar, getGravatarUrl } from '@prl/ui-kit';
 import { NotificationWrapper } from '../Notification/NotificationWrapper';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSession } from '@/contexts/SessionContext';
-import { IconButton } from '@/controls';
+import { useTheme } from '@/contexts/ThemeContext';
 import { authService } from '@/services/authService';
 import { HostConfig } from '@/interfaces/Host';
 import { getPasswordKey, getApiKeyKey } from '@/utils/secretKeys';
 import { OnboardingPrefill } from '@/pages/Onboarding/Onboarding';
+import { HostSwitcher } from './HostSwitcher';
 
+// ─── Menu icons ───────────────────────────────────────────────────────────────
+
+const CogIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
+const FeedbackIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+  </svg>
+);
+
+const LogoutIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
+  </svg>
+);
+
+const SunIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="5" />
+    <line x1="12" y1="1" x2="12" y2="3" />
+    <line x1="12" y1="21" x2="12" y2="23" />
+    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+    <line x1="1" y1="12" x2="3" y2="12" />
+    <line x1="21" y1="12" x2="23" y2="12" />
+    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+  </svg>
+);
+
+const MoonIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+  </svg>
+);
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface HeaderProps {
   onNavChange: (route: string) => void;
   currentRoute: string;
 }
 
-const LogoutIcon = (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
-);
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export const Header: React.FC<HeaderProps> = () => {
   const { isModalOpen, openModal, closeModal } = useLayout();
   const config = useConfig();
   const { session, clearSession } = useSession();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
   const isSettingsOpen = isModalOpen('settings');
   const isFeedbackOpen = isModalOpen('feedback');
 
+  // Close on outside click
+  useEffect(() => {
+    const userEmail = session?.tokenPayload?.email || session?.username || '';
+    const tokenPayload = session?.tokenPayload;
+    console.log('test', userEmail);
+    console.log('payload', tokenPayload);
+    if (!isUserMenuOpen) return;
+    const handle = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handle);
+
+    return () => document.removeEventListener('mousedown', handle);
+  }, [isUserMenuOpen]);
+
   const handleLogout = async () => {
+    setIsUserMenuOpen(false);
     let prefill: OnboardingPrefill | undefined;
 
     try {
       const hosts = (await config.get<HostConfig[]>('hosts')) ?? [];
-
-      // Find default host (or most recently used) for prefill
       const defaultHost = hosts.find((h) => h.isDefault);
       const sorted = [...hosts].sort((a, b) =>
         (b.lastUsed ?? '').localeCompare(a.lastUsed ?? '')
@@ -72,76 +131,147 @@ export const Header: React.FC<HeaderProps> = () => {
     navigate('/onboarding', { replace: true, state: prefill ? { prefill } : undefined });
   };
 
+  const handleSettings = () => {
+    setIsUserMenuOpen(false);
+    isSettingsOpen ? closeModal('settings') : openModal('settings');
+  };
+
+  const handleFeedback = () => {
+    setIsUserMenuOpen(false);
+    isFeedbackOpen ? closeModal('feedback') : openModal('feedback');
+  };
+
+  // Prefer the email from the decoded JWT payload — it's always the real email address
+  // (e.g. "cjlapao@gmail.com"), whereas session.username may just be a login handle.
+  // Request at 128px so it's sharp on retina displays (shown at 32-36px in CSS).
+  const userEmail = session?.tokenPayload?.email || session?.username || '';
+  const gravatarUrl = userEmail ? getGravatarUrl(userEmail, 128) : undefined;
+
+  const displayLabel = session?.username || 'User';
+
   return (
-    <>
-      <header className="flex items-center sticky w-full h-20 top-0 z-50 bg-white dark:bg-neutral-500 border-b border-gray-200 dark:border-gray-200">
-        <div className="flex w-full items-center px-4 py-4">
-          <div className="flex items-center">
-            {session && (
-              <div className="flex items-center ml-6 px-3 py-1 bg-gray-100 dark:bg-neutral-600 rounded-md">
-                <span className="text-sm text-gray-600 dark:text-gray-300 truncate max-w-[300px]" title={session.serverUrl}>
-                  {session.serverUrl}
-                </span>
+    <header className="flex items-center sticky w-full h-15 top-0 z-50 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700">
+      <div className="flex w-full items-center px-4 py-4">
+        {/* Left: host switcher */}
+        <div className="flex items-center">
+          {session && <HostSwitcher />}
+        </div>
+
+        <div className="flex flex-grow" />
+
+        {/* Theme toggle */}
+        <HeaderGroup>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            className="flex items-center justify-center h-8 w-8 rounded-full text-neutral-500 hover:text-neutral-700 hover:bg-gray-100 dark:text-neutral-400 dark:hover:text-neutral-200 dark:hover:bg-neutral-700/60 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          >
+            {theme === 'light' ? <MoonIcon /> : <SunIcon />}
+          </button>
+        </HeaderGroup>
+
+        {/* Notifications */}
+        <HeaderGroup>
+          <NotificationWrapper
+            channelFilter={GLOBAL_NOTIFICATION_CHANNEL}
+            variant="header"
+            hideOnScroll={true}
+            onlyDot={true}
+            size="md"
+            animation="slide-up"
+            activeColor="blue"
+            buttonColor="blue"
+            zIndex={1001}
+            layoutKey="notifications"
+          />
+        </HeaderGroup>
+
+        {/* User avatar + menu */}
+        <HeaderGroup>
+          <div ref={userMenuRef} className="relative">
+            {/* Avatar trigger */}
+            <button
+              onClick={() => setIsUserMenuOpen((v) => !v)}
+              className="flex items-center gap-2 rounded-full p-0.5 transition-colors hover:ring-2 hover:ring-blue-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              aria-haspopup="menu"
+              aria-expanded={isUserMenuOpen}
+              title={displayLabel}
+            >
+              <UserAvatar
+                user={{
+                  username: session?.username,
+                  email: userEmail,
+                  avatarUrl: gravatarUrl,
+                }}
+                size={32}
+                variant="circle"
+              />
+            </button>
+
+            {/* Dropdown menu */}
+            {isUserMenuOpen && (
+              <div className="absolute right-0 top-full z-[200] mt-2 w-56 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-800">
+                {/* User info header */}
+                <div className="flex items-center gap-3 border-b border-neutral-100 px-4 py-3 dark:border-neutral-700">
+                  <UserAvatar
+                    user={{
+                      username: session?.username,
+                      email: session?.username,
+                      avatarUrl: gravatarUrl,
+                    }}
+                    size={36}
+                    variant="circle"
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">
+                      {displayLabel}
+                    </p>
+                    <p className="truncate text-xs text-neutral-400 dark:text-neutral-500">
+                      {session?.hostname ?? ''}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Menu items */}
+                <div className="py-1">
+                  <button
+                    onClick={handleSettings}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-700/60"
+                  >
+                    <span className="text-neutral-400 dark:text-neutral-500"><CogIcon /></span>
+                    Settings
+                    {isSettingsOpen && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleFeedback}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-700/60"
+                  >
+                    <span className="text-neutral-400 dark:text-neutral-500"><FeedbackIcon /></span>
+                    Send Feedback
+                    {isFeedbackOpen && (
+                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />
+                    )}
+                  </button>
+                </div>
+
+                <div className="border-t border-neutral-100 py-1 dark:border-neutral-700">
+                  <button
+                    onClick={() => void handleLogout()}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                  >
+                    <LogoutIcon />
+                    Log Out
+                  </button>
+                </div>
               </div>
             )}
           </div>
-
-
-          <div className="flex flex-grow"></div>
-          <HeaderGroup>
-            <IconButton
-              icon="ReportFeedback"
-              variant="icon"
-              color="blue"
-              accent={true}
-              size="md"
-              srLabel="Open settings"
-              title="Open settings"
-              onClick={() => (isFeedbackOpen ? closeModal('feedback') : openModal('feedback'))}
-              aria-pressed={isFeedbackOpen}
-            />
-          </HeaderGroup>
-          <HeaderGroup>
-            <NotificationWrapper
-              channelFilter={GLOBAL_NOTIFICATION_CHANNEL}
-              variant="header"
-              hideOnScroll={true}
-              onlyDot={true}
-              size="md"
-              animation="slide-up"
-              activeColor="blue"
-              buttonColor="blue"
-              zIndex={1001}
-              layoutKey="notifications"
-            />
-          </HeaderGroup>
-          <HeaderGroup>
-            <IconButton
-              icon="Cog"
-              variant="icon"
-              color="blue"
-              accent={true}
-              size="md"
-              srLabel="Open settings"
-              title="Open settings"
-              onClick={() => (isSettingsOpen ? closeModal('settings') : openModal('settings'))}
-              aria-pressed={isSettingsOpen}
-            />
-          </HeaderGroup>
-          <HeaderGroup>
-            <IconButton
-              icon={LogoutIcon}
-              variant="icon"
-              color="blue"
-              accent={true}
-              size="md"
-              srLabel="Logout"
-              title="Logout"
-              onClick={() => void handleLogout()}
-            />
-          </HeaderGroup>
-        </div>
-      </header>
-    </>
+        </HeaderGroup>
+      </div>
+    </header>
   );
 };

@@ -5,6 +5,7 @@ export { default as Badge, type BadgeProps } from "./Badge";
 export { default as BadgeIcon, type BadgeIconProps } from "./BadgeIcon";
 export { default as Pill, type PillProps } from "./Pill";
 export { default as Progress, type ProgressProps } from "./Progress";
+export { default as MultiProgressBar, type MultiProgressBarProps, type MultiProgressBarSeries } from "./MultiProgressBar";
 export {
   default as Spinner,
   type SpinnerProps,
@@ -14,7 +15,8 @@ export {
 } from "./Spinner";
 export { default as StatusSpinner, type StatusSpinnerProps, type StatusSpinnerIntent } from "./StatusSpinner";
 export { default as Loader, type LoaderProps } from "./Loader";
-export { default as EmptyState, type EmptyStateProps } from "./EmptyState";
+export { default as EmptyState, type EmptyStateProps, type EmptyStateTone } from "./EmptyState";
+export { default as Hero, type HeroProps, type HeroTitleSize, type HeroSubtitleSize, type HeroPadding } from "./Hero";
 export { default as DynamicImg, type DynamicImgProps } from "./DynamicImg";
 
 // Buttons
@@ -44,12 +46,17 @@ export { default as MultiSelectPills, type MultiSelectPillsProps } from "./Multi
 export { default as SearchBar, type SearchBarProps } from "./SearchBar";
 
 // Layout
-export { default as Panel, type PanelProps, type PanelTone } from "./Panel";
+export { default as InfoRow, type InfoRowProps, type InfoRowSize, type InfoRowPadding } from "./InfoRow";
+export { default as SectionCard, type SectionCardProps, type SectionCardVariant, type SectionCardSize } from "./SectionCard";
+export { default as Section, type SectionProps, type SectionSize, type SectionVariant } from "./Section";
+export { default as PagedPanel, type PagedPanelProps } from "./PagedPanel";
+export { default as Panel, type PanelProps, type PanelTone, type PanelDecoration } from "./Panel";
 export { default as CollapsiblePanel, type CollapsiblePanelProps } from "./CollapsiblePanel";
 export { default as HeaderGroup, type HeaderGroupProps } from "./HeaderGroup";
 export { default as DetailItemCard, type DetailItemCardProps } from "./DetailItemCard";
 export { default as InfiniteScrollPanel, type InfiniteScrollPanelProps } from "./InfiniteScrollPanel";
 export { default as CollapsibleHelpText, type CollapsibleHelpTextProps } from "./CollapsibleHelpText";
+export { default as HelpButton, type HelpButtonProps, type HelpButtonPlacement } from "./HelpButton";
 
 // Dropdown
 export { default as DropdownMenu, type DropdownMenuProps, type DropdownMenuOption } from "./DropdownMenu";
@@ -61,8 +68,21 @@ export { default as UserAvatar, type UserAvatarProps, type UserAvatarUser } from
 export { default as Accordion, type AccordionProps, type AccordionItem } from "./Accordion";
 export { default as Tabs, type TabsProps, type TabItem, type TabItemAction } from "./Tabs";
 export { default as MarkdownEditor } from "./MarkdownEditor";
-export { default as Modal, type ModalProps, ModalActions, ConfirmModal } from "./Modal";
-export { default as SideMenu, type SideMenuProps, type SideMenuItem } from "./SideMenu";
+export { default as Modal, type ModalProps, ModalActions, ConfirmModal, DeleteConfirmModal, type DeleteConfirmModalProps } from "./Modal";
+export {
+  default as SideMenu,
+  type SideMenuProps,
+  type SideMenuItem,
+  type SideMenuItemGuard,
+  type SideMenuGuardClaim,
+  type SideMenuGuardAnyClaim,
+  type SideMenuGuardAllClaims,
+  type SideMenuGuardRole,
+  type SideMenuGuardAnyRole,
+  type SideMenuGuardModule,
+  type SideMenuGuardAnyModule,
+  type SideMenuGuardCustom,
+} from "./SideMenu";
 export { default as SideMenuLayout, type SideMenuLayoutProps } from "./SideMenuLayout";
 export { default as SplitView, type SplitViewProps, type SplitViewItem, type SplitViewItemBadge, type SplitViewSize } from "./SplitView";
 export { default as SmartInput, type SmartInputProps } from "./SmartInput";
@@ -81,3 +101,4 @@ export { default as ApiErrorState, type ApiErrorStateProps } from "./ApiErrorSta
 export { default as CustomIcon, type CustomIconProps } from "./CustomIcon";
 export { default as DynamicFormField, type DynamicFormFieldProps } from "./DynamicFormField";
 export { default as NotificationModal, type NotificationModalProps, type NotificationType } from "./NotificationModal";
+export { default as SidePanel, type SidePanelProps } from "./SidePanel";

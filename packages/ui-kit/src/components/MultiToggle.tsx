@@ -279,7 +279,7 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
     <div
       ref={containerRef}
       className={classNames(
-        "relative inline-flex select-none items-center  bg-neutral-200 rounded-full p-1 shadow-inner dark:bg-neutral-600",
+        "relative inline-flex select-none items-center  bg-neutral-100 rounded-full p-1 shadow-inner dark:bg-neutral-600",
         sizeStyles.track,
         fullWidth && "w-full",
         disabled && "opacity-60 cursor-not-allowed",
@@ -391,9 +391,9 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
         const mergedStyle =
           sharedButtonStyle || buttonStyle
             ? {
-                ...(sharedButtonStyle ?? {}),
-                ...(buttonStyle ?? {}),
-              }
+              ...(sharedButtonStyle ?? {}),
+              ...(buttonStyle ?? {}),
+            }
             : undefined;
 
         return (
@@ -411,10 +411,10 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
               optionDisabled
                 ? "text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
                 : classNames(
-                    "cursor-pointer text-neutral-600 dark:text-neutral-300",
-                    colorStyles.hover,
-                    isActive && colorStyles.activeText
-                  )
+                  "cursor-pointer text-neutral-600 dark:text-neutral-300",
+                  colorStyles.hover,
+                  isActive && colorStyles.activeText
+                )
             )}
             onClick={() => {
               if (optionDisabled || option.value === value) {

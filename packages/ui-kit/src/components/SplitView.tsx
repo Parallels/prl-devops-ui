@@ -1,6 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import classNames from "classnames";
 import { type ThemeColor, getPillColorClasses } from "../theme/Theme";
+import CustomIcon from "./CustomIcon";
+import EmptyState from "./EmptyState";
+import { type IconName } from "../icons/registry";
+import { useResizable } from "../hooks/useResizable";
+import Loader from "./Loader";
+import IconButton from "./IconButton";
+import SearchBar from "./SearchBar";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -28,6 +35,12 @@ export interface SplitViewItem {
   disabled?: boolean;
   /** Hide the item entirely */
   hidden?: boolean;
+  /** Optional icon rendered before the label */
+  icon?: IconName;
+  /** Action buttons shown on the right side of the item row (visible on hover) */
+  actions?: React.ReactNode;
+  /** Extra content rendered below the item row when it is the active selection */
+  subContent?: React.ReactNode;
 }
 
 export interface SplitViewProps {
@@ -42,11 +55,30 @@ export interface SplitViewProps {
   listTitle?: React.ReactNode;
   /** Placeholder for the search input */
   searchPlaceholder?: string;
-  /** Width of the list panel – Tailwind class or px value */
+  /** Width of the list panel – Tailwind class (when not resizable) or initial px value for resizable */
   listWidth?: string;
   /** Accent color used for active item highlight */
   color?: ThemeColor;
   size?: SplitViewSize;
+
+  /** When true and only 1 visible item exists, skip the list panel entirely (default: true) */
+  autoHideList?: boolean;
+
+  /** Allow collapsing the list panel */
+  collapsible?: boolean;
+  /** Controlled collapsed state */
+  collapsed?: boolean;
+  /** Uncontrolled initial collapsed state */
+  defaultCollapsed?: boolean;
+  /** Callback when collapsed state changes */
+  onCollapsedChange?: (collapsed: boolean) => void;
+
+  /** Allow drag-to-resize the list panel */
+  resizable?: boolean;
+  /** Minimum list width in px when resizable (default: 180) */
+  minListWidth?: number;
+  /** Maximum list width in px when resizable (default: 50% of container) */
+  maxListWidth?: number;
 
   /** Extra class for the root container */
   className?: string;
@@ -56,32 +88,104 @@ export interface SplitViewProps {
   panelClassName?: string;
   /** Content rendered above the detail panel (header area) */
   panelHeader?: React.ReactNode | ((activeItem: SplitViewItem) => React.ReactNode);
-  /** Rendered when no items match the filter */
+  /** Rendered when no items match the search filter in the list */
   emptyState?: React.ReactNode;
+  /** Action buttons rendered in the list header row (e.g. an "Add" button) */
+  listActions?: React.ReactNode;
+  /** Content shown in the detail panel when no item is selected. Defaults to a generic EmptyState. Pass `null` to render nothing. */
+  panelEmptyState?: React.ReactNode | null;
+
+  /** When true, shows a loading state instead of the normal content */
+  loading?: boolean;
+  /** Custom loading content. Defaults to a centered Spinner with "Loading..." label. */
+  loadingState?: React.ReactNode;
+
+  /** When truthy, shows an error state instead of the normal content. Pass a string to use as the error subtitle. */
+  error?: React.ReactNode;
+  /** Custom error content. Defaults to a danger-toned EmptyState. */
+  errorState?: React.ReactNode;
+  /** Callback for the default error state's retry button */
+  onRetry?: () => void;
+
+  /** When true, renders a left border on the SplitView container to visually separate it from adjacent content (e.g. a side menu) */
+  borderLeft?: boolean;
+
+  /**
+   * When true (default), the detail panel body scrolls automatically — panels can render
+   * content of any height and the wrapper handles overflow.
+   * When false, the panel body uses `overflow-hidden` so that panels which manage their
+   * own internal scroll (e.g. a sticky-header + scrollable table layout) fill the space
+   * correctly without a double-scroll or broken `h-full` percentage height.
+   */
+  panelScrollable?: boolean;
+
+  /**
+   * When true (default), clicking a list item immediately opens its detail panel —
+   * the current behaviour.
+   * When false, clicking a row only highlights it; the detail panel only opens when
+   * the user explicitly clicks the expand (→) button on that row.
+   */
+  autoExpand?: boolean;
+  /** Controlled expanded id (only meaningful when autoExpand=false) */
+  expandedValue?: string;
+  /** Callback fired when the expanded item changes (only when autoExpand=false) */
+  onExpand?: (id: string, item: SplitViewItem) => void;
 }
 
 /* ------------------------------------------------------------------ */
 /*  Style tokens                                                       */
 /* ------------------------------------------------------------------ */
 
-const sizeTokens: Record<SplitViewSize, { item: string; label: string; subtitle: string; badge: string; search: string }> = {
-  sm: { item: "px-4 py-2.5", label: "text-sm", subtitle: "text-xs", badge: "text-[10px] px-1.5 py-0", search: "text-sm h-8" },
-  md: { item: "px-4 py-3", label: "text-sm", subtitle: "text-xs", badge: "text-[11px] px-2 py-0.5", search: "text-sm h-9" },
-  lg: { item: "px-5 py-4", label: "text-base", subtitle: "text-sm", badge: "text-xs px-2.5 py-0.5", search: "text-sm h-10" },
+const sizeTokens: Record<SplitViewSize, { item: string; label: string; subtitle: string; badge: string }> = {
+  sm: { item: "px-4 py-2.5", label: "text-sm", subtitle: "text-xs", badge: "text-[10px] px-1.5 py-0" },
+  md: { item: "px-4 py-3", label: "text-sm", subtitle: "text-xs", badge: "text-[11px] px-2 py-0.5" },
+  lg: { item: "px-5 py-4", label: "text-base", subtitle: "text-sm", badge: "text-xs px-2.5 py-0.5" },
 };
 
-const activeColors: Partial<Record<ThemeColor, { bg: string; border: string; text: string; subtitle: string }>> = {
-  blue: { bg: "bg-blue-50", border: "border-l-blue-600", text: "text-blue-900", subtitle: "text-blue-600" },
-  red: { bg: "bg-red-50", border: "border-l-red-600", text: "text-red-900", subtitle: "text-red-500" },
-  green: { bg: "bg-green-50", border: "border-l-green-600", text: "text-green-900", subtitle: "text-green-600" },
-  indigo: { bg: "bg-indigo-50", border: "border-l-indigo-600", text: "text-indigo-900", subtitle: "text-indigo-600" },
-  violet: { bg: "bg-violet-50", border: "border-l-violet-600", text: "text-violet-900", subtitle: "text-violet-600" },
-  amber: { bg: "bg-amber-50", border: "border-l-amber-600", text: "text-amber-900", subtitle: "text-amber-600" },
-  teal: { bg: "bg-teal-50", border: "border-l-teal-600", text: "text-teal-900", subtitle: "text-teal-600" },
-  theme: { bg: "bg-red-50", border: "border-l-red-600", text: "text-red-900", subtitle: "text-red-500" },
+const iconSizeClasses: Record<SplitViewSize, string> = {
+  sm: "h-4 w-4",
+  md: "h-5 w-5",
+  lg: "h-6 w-6",
 };
 
-const defaultActive = { bg: "bg-blue-50", border: "border-l-blue-600", text: "text-blue-900", subtitle: "text-blue-600" };
+type ActiveColorTokens = { bg: string; border: string; text: string; subtitle: string };
+
+// All class names must be written out as full strings so Tailwind's JIT scanner can detect them.
+const neutralActive: ActiveColorTokens = { bg: "bg-neutral-100 dark:bg-neutral-800/40", border: "border-l-neutral-500", text: "text-neutral-900 dark:text-neutral-100", subtitle: "text-neutral-600 dark:text-neutral-400" };
+
+const activeColors: Record<ThemeColor, ActiveColorTokens> = {
+  red: { bg: "bg-red-50 dark:bg-red-900/30", border: "border-l-red-600", text: "text-red-900 dark:text-red-100", subtitle: "text-red-600 dark:text-red-400" },
+  orange: { bg: "bg-orange-50 dark:bg-orange-900/30", border: "border-l-orange-600", text: "text-orange-900 dark:text-orange-100", subtitle: "text-orange-600 dark:text-orange-400" },
+  amber: { bg: "bg-amber-50 dark:bg-amber-900/30", border: "border-l-amber-600", text: "text-amber-900 dark:text-amber-100", subtitle: "text-amber-600 dark:text-amber-400" },
+  yellow: { bg: "bg-yellow-50 dark:bg-yellow-900/30", border: "border-l-yellow-600", text: "text-yellow-900 dark:text-yellow-100", subtitle: "text-yellow-600 dark:text-yellow-400" },
+  lime: { bg: "bg-lime-50 dark:bg-lime-900/30", border: "border-l-lime-600", text: "text-lime-900 dark:text-lime-100", subtitle: "text-lime-600 dark:text-lime-400" },
+  green: { bg: "bg-green-50 dark:bg-green-900/30", border: "border-l-green-600", text: "text-green-900 dark:text-green-100", subtitle: "text-green-600 dark:text-green-400" },
+  emerald: { bg: "bg-emerald-50 dark:bg-emerald-900/30", border: "border-l-emerald-600", text: "text-emerald-900 dark:text-emerald-100", subtitle: "text-emerald-600 dark:text-emerald-400" },
+  teal: { bg: "bg-teal-50 dark:bg-teal-900/30", border: "border-l-teal-600", text: "text-teal-900 dark:text-teal-100", subtitle: "text-teal-600 dark:text-teal-400" },
+  cyan: { bg: "bg-cyan-50 dark:bg-cyan-900/30", border: "border-l-cyan-600", text: "text-cyan-900 dark:text-cyan-100", subtitle: "text-cyan-600 dark:text-cyan-400" },
+  sky: { bg: "bg-sky-50 dark:bg-sky-900/30", border: "border-l-sky-600", text: "text-sky-900 dark:text-sky-100", subtitle: "text-sky-600 dark:text-sky-400" },
+  blue: { bg: "bg-blue-50 dark:bg-blue-900/30", border: "border-l-blue-600", text: "text-blue-900 dark:text-blue-100", subtitle: "text-blue-600 dark:text-blue-400" },
+  indigo: { bg: "bg-indigo-50 dark:bg-indigo-900/30", border: "border-l-indigo-600", text: "text-indigo-900 dark:text-indigo-100", subtitle: "text-indigo-600 dark:text-indigo-400" },
+  violet: { bg: "bg-violet-50 dark:bg-violet-900/30", border: "border-l-violet-600", text: "text-violet-900 dark:text-violet-100", subtitle: "text-violet-600 dark:text-violet-400" },
+  purple: { bg: "bg-purple-50 dark:bg-purple-900/30", border: "border-l-purple-600", text: "text-purple-900 dark:text-purple-100", subtitle: "text-purple-600 dark:text-purple-400" },
+  fuchsia: { bg: "bg-fuchsia-50 dark:bg-fuchsia-900/30", border: "border-l-fuchsia-600", text: "text-fuchsia-900 dark:text-fuchsia-100", subtitle: "text-fuchsia-600 dark:text-fuchsia-400" },
+  pink: { bg: "bg-pink-50 dark:bg-pink-900/30", border: "border-l-pink-600", text: "text-pink-900 dark:text-pink-100", subtitle: "text-pink-600 dark:text-pink-400" },
+  rose: { bg: "bg-rose-50 dark:bg-rose-900/30", border: "border-l-rose-600", text: "text-rose-900 dark:text-rose-100", subtitle: "text-rose-600 dark:text-rose-400" },
+  slate: { bg: "bg-slate-50 dark:bg-slate-900/30", border: "border-l-slate-600", text: "text-slate-900 dark:text-slate-100", subtitle: "text-slate-600 dark:text-slate-400" },
+  gray: { bg: "bg-gray-50 dark:bg-gray-900/30", border: "border-l-gray-600", text: "text-gray-900 dark:text-gray-100", subtitle: "text-gray-600 dark:text-gray-400" },
+  zinc: { bg: "bg-zinc-50 dark:bg-zinc-900/30", border: "border-l-zinc-600", text: "text-zinc-900 dark:text-zinc-100", subtitle: "text-zinc-600 dark:text-zinc-400" },
+  neutral: neutralActive,
+  stone: neutralActive,
+  white: neutralActive,
+  // Semantic aliases
+  brand: { bg: "bg-blue-50 dark:bg-blue-900/30", border: "border-l-blue-600", text: "text-blue-900 dark:text-blue-100", subtitle: "text-blue-600 dark:text-blue-400" },
+  info: { bg: "bg-sky-50 dark:bg-sky-900/30", border: "border-l-sky-600", text: "text-sky-900 dark:text-sky-100", subtitle: "text-sky-600 dark:text-sky-400" },
+  success: { bg: "bg-emerald-50 dark:bg-emerald-900/30", border: "border-l-emerald-600", text: "text-emerald-900 dark:text-emerald-100", subtitle: "text-emerald-600 dark:text-emerald-400" },
+  warning: { bg: "bg-amber-50 dark:bg-amber-900/30", border: "border-l-amber-600", text: "text-amber-900 dark:text-amber-100", subtitle: "text-amber-600 dark:text-amber-400" },
+  danger: { bg: "bg-rose-50 dark:bg-rose-900/30", border: "border-l-rose-600", text: "text-rose-900 dark:text-rose-100", subtitle: "text-rose-600 dark:text-rose-400" },
+  theme: neutralActive,
+  parallels: { bg: "bg-red-50 dark:bg-red-900/30", border: "border-l-red-600", text: "text-red-900 dark:text-red-100", subtitle: "text-red-600 dark:text-red-400" },
+};
 
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
@@ -97,17 +201,76 @@ const SplitView: React.FC<SplitViewProps> = ({
   listWidth,
   color = "blue",
   size = "md",
+  autoHideList = true,
+  collapsible = false,
+  collapsed: controlledCollapsed,
+  defaultCollapsed = false,
+  onCollapsedChange,
+  resizable = false,
+  minListWidth = 180,
+  maxListWidth: maxListWidthProp,
   className,
   listClassName,
   panelClassName,
   panelHeader,
   emptyState,
+  listActions,
+  panelEmptyState,
+  loading = false,
+  loadingState,
+  error,
+  errorState,
+  onRetry,
+  borderLeft = false,
+  autoExpand = true,
+  expandedValue,
+  onExpand,
+  panelScrollable = true,
 }) => {
   const visibleItems = useMemo(() => items.filter((i) => !i.hidden), [items]);
   const [internalValue, setInternalValue] = useState<string | undefined>(defaultValue ?? visibleItems[0]?.id);
   const activeId = value ?? internalValue;
 
+  // When autoExpand=false, the detail panel is driven by a separate "expanded" id.
+  // When autoExpand=true it always mirrors activeId.
+  const [internalExpandedId, setInternalExpandedId] = useState<string | undefined>(
+    autoExpand ? (defaultValue ?? visibleItems[0]?.id) : undefined
+  );
+  const expandedId = autoExpand ? activeId : (expandedValue ?? internalExpandedId);
+
   const [filter, setFilter] = useState("");
+
+  /* ---- Collapse state (controlled / uncontrolled) ---- */
+  const [internalCollapsed, setInternalCollapsed] = useState(
+    collapsible ? visibleItems.length <= 1 : defaultCollapsed
+  );
+  const isCollapsedControlled = typeof controlledCollapsed === "boolean";
+  const isCollapsed = collapsible && (isCollapsedControlled ? controlledCollapsed : internalCollapsed);
+
+  const toggleCollapsed = useCallback(() => {
+    const next = !isCollapsed;
+    if (!isCollapsedControlled) setInternalCollapsed(next);
+    onCollapsedChange?.(next);
+  }, [isCollapsed, isCollapsedControlled, onCollapsedChange]);
+
+  /* ---- Resizable ---- */
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const getMaxWidth = useCallback(() => {
+    if (maxListWidthProp) return maxListWidthProp;
+    if (containerRef.current) return Math.floor(containerRef.current.offsetWidth * 0.5);
+    return 600;
+  }, [maxListWidthProp]);
+
+  const initialPxWidth = listWidth ? parseInt(listWidth, 10) : 288; // 288px = w-72
+  const validInitialWidth = isNaN(initialPxWidth) ? 288 : initialPxWidth;
+
+  const { width: resizableWidth, isDragging, handleProps } = useResizable({
+    initialWidth: validInitialWidth,
+    minWidth: minListWidth,
+    maxWidth: getMaxWidth,
+    enabled: resizable && !isCollapsed,
+  });
 
   // Keep selection in sync when items change
   useEffect(() => {
@@ -116,6 +279,24 @@ const SplitView: React.FC<SplitViewProps> = ({
       setInternalValue(visibleItems[0]?.id);
     }
   }, [visibleItems, value, internalValue]);
+
+  // Auto-select when single item
+  const shouldHideList = autoHideList && visibleItems.length === 1;
+
+  // Auto-collapse when ≤1 item, auto-expand when >1 item
+  useEffect(() => {
+    if (collapsible && !isCollapsedControlled) {
+      setInternalCollapsed(visibleItems.length <= 1);
+    }
+  }, [visibleItems.length, collapsible, isCollapsedControlled]);
+
+  useEffect(() => {
+    if (shouldHideList && visibleItems[0] && activeId !== visibleItems[0].id) {
+      if (value === undefined) {
+        setInternalValue(visibleItems[0].id);
+      }
+    }
+  }, [shouldHideList, visibleItems, activeId, value]);
 
   const filteredItems = useMemo(() => {
     if (!filter) return visibleItems;
@@ -127,10 +308,12 @@ const SplitView: React.FC<SplitViewProps> = ({
     });
   }, [visibleItems, filter]);
 
+  // The right-hand detail panel always follows the selected row (activeId), in both modes.
+  // expandedId is only used to control subContent (inline expansion) when autoExpand=false.
   const activeItem = visibleItems.find((i) => i.id === activeId);
 
   const tokens = sizeTokens[size];
-  const accent = activeColors[color] ?? defaultActive;
+  const accent = activeColors[color];
 
   const handleSelect = (item: SplitViewItem) => {
     if (item.disabled) return;
@@ -138,6 +321,22 @@ const SplitView: React.FC<SplitViewProps> = ({
       setInternalValue(item.id);
     }
     onChange?.(item.id, item);
+  };
+
+  const handleExpand = (item: SplitViewItem) => {
+    if (item.disabled) return;
+    const isAlreadyExpanded = expandedId === item.id;
+    if (isAlreadyExpanded) {
+      // Collapse
+      if (expandedValue === undefined) setInternalExpandedId(undefined);
+      onExpand?.(item.id, item);
+      return;
+    }
+    // Expand — also select the item
+    if (value === undefined) setInternalValue(item.id);
+    onChange?.(item.id, item);
+    if (expandedValue === undefined) setInternalExpandedId(item.id);
+    onExpand?.(item.id, item);
   };
 
   const listWidthClass = listWidth ?? "w-72";
@@ -159,109 +358,304 @@ const SplitView: React.FC<SplitViewProps> = ({
     );
   };
 
-  return (
-    <div className={classNames("flex h-full min-h-0 overflow-hidden", className)}>
-      {/* ---- List Panel ---- */}
-      <div
-        className={classNames(
-          "flex flex-col flex-shrink-0 border-r border-gray-200 bg-gray-50/80 h-full overflow-hidden",
-          listWidthClass,
-          listClassName,
-        )}
-      >
-        {/* Title */}
-        {listTitle && (
-          <div className="flex-shrink-0 px-4 pt-4 pb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              {listTitle}
-            </h3>
-          </div>
-        )}
+  /* ---- List panel width ---- */
+  const listPanelStyle: React.CSSProperties | undefined =
+    isCollapsed
+      ? { width: 48 }
+      : resizable
+        ? { width: resizableWidth }
+        : undefined;
 
-        {/* Search */}
-        <div className="flex-shrink-0 px-3 pb-2 pt-1">
-          <div className="relative">
-            <svg
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
-            </svg>
-            <input
-              type="text"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder={searchPlaceholder}
-              className={classNames(
-                "w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-gray-700 placeholder-gray-400",
-                "focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400",
-                "transition-colors duration-150",
-                tokens.search,
-              )}
+  const listPanelWidthClass = isCollapsed || resizable ? undefined : listWidthClass;
+
+  /* ---- Overlay helper ---- */
+  const renderOverlay = () => {
+    if (loading) {
+      return (
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-[inherit] bg-white/60 backdrop-blur-md dark:bg-neutral-900/50">
+          {loadingState ?? (
+            <Loader
+              size="lg"
+              label="Please wait..."
+              color="parallels"
+              variant="spinner"
+              title="Loading..."
+              spinnerThickness="thick"
+              spinnerVariant="segments"
             />
-            {filter && (
-              <button
-                onClick={() => setFilter("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
+          )}
         </div>
+      );
+    }
+    if (error) {
+      return (
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-[inherit] bg-white/60 backdrop-blur-md p-6 dark:bg-neutral-900/50">
+          {errorState ?? (
+            <EmptyState
+              icon="Error"
+              title="Something went wrong"
+              subtitle={typeof error === "string" ? error : "An unexpected error occurred."}
+              tone="danger"
+              showIcon
+              actionLabel={onRetry ? "Retry" : undefined}
+              onAction={onRetry}
+              actionVariant="solid"
+              actionColor="blue"
+              disableBorder
+              size="lg"
+            />
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
 
-        {/* Item list */}
-        <div className="flex-1 overflow-y-auto">
-          {filteredItems.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-gray-400">
-              {emptyState ?? "No items found"}
-            </div>
-          ) : (
-            filteredItems.map((item) => {
-              const isActive = item.id === activeId;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  disabled={item.disabled}
-                  onClick={() => handleSelect(item)}
-                  className={classNames(
-                    "w-full text-left border-l-3 transition-all duration-150 outline-none",
-                    "disabled:opacity-50 disabled:cursor-not-allowed",
-                    tokens.item,
-                    isActive
-                      ? classNames(accent.bg, accent.border, "border-l-[3px]")
-                      : "border-l-[3px] border-l-transparent hover:bg-gray-100/80",
-                  )}
-                >
-                  <div className={classNames("font-semibold leading-tight", tokens.label, isActive ? accent.text : "text-gray-900")}>
-                    {item.label}
-                  </div>
-                  {item.subtitle && (
-                    <div className={classNames("mt-0.5 leading-tight", tokens.subtitle, isActive ? accent.subtitle : "text-gray-500")}>
-                      {item.subtitle}
-                    </div>
-                  )}
-                  {item.badges && item.badges.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      {item.badges.map((badge, idx) => renderBadge(badge, idx))}
-                    </div>
-                  )}
-                </button>
-              );
-            })
+  /* ---- Auto-hide: just render the detail panel ---- */
+  if (shouldHideList) {
+    const singleItem = visibleItems[0];
+    return (
+      <div className={classNames("relative flex h-full min-h-0 overflow-hidden", borderLeft && "border-l border-gray-200 dark:border-gray-700", className)}>
+        {renderOverlay()}
+        <div className={classNames("flex flex-1 flex-col min-w-0 h-full overflow-hidden", panelClassName)}>
+          {singleItem && (
+            <>
+              {panelHeader && (
+                <div className="flex-shrink-0">
+                  {typeof panelHeader === "function" ? panelHeader(singleItem) : panelHeader}
+                </div>
+              )}
+              <div className={classNames("flex-1", panelScrollable ? "overflow-y-auto" : "overflow-hidden")}>
+                {singleItem.panel}
+              </div>
+            </>
           )}
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className={classNames("relative flex h-full min-h-0 overflow-hidden", borderLeft && "border-l border-gray-200 dark:border-gray-700", className)}>
+      {renderOverlay()}
+      {/* ---- List Panel ---- */}
+      <div
+        style={listPanelStyle}
+        className={classNames(
+          "flex flex-col flex-shrink-0 border-r border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/80 h-full overflow-hidden",
+          isCollapsed && "transition-[width] duration-300 ease-in-out",
+          listPanelWidthClass,
+          listClassName,
+        )}
+      >
+        {isCollapsed ? (
+          /* ---- Collapsed: just an expand button ---- */
+          <div className="flex items-center justify-center pt-3">
+            <IconButton
+              icon="ChevronRight"
+              variant="ghost"
+              color="slate"
+              accentColor="parallels"
+              size="xs"
+              onClick={toggleCollapsed}
+              aria-label="Expand list"
+            />
+          </div>
+        ) : (
+          <>
+            {/* Title + Actions */}
+            {(listTitle || listActions || collapsible) && (
+              <div className="flex-shrink-0 px-4 pt-4 pb-2 flex items-center justify-between gap-2">
+                {listTitle && (
+                  <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    {listTitle}
+                  </h3>
+                )}
+                <div className="flex items-center gap-1 ml-auto">
+                  {listActions}
+                  {collapsible && (
+                    <IconButton
+                      icon="ChevronLeft"
+                      variant="ghost"
+                      color="slate"
+                      accentColor="parallels"
+                      size="xs"
+                      onClick={toggleCollapsed}
+                      aria-label="Collapse list"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Search — hidden when only one item since there is nothing to filter */}
+            {visibleItems.length > 1 && (
+              <div className="flex-shrink-0 px-3 pb-2 pt-1">
+                <SearchBar
+                  placeholder={searchPlaceholder}
+                  variant="gradient"
+                  glowIntensity="subtle"
+                  onSearch={setFilter}
+                />
+              </div>
+            )}
+
+            {/* Item list */}
+            <div className="flex-1 overflow-y-auto">
+              {filteredItems.length === 0 ? (
+                <div className="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
+                  {emptyState ?? "No items found"}
+                </div>
+              ) : (
+                filteredItems.map((item) => {
+                  const isActive = item.id === activeId;
+                  const isExpanded = item.id === expandedId;
+                  return (
+                    <div key={item.id}>
+                      <button
+                        type="button"
+                        disabled={item.disabled}
+                        onClick={() => autoExpand ? handleSelect(item) : handleSelect(item)}
+                        className={classNames(
+                          "group/item w-full text-left border-l-3 transition-all duration-150 outline-none",
+                          "disabled:opacity-50 disabled:cursor-not-allowed",
+                          tokens.item,
+                          // Both modes: full accent bg+border when the row is selected (isActive).
+                          // autoExpand=false additionally tracks isExpanded for subContent only —
+                          // but the row highlight is identical in both modes.
+                          isActive
+                            ? classNames(accent.bg, accent.border, "border-l-[3px]")
+                            : "border-l-[3px] border-l-transparent hover:bg-gray-100/80 dark:hover:bg-gray-800/60",
+                        )}
+                      >
+                        <div className="flex items-start gap-2">
+                          {/* Item content */}
+                          <div className="flex-1 min-w-0">
+                            <div className={classNames(
+                              "flex gap-2 font-semibold leading-tight",
+                              tokens.label,
+                              isActive ? accent.text : "text-gray-900 dark:text-gray-100",
+                            )}>
+
+                              {item.icon && (
+                                <div className="flex items-start">
+                                  <CustomIcon icon={item.icon} className={classNames("flex-shrink-0", iconSizeClasses[size])} />
+                                </div>
+                              )}
+                              <div className="flex items-center w-full">
+                                <span className="truncate">{item.label}</span>
+                              </div>
+
+                            </div>
+                            {item.subtitle && (
+                              <div className={classNames(
+                                "mt-0.5 leading-tight truncate",
+                                tokens.subtitle,
+                                isActive ? accent.subtitle : "text-gray-500 dark:text-gray-400",
+                                item.icon && "ml-7",
+                              )}>
+                                {item.subtitle}
+                              </div>
+                            )}
+                            {item.badges && item.badges.length > 0 && (
+                              <div className={classNames("flex flex-wrap gap-1.5 mt-1.5", item.icon && "ml-7")}>
+                                {item.badges.map((badge, idx) => renderBadge(badge, idx))}
+                              </div>
+                            )}
+                          </div>
+                          {/* Item actions (hover-reveal) */}
+                          {item.actions && (
+                            <div
+                              className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity duration-150"
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
+                              {item.actions}
+                            </div>
+                          )}
+                          {/* Expand button – only when autoExpand=false */}
+                          {!autoExpand && (
+                            <div
+                              className="flex-shrink-0 flex items-center"
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                disabled={item.disabled || item.subContent === undefined}
+                                onClick={() => handleExpand(item)}
+                                title={isExpanded ? "Collapse details" : "Expand details"}
+                                aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                                aria-expanded={isExpanded}
+                                className={classNames(
+                                  "rounded p-1 transition-colors duration-150",
+                                  item.subContent === undefined
+                                    ? "invisible"
+                                    : isExpanded
+                                      ? classNames(accent.text, "opacity-100")
+                                      : "text-gray-400 opacity-0 group-hover/item:opacity-100 hover:text-gray-700 dark:hover:text-gray-200",
+                                )}
+                              >
+                                <svg
+                                  className={classNames(
+                                    "h-4 w-4 transition-transform duration-200 ease-in-out",
+                                    isExpanded ? "rotate-90" : "rotate-0",
+                                  )}
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                      {item.subContent !== undefined && (
+                        <div
+                          className={classNames(
+                            "grid transition-[grid-template-rows,opacity] duration-300 ease-in-out",
+                            // When autoExpand=false, subContent is gated by the expand button (isExpanded),
+                            // not by row selection (isActive) — fixes both the auto-expand and sticky-collapse bugs.
+                            (autoExpand ? isActive : isExpanded) ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+                          )}
+                        >
+                          <div className="overflow-hidden">
+                            <div className={classNames("border-l-[3px]", (autoExpand ? isActive : isExpanded) ? accent.border : "border-l-transparent")}>
+                              {item.subContent}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </>
+        )
+        }
+      </div >
+
+      {/* ---- Resize Handle ---- */}
+      {
+        resizable && !isCollapsed && (
+          <div
+            {...handleProps}
+            className={classNames(
+              "w-1.5 flex-shrink-0 cursor-col-resize transition-colors duration-150",
+              "hover:bg-blue-400/30 active:bg-blue-400/40",
+              isDragging && "bg-blue-400/40",
+            )}
+          />
+        )
+      }
 
       {/* ---- Detail Panel ---- */}
-      <div className={classNames("flex flex-1 flex-col min-w-0 h-full overflow-hidden", panelClassName)}>
-        {activeItem && (
+      <div className={classNames("flex flex-1 flex-col min-w-0 h-full bg-white overflow-hidden", panelClassName)}>
+        {activeItem ? (
           <>
             {/* Panel Header */}
             {panelHeader && (
@@ -270,13 +664,24 @@ const SplitView: React.FC<SplitViewProps> = ({
               </div>
             )}
             {/* Panel Body */}
-            <div className="flex-1 overflow-y-auto">
+            <div className={classNames("flex-1", panelScrollable ? "overflow-y-auto" : "overflow-hidden")}>
               {activeItem.panel}
             </div>
           </>
+        ) : panelEmptyState !== null && (
+          <div className="flex flex-1 items-center justify-center p-6">
+            {panelEmptyState ?? (
+              <EmptyState
+                icon="Info"
+                title="No item selected"
+                subtitle="Select an item from the list to view its details."
+                showIcon
+              />
+            )}
+          </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

@@ -17,6 +17,7 @@ export * from "./utils";
 
 // Types
 export * from "./types";
+export * from "./components/MetricBar";
 
 // Icons
 export * from "./icons";

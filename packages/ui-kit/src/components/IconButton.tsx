@@ -17,11 +17,11 @@ const sizeTokens: Record<
     spinner: SpinnerSize;
   }
 > = {
-  xs: { button: "h-7 w-7 text-xs", icon: "h-4 w-4", spinner: "xs" },
-  sm: { button: "h-8 w-8 text-sm", icon: "h-5 w-5", spinner: "xs" },
-  md: { button: "h-10 w-10 text-base", icon: "h-6 w-6", spinner: "sm" },
-  lg: { button: "h-12 w-12 text-lg", icon: "h-7 w-7", spinner: "md" },
-  xl: { button: "h-14 w-14 text-xl", icon: "h-8 w-8", spinner: "lg" },
+  xs: { button: "h-7 w-7 leading-none", icon: "h-4 w-4", spinner: "xs" },
+  sm: { button: "h-8 w-8 leading-none", icon: "h-5 w-5", spinner: "xs" },
+  md: { button: "h-10 w-10 leading-none", icon: "h-6 w-6", spinner: "sm" },
+  lg: { button: "h-12 w-12 leading-none", icon: "h-7 w-7", spinner: "md" },
+  xl: { button: "h-14 w-14 leading-none", icon: "h-8 w-8", spinner: "lg" },
 };
 
 const roundedMap: Record<IconButtonRounded, string> = {
@@ -82,6 +82,12 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       ? classNames("bg-transparent text-inherit hover:bg-transparent focus-visible:ring-2 focus-visible:ring-offset-2", accentRing, accentHover)
       : null;
 
+    // When accent is off but accentColor is explicitly provided,
+    // apply hover text color for non-solid variants (ghost, soft, outline, icon)
+    const nonAccentHover = !accent && accentColor && variant !== "solid"
+      ? iconAccentHover[accentColor] ?? null
+      : null;
+
     const dimensionClass = customSizeClass ?? sizeConfig.button;
     const spinnerColorToken: SpinnerColor = spinnerColor ?? (color as SpinnerColor);
 
@@ -90,10 +96,18 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       dimensionClass,
       roundedMap[rounded] ?? roundedMap.full,
       accentClasses ?? baseColorClasses,
+      nonAccentHover,
       className
     );
 
     const iconContent = renderIcon(icon, size as IconSize, classNames("flex-shrink-0", sizeConfig.icon, iconClassName));
+
+    // Pull aria-label and title out of rest so we can set them explicitly.
+    // title falls back to aria-label → srLabel so the native browser tooltip
+    // always shows the accessible label rather than the icon's own SVG title.
+    const { "aria-label": ariaLabel, title, ...restProps } = rest;
+    const computedAriaLabel = ariaLabel ?? srLabel;
+    const computedTitle = title ?? computedAriaLabel;
 
     return (
       <button
@@ -103,8 +117,9 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         data-color={color}
         data-size={size}
         disabled={disabled || loading}
-        aria-label={rest["aria-label"] ?? srLabel}
-        {...rest}
+        aria-label={computedAriaLabel}
+        title={computedTitle}
+        {...restProps}
       >
         {loading ? <Spinner size={sizeConfig.spinner} color={spinnerColorToken} variant={spinnerVariant} aria-hidden="true" /> : iconContent}
         <span className="sr-only">{srLabel ?? rest["aria-label"] ?? "Icon button"}</span>

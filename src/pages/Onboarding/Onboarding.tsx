@@ -9,6 +9,9 @@ import { useSession } from '../../contexts/SessionContext';
 import { authService } from '../../services/authService';
 import { HostAuthType, HostConfig } from '../../interfaces/Host';
 import { getPasswordKey, getApiKeyKey } from '../../utils/secretKeys';
+import { decodeToken } from '../../utils/tokenUtils';
+import { devopsService } from '../../services/devops';
+import { HostHardwareInfo } from '../../interfaces/devops';
 
 interface DialogInformation {
   isOpen: boolean;
@@ -183,9 +186,10 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
         });
 
         const t1 = performance.now();
-        await authService.getAccessToken(hostname);
+        // Force re-authentication to get a fresh token with latest claims/roles
+        await authService.forceReauth(hostname);
         const t2 = performance.now();
-        console.log(`[Onboarding] Step 2: token obtained (${((t2 - t1) / 1000).toFixed(2)}s)`);
+        console.log(`[Onboarding] Step 2: fresh token obtained (${((t2 - t1) / 1000).toFixed(2)}s)`);
 
         // Save secrets
         console.log('[Onboarding] Step 3: saving secrets, keepLoggedIn=', keepLoggedIn);
@@ -210,6 +214,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
         console.log(`[Onboarding] Step 4: flushSecrets done (${((t5 - t4) / 1000).toFixed(2)}s)`);
 
         // Upsert host by hostname — never create duplicates
+
+        // Fetch hardware info (non-fatal)
+        let hardwareInfo: HostHardwareInfo | undefined;
+        try {
+          console.log('[Onboarding] Fetching hardware info...');
+          hardwareInfo = await devopsService.config.getHardwareInfo(hostname);
+          console.log('[Onboarding] Hardware info fetched');
+        } catch (hwError) {
+          console.warn('[Onboarding] Could not fetch hardware info, continuing without it', hwError);
+        }
+
         const existingHosts = (await config.get<HostConfig[]>('hosts')) ?? [];
         const existingIndex = existingHosts.findIndex((h) => h.hostname === hostname);
 
@@ -228,6 +243,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
           lastUsed: new Date().toISOString(),
           isDefault: willBeOnlyHost ? true : (existingIndex >= 0 ? existingHosts[existingIndex].isDefault : undefined),
           type: 'Orchestrator',
+          hardwareInfo: hardwareInfo,
         };
 
         if (existingIndex >= 0) {
@@ -248,6 +264,18 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
 
         // Set session data
         authService.currentHostname = hostname;
+
+        // Get and decode the token
+        const token = authService.getToken(hostname);
+        const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
+
+        if (!tokenPayload) {
+          console.warn('[Onboarding] Failed to decode token, session will have limited functionality');
+        }
+
+
+
+        console.log('[Onboarding] Setting session...');
         setSession({
           serverUrl: normalizedUrl,
           hostname,
@@ -255,11 +283,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
           authType,
           hostId: hostEntry.id,
           connectedAt: new Date().toISOString(),
+          tokenPayload,
+          hardwareInfo,
         });
 
+        console.log('[Onboarding] Navigating to home...');
         navigate('/', { replace: true });
       } catch (error: unknown) {
         console.error('[Onboarding] CAUGHT ERROR:', error);
+        if (error instanceof Error) {
+          console.error('[Onboarding] Error stack:', error.stack);
+        }
         setIsSaving(false);
         setDialog({
           isOpen: true,
@@ -317,13 +351,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
                   type="url"
                   tone="blue"
                   value={serverUrl}
-                  onChange={(e) => {
-                    if (e.target.value && !e.target.value.startsWith('http')) {
-                      setServerUrl('https://' + e.target.value)
-                    } else {
-                      setServerUrl(e.target.value)
+                  onChange={(e) => setServerUrl(e.target.value)}
+                  onBlur={() => {
+                    if (serverUrl && !/^https?:\/\//i.test(serverUrl)) {
+                      setServerUrl('https://' + serverUrl);
                     }
-                    handleBlur('serverUrl')
+                    handleBlur('serverUrl');
                   }}
                   required={true}
                   placeholder="https://your-server.example.com"

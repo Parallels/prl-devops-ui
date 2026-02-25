@@ -26,6 +26,8 @@ export interface TableColumn<T> {
   header: React.ReactNode;
   accessor?: keyof T | AccessorFn<T>;
   render?: (row: T, index: number) => React.ReactNode;
+  /** Override the value used for sorting when render returns a non-primitive (e.g. an icon). */
+  sortValue?: (row: T) => string | number;
   width?: string | number;
   minWidth?: string | number;
   maxWidth?: string | number;
@@ -39,7 +41,7 @@ export interface TableColumn<T> {
 
 export type Column<T> = TableColumn<T>;
 
-export type TableVariant = "default" | "compact" | "minimal" | "bordered";
+export type TableVariant = "default" | "compact" | "minimal" | "bordered" | "flat";
 
 export interface TableProps<T> {
   columns: TableColumn<T>[];
@@ -48,6 +50,7 @@ export interface TableProps<T> {
   variant?: TableVariant;
   tone?: PanelTone;
   striped?: boolean;
+  noBorders?: boolean;
   hoverable?: boolean;
   stickyHeader?: boolean;
   loading?: boolean;
@@ -70,6 +73,8 @@ export interface TableProps<T> {
   style?: React.CSSProperties;
   fullHeight?: boolean;
   manualSorting?: boolean;
+  /** When true, wraps the table in a rounded border regardless of the variant. */
+  rounded?: boolean;
 }
 
 const resolveColor = (color: ThemeColor): string => {
@@ -86,6 +91,8 @@ const resolveColor = (color: ThemeColor): string => {
       return "rose";
     case "theme":
       return "neutral";
+    case "parallels":
+      return "red";
     default:
       return color;
   }
@@ -106,6 +113,7 @@ const variantCellPadding: Record<TableVariant, string> = {
   compact: "px-4 py-3 text-sm",
   minimal: "px-3 py-4 text-xs",
   bordered: "px-5 py-5 text-sm",
+  flat: "px-4 py-3 text-sm",
 };
 
 const variantSidePadding: Record<TableVariant, { left: string; right: string; contentVertical: string }> = {
@@ -113,6 +121,7 @@ const variantSidePadding: Record<TableVariant, { left: string; right: string; co
   compact: { left: "pl-4", right: "pr-4", contentVertical: "py-1" },
   minimal: { left: "pl-3", right: "pr-3", contentVertical: "py-1.5" },
   bordered: { left: "pl-5", right: "pr-5", contentVertical: "py-1.5" },
+  flat: { left: "pl-4", right: "pr-4", contentVertical: "py-1.5" },
 };
 
 const variantTableBase: Record<TableVariant, string> = {
@@ -120,6 +129,7 @@ const variantTableBase: Record<TableVariant, string> = {
   compact: "min-w-full divide-y divide-neutral-200 dark:divide-neutral-700",
   minimal: "min-w-full divide-y divide-neutral-200 dark:divide-neutral-700",
   bordered: "min-w-full border border-neutral-200 dark:border-neutral-700",
+  flat: "min-w-full divide-y divide-neutral-100 dark:divide-neutral-800",
 };
 
 const variantWrapperBase: Record<TableVariant, string> = {
@@ -127,6 +137,7 @@ const variantWrapperBase: Record<TableVariant, string> = {
   compact: "overflow-hidden rounded-2xl border border-neutral-200/60 bg-white shadow-sm dark:border-neutral-700/60 dark:bg-neutral-900/90",
   minimal: "overflow-hidden rounded-xl border border-neutral-200/60 bg-white/95 shadow-sm dark:border-neutral-700/60 dark:bg-neutral-900/90",
   bordered: "overflow-hidden rounded-2xl border border-neutral-300 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900",
+  flat: "overflow-hidden bg-transparent dark:bg-transparent",
 };
 
 const alignmentClass: Record<NonNullable<TableColumn<unknown>["align"]>, string> = {
@@ -135,7 +146,14 @@ const alignmentClass: Record<NonNullable<TableColumn<unknown>["align"]>, string>
   right: "text-right",
 };
 
+const alignmentFlexClass: Record<NonNullable<TableColumn<unknown>["align"]>, string> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
 const getCellAlignment = (align?: TableColumn<unknown>["align"]) => (align ? alignmentClass[align] : "text-left");
+const getCellFlexAlignment = (align?: TableColumn<unknown>["align"]) => (align ? alignmentFlexClass[align] : "justify-start");
 
 const sortIconMap: Record<"asc" | "desc" | "default", IconName> = {
   asc: "ArrowUp",
@@ -205,6 +223,7 @@ function TableComponent<T>({
   variant = "default",
   tone = "neutral",
   striped = false,
+  noBorders = false,
   hoverable = true,
   stickyHeader = false,
   loading = false,
@@ -227,6 +246,7 @@ function TableComponent<T>({
   fullHeight,
   pagination,
   manualSorting = false,
+  rounded = false,
 }: TableProps<T>) {
   const [internalSort, setInternalSort] = useState<TableSortState | null>(defaultSort ?? null);
 
@@ -261,16 +281,21 @@ function TableComponent<T>({
 
     const column = columns.find((col) => col.id === resolvedSort.columnId);
 
-    if (!column || (!column.accessor && !column.render)) {
+    if (!column || (!column.accessor && !column.render && !column.sortValue)) {
       return data;
     }
 
-    const accessor = column.render ? column.render : (row: T, index: number) => resolveValue(row, column, index);
+    // sortValue takes priority; fall back to accessor, then render
+    const getValue = column.sortValue
+      ? (row: T) => column.sortValue!(row)
+      : column.render
+        ? (row: T, index: number) => column.render!(row, index)
+        : (row: T, index: number) => resolveValue(row, column, index);
 
     const sorted = [...data];
     sorted.sort((a, b) => {
-      const aValue = accessor(a, data.indexOf(a));
-      const bValue = accessor(b, data.indexOf(b));
+      const aValue = getValue(a, data.indexOf(a));
+      const bValue = getValue(b, data.indexOf(b));
 
       if (aValue === bValue) {
         return 0;
@@ -296,16 +321,24 @@ function TableComponent<T>({
     return sorted;
   }, [resolvedSort, columns, data]);
 
-  const wrapperClasses = classNames("w-full", variantWrapperBase[variant], fullHeight && "h-full flex flex-col", className);
+  const wrapperClasses = classNames(
+    "w-full",
+    variantWrapperBase[variant],
+    rounded && "overflow-hidden rounded-2xl border border-neutral-200/80 dark:border-neutral-700/60",
+    fullHeight && "h-full flex flex-col",
+    className,
+  );
   const tableClasses = classNames(variantTableBase[variant], tableClassName);
 
   const cellPadding = variantCellPadding[variant];
   const sidePaddingTokens = variantSidePadding[variant];
 
-  const headerToneClasses = getToneHeaderClasses(tone);
+  const headerToneClasses = variant === "flat"
+    ? "bg-white text-neutral-500 dark:bg-transparent dark:text-neutral-400 border-neutral-200 dark:border-neutral-700"
+    : getToneHeaderClasses(tone);
   const headerBaseClasses = "text-xs font-semibold uppercase tracking-wide text-left text-neutral-600 dark:text-neutral-200";
 
-  const tbodyClasses = classNames("bg-white dark:bg-neutral-900/40 divide-y divide-neutral-200 dark:divide-neutral-800", striped && "divide-y-0", bodyClassName);
+  const tbodyClasses = classNames("bg-white dark:bg-neutral-900/40 divide-y divide-neutral-200 dark:divide-neutral-800", (striped || noBorders) && "divide-y-0", bodyClassName);
 
   const scrollContainerStyle = maxHeight
     ? {
@@ -397,10 +430,10 @@ function TableComponent<T>({
                         const rowClasses = classNames(
                           cellPadding,
                           "group", // Add group for child hover targeting
-                          hoverable && "hover:bg-neutral-50 dark:hover:bg-neutral-800/40",
-                          striped && rowIndex % 2 === 1 && "bg-neutral-50 dark:bg-neutral-800/20",
+                          hoverable && "hover:bg-neutral-200/60 dark:hover:bg-neutral-700/40",
+                          striped && rowIndex % 2 === 1 && "bg-neutral-100 dark:bg-neutral-800/40",
                           "transition-colors duration-150 ease-out",
-                          onRowClick && "cursor-pointer",
+                          onRowClick ? "cursor-pointer" : "cursor-default",
                           rowClassName ? rowClassName(row, rowIndex) : undefined,
                         );
 
@@ -421,9 +454,9 @@ function TableComponent<T>({
                                     column.sticky === "left" && "left-0",
                                     column.sticky === "right" && "right-0",
                                     column.sticky && "z-10",
-                                    column.sticky && (striped && rowIndex % 2 === 1 ? "bg-neutral-50 dark:bg-neutral-800/20" : "bg-white dark:bg-neutral-900"),
+                                    column.sticky && (striped && rowIndex % 2 === 1 ? "bg-neutral-100 dark:bg-neutral-800/40" : "bg-white dark:bg-neutral-900"),
                                     // Apply hover background to sticky cells when row is hovered
-                                    column.sticky && hoverable && "group-hover:bg-neutral-50 dark:group-hover:bg-neutral-800/40",
+                                    column.sticky && hoverable && "group-hover:bg-neutral-200/60 dark:group-hover:bg-neutral-700/40",
                                     getCellAlignment(column.align),
                                     colIndex === 0 && sidePaddingTokens.left,
                                     colIndex === columns.length - 1 && sidePaddingTokens.right,
@@ -434,9 +467,11 @@ function TableComponent<T>({
                                 >
                                   <div
                                     className={classNames(
+                                      "flex items-center",
                                       "py-1",
                                       sidePaddingTokens.contentVertical,
-                                      isTruncated && "truncate", // Added truncate class to wrapper div
+                                      getCellFlexAlignment(column.align),
+                                      isTruncated && "truncate",
                                     )}
                                   >
                                     {cellValue}

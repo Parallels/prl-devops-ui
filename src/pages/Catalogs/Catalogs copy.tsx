@@ -1,5 +1,5 @@
-import React from "react";
-import { SplitView, type SplitViewItem, Button, SearchBar } from "@prl/ui-kit";
+import React, { useState } from "react";
+import { SplitView, type SplitViewItem, Button, SearchBar, Table, type Column } from "@prl/ui-kit";
 
 /* ------------------------------------------------------------------ */
 /*  Demo data                                                          */
@@ -33,34 +33,25 @@ const legacyImages: CatalogImage[] = [
 ];
 
 /* ------------------------------------------------------------------ */
-/*  Image table                                                        */
+/*  Image table columns                                                */
 /* ------------------------------------------------------------------ */
 
+const imageColumns: Column<CatalogImage>[] = [
+  { id: "name", header: "Name", accessor: "name", sortable: true },
+  { id: "os", header: "OS", accessor: "os", sortable: true },
+  { id: "version", header: "Ver", accessor: "version" },
+  { id: "size", header: "Size", accessor: "size" },
+  { id: "created", header: "Created", accessor: "created", sortable: true },
+];
+
 const ImageTable: React.FC<{ images: CatalogImage[] }> = ({ images }) => (
-  <div className="overflow-x-auto">
-    <table className="min-w-full text-sm">
-      <thead>
-        <tr className="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
-          <th className="px-4 py-3">Name</th>
-          <th className="px-4 py-3">OS</th>
-          <th className="px-4 py-3">Ver</th>
-          <th className="px-4 py-3">Size</th>
-          <th className="px-4 py-3">Created</th>
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-gray-100">
-        {images.map((img) => (
-          <tr key={img.name} className="hover:bg-gray-50/60 transition-colors">
-            <td className="px-4 py-3 font-medium text-gray-900">{img.name}</td>
-            <td className="px-4 py-3 text-gray-600">{img.os}</td>
-            <td className="px-4 py-3 text-gray-600">{img.version}</td>
-            <td className="px-4 py-3 text-gray-600">{img.size}</td>
-            <td className="px-4 py-3 text-gray-500">{img.created}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
+  <Table<CatalogImage>
+    columns={imageColumns}
+    data={images}
+    variant="flat"
+    rowKey={(row) => row.name}
+    hoverable
+  />
 );
 
 /* ------------------------------------------------------------------ */
@@ -73,7 +64,7 @@ const LibraryPanelHeader: React.FC<{ label: React.ReactNode }> = ({ label }) => 
       Library: <span className="text-gray-700">{label}</span>
     </h2>
     <div className="flex items-center gap-3">
-      <SearchBar placeholder="Search for images" onSearch={() => {}} className="w-52" />
+      <SearchBar placeholder="Search for images" onSearch={() => { }} className="w-52" />
       <Button variant="solid" color="red" size="sm" leadingIcon="Add">Upload ISO</Button>
       <Button variant="outline" color="gray" size="sm" leadingIcon="Settings">Settings</Button>
     </div>
@@ -112,14 +103,19 @@ const libraryItems: SplitViewItem[] = [
 /*  Page                                                               */
 /* ------------------------------------------------------------------ */
 
-export const Libraries: React.FC = () => {
+export const CatalogsOld: React.FC = () => {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <SplitView
+      resizable={true}
+      collapsed={collapsed}
+      collapsible={true}
+      onCollapsedChange={() => setCollapsed(!collapsed)}
       items={libraryItems}
       defaultValue="production"
       listTitle={`Libraries (${libraryItems.length})`}
       searchPlaceholder="Search"
-      color="blue"
+      color="parallels"
       panelHeader={(activeItem) => <LibraryPanelHeader label={activeItem.label} />}
       className="h-full"
     />

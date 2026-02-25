@@ -30,6 +30,7 @@
  * ```
  */
 
+import { apiKeysService } from './apiKeysService';
 import { cacheService } from './cacheService';
 import { catalogService } from './catalogService';
 import { claimsService } from './claimsService';
@@ -45,6 +46,9 @@ import { usersService } from './usersService';
  * Provides access to all DevOps API operations through organized sub-services
  */
 export const devopsService = {
+  /** API key management */
+  apiKeys: apiKeysService,
+
   /** Catalog cache operations */
   cache: cacheService,
   
@@ -77,6 +81,7 @@ export const devopsService = {
  * Export individual services for direct access if needed
  */
 export {
+  apiKeysService,
   cacheService,
   catalogService,
   claimsService,

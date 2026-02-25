@@ -1,10 +1,11 @@
 import { apiService } from '../api';
-import { 
-  DevOpsRemoteHost, 
-  DevOpsRemoteHostResource,
+import {
+  DevOpsRemoteHost,
   AddOrchestratorHostRequest,
   UpdateOrchestratorHostRequest
 } from '../../interfaces/devops';
+import { OrchestratorResource } from '@/interfaces/Orchestrator';
+import { VirtualMachine } from '@/interfaces/VirtualMachine';
 
 /**
  * Orchestrator Service - Handles orchestrator and host management operations
@@ -29,28 +30,6 @@ class OrchestratorService {
       return hosts || [];
     } catch (error) {
       console.error('Failed to get orchestrator hosts:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get orchestrator resources
-   * 
-   * @param hostname - The hostname identifier for the target server
-   * @returns Array of orchestrator resources
-   * @throws ApiError
-   */
-  async getOrchestratorResources(hostname: string): Promise<DevOpsRemoteHostResource[]> {
-    try {
-      const resources = await apiService.get<DevOpsRemoteHostResource[]>(
-        hostname,
-        '/api/v1/orchestrator/resources',
-        { errorPrefix: 'Failed to get orchestrator resources' }
-      );
-
-      return resources || [];
-    } catch (error) {
-      console.error('Failed to get orchestrator resources:', error);
       throw error;
     }
   }
@@ -186,6 +165,50 @@ class OrchestratorService {
       return true;
     } catch (error) {
       console.error(`Failed to remove orchestrator host ${hostId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get orchestrator resources
+   * 
+   * @param hostname - The hostname identifier for the target server
+   * @returns Array of orchestrator resources
+   * @throws ApiError
+   */
+  async getOrchestratorResources(hostname: string): Promise<OrchestratorResource[]> {
+    try {
+      const resources = await apiService.get<OrchestratorResource[]>(
+        hostname,
+        '/api/v1/orchestrator/overview/resources',
+        { errorPrefix: 'Failed to get orchestrator resources' }
+      );
+
+      return resources || [];
+    } catch (error) {
+      console.error('Failed to get orchestrator resources:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get orchestrator vms
+   * 
+   * @param hostname - The hostname identifier for the target server
+   * @returns Array of orchestrator resources
+   * @throws ApiError
+   */
+  async getOrchestratorVMs(hostname: string, hostId: string): Promise<VirtualMachine[]> {
+    try {
+      const virtualMachines = await apiService.get<VirtualMachine[]>(
+        hostname,
+        `/api/v1/orchestrator/hosts/${hostId}/machines`,
+        { errorPrefix: 'Failed to get orchestrator machines' }
+      );
+
+      return virtualMachines || [];
+    } catch (error) {
+      console.error('Failed to get orchestrator machines:', error);
       throw error;
     }
   }

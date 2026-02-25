@@ -2,6 +2,8 @@
  * DevOps API related interfaces
  */
 
+import { VirtualMachine } from "./VirtualMachine";
+
 /**
  * Catalog manifest item from API
  */
@@ -29,30 +31,55 @@ export interface CatalogManifestItemDetail {
 }
 
 /**
- * Hardware information from remote host
+ * Resource counters returned by /api/v1/config/hardware and /api/v1/orchestrator/resources.
+ * memory_size is in MB; logical_cpu_count is cores.
+ * disk_count is used by the hardware endpoint; disk_size (also MB) by the orchestrator endpoint.
  */
-export interface HostHardwareInfo {
-  total_memory?: string;
-  total_available?: string;
-  cpu_type?: string;
-  cpu_brand?: string;
+export interface HardwareResourceStats {
   logical_cpu_count?: number;
-  physical_cpu_count?: number;
-  [key: string]: unknown;
+  memory_size?: number;
+  disk_count?: number;
+  disk_size?: number;
+}
+
+export interface HardwareReverseProxy {
+  enabled?: boolean;
+  host?: string;
+  port?: string;
 }
 
 /**
- * Virtual machine from API
+ * Hardware information from /api/v1/config/hardware
  */
-export interface VirtualMachine {
-  ID?: string;
-  Name?: string;
-  Description?: string;
-  State?: string;
-  OS?: string;
-  host_id?: string;
-  user?: string;
-  [key: string]: unknown;
+export interface HostHardwareInfo {
+  cpu_type?: string;
+  cpu_brand?: string;
+  devops_version?: string;
+  os_name?: string;
+  os_version?: string;
+  parallels_desktop_version?: string;
+  parallels_desktop_licensed?: boolean;
+  external_ip_address?: string;
+  is_reverse_proxy_enabled?: boolean;
+  is_log_streaming_enabled?: boolean;
+  reverse_proxy?: HardwareReverseProxy;
+  system_reserved?: HardwareResourceStats;
+  total?: HardwareResourceStats;
+  total_available?: HardwareResourceStats;
+  total_in_use?: HardwareResourceStats;
+  total_reserved?: HardwareResourceStats;
+  enabled_modules?: string[];
+  cache_config?: CacheConfig;
+}
+
+/**
+ * Cache configuration
+ */
+export interface CacheConfig {
+  enabled: boolean;
+  folder: string;
+  keep_free_disk_space: number;
+  max_size: number;
 }
 
 /**
@@ -68,10 +95,34 @@ export interface VirtualMachineConfigureRequest {
  */
 export interface DevOpsRemoteHost {
   id?: string;
-  host?: string;
+  enabled: boolean;
+  host: string;
+  architecture?: string;
+  cpu_model?: string;
+  os_version?: string;
+  os_name?: string;
+  external_ip_address?: string;
+  devops_version?: string;
   description?: string;
-  enabled?: boolean;
+  tags?: string[];
+  state: "healthy" | "unhealthy";
+  parallels_desktop_version?: string;
+  parallels_desktop_licensed?: boolean;
+  has_websocket_events?: boolean;
+  is_reverse_proxy_enabled?: boolean;
   resources?: DevOpsRemoteHostResource[];
+  detailed_resources?: DevOpsRemoteHostResourceDetailed;
+  vms?: VirtualMachine[];
+  [key: string]: unknown;
+}
+
+export interface DevOpsRemoteHostResourceDetailed {
+  total_apple_vms?: number;
+  system_reserved?: HardwareResourceStats;
+  total?: HardwareResourceStats;
+  total_available?: HardwareResourceStats;
+  total_in_use?: HardwareResourceStats;
+  total_reserved?: HardwareResourceStats;
   [key: string]: unknown;
 }
 
@@ -79,9 +130,10 @@ export interface DevOpsRemoteHost {
  * DevOps remote host resource
  */
 export interface DevOpsRemoteHostResource {
-  id?: string;
-  type?: string;
-  state?: string;
+  total_apple_vms?: number;
+  logical_cpu_count?: number;
+  memory_size?: number;
+  disk_size?: number;
   [key: string]: unknown;
 }
 
@@ -148,6 +200,7 @@ export interface DevOpsRolesAndClaims {
   id?: string;
   name?: string;
   description?: string;
+  users?: DevOpsUser[];
   [key: string]: unknown;
 }
 
@@ -187,25 +240,40 @@ export interface UpdateOrchestratorHostRequest {
   [key: string]: unknown;
 }
 
+
+
 /**
- * Catalog cache manifest item
+ * API Key entity
  */
-export interface CatalogCacheManifestItem {
-  catalog_id?: string;
-  version?: string;
-  architecture?: string;
-  size?: number;
-  path?: string;
+export interface DevOpsApiKey {
+  id?: string;
+  name?: string;
+  /** Full key value — only present on creation */
+  key?: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  last_used?: string;
+  expires_at?: string;
   [key: string]: unknown;
 }
 
 /**
- * Catalog cache response
+ * Request body for creating an API key
  */
-export interface CatalogCacheResponse {
-  total_size?: number;
-  manifests?: CatalogCacheManifestItem[];
-  [key: string]: unknown;
+export interface DevOpsApiKeyCreateRequest {
+  name: string;
+  key: string;
+  secret: string;
+  expires_at?: string;
+}
+
+export interface DevOpsApiKeyCreateResponse {
+  id: string;
+  name: string;
+  key: string;
+  encoded: string;
+  expires_at: string;
 }
 
 /**
@@ -226,83 +294,16 @@ export interface VmOperation {
 }
 
 /**
+ * Virtual machine clone request
+ */
+export interface VmCloneRequest {
+  clone_name: string;
+  destination_path?: string;
+}
+
+/**
  * Virtual machine configuration request
  */
 export interface VmConfigureRequest {
   operations: VmOperation[];
 }
-
-/**
- * Reverse Proxy Configuration
- */
-export interface ReverseProxyConfig {
-  enabled?: boolean;
-  host?: string;
-  port?: string;
-}
-
-/**
- * Reverse Proxy Host HTTP Route
- */
-export interface ReverseProxyHostHttpRoute {
-  id?: string;
-  path?: string;
-  pattern?: string;
-  schema?: string;
-  target_host?: string;
-  target_port?: string;
-  target_vm_id?: string;
-  request_headers?: Record<string, string>;
-  response_headers?: Record<string, string>;
-}
-
-/**
- * Reverse Proxy Host TCP Route
- */
-export interface ReverseProxyHostTcpRoute {
-  id?: string;
-  target_host?: string;
-  target_port?: string;
-  target_vm_id?: string;
-}
-
-/**
- * Reverse Proxy Host CORS Configuration
- */
-export interface ReverseProxyHostCors {
-  enabled?: boolean;
-  allowed_origins?: string[];
-  allowed_methods?: string[];
-  allowed_headers?: string[];
-}
-
-/**
- * Reverse Proxy Host TLS Configuration
- */
-export interface ReverseProxyHostTls {
-  enabled?: boolean;
-  cert?: string;
-  key?: string;
-}
-
-/**
- * Reverse Proxy Host
- */
-export interface ReverseProxyHost {
-  id?: string;
-  host?: string;
-  port?: string;
-  http_routes?: ReverseProxyHostHttpRoute[];
-  tcp_route?: ReverseProxyHostTcpRoute;
-  cors?: ReverseProxyHostCors;
-  tls?: ReverseProxyHostTls;
-}
-
-/**
- * Complete Reverse Proxy Response
- */
-export interface ReverseProxyResponse {
-  reverse_proxy_config?: ReverseProxyConfig;
-  reverse_proxy_hosts?: ReverseProxyHost[];
-}
-

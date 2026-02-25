@@ -1,4 +1,8 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { JwtTokenPayload, Modules } from '../interfaces/tokenTypes';
+import { HostHardwareInfo } from '../interfaces/devops';
+import { authService } from '../services/authService';
+import { decodeToken } from '../utils/tokenUtils';
 
 /**
  * Session data representing the current connection state.
@@ -20,12 +24,11 @@ export interface SessionData {
     // Timestamps
     connectedAt: string;
 
-    // Extend with more fields as needed:
-    // userDisplayName?: string;
-    // userEmail?: string;
-    // userRoles?: string[];
-    // serverVersion?: string;
-    // features?: string[];
+    // Decoded JWT token payload
+    tokenPayload?: JwtTokenPayload;
+
+    // Hardware info fetched at login time
+    hardwareInfo?: HostHardwareInfo;
 }
 
 interface SessionContextType {
@@ -40,6 +43,34 @@ interface SessionContextType {
 
     /** Check if there's an active session */
     isConnected: boolean;
+
+    /** Check if the user has a specific claim */
+    hasClaim: (claim: string) => boolean;
+
+    /** Check if the user has a specific role */
+    hasRole: (role: string) => boolean;
+
+    /** Check if the user has any of the specified claims */
+    hasAnyClaim: (claims: string[]) => boolean;
+
+    /** Check if the user has all of the specified claims */
+    hasAllClaims: (claims: string[]) => boolean;
+
+    /** Update the hardware info stored in the session (e.g. after a refresh on the Home page) */
+    updateHardwareInfo: (info: HostHardwareInfo) => void;
+
+    /**
+     * Check whether a host feature module is enabled.
+     *
+     * Resolution order:
+     *  1. `hardwareInfo.enabled_modules` array — generic list returned by newer agent versions.
+     *  2. Dedicated boolean flags for well-known modules (`is_reverse_proxy_enabled`,
+     *     `is_log_streaming_enabled`) — backwards-compat with older agents that do not
+     *     yet populate `enabled_modules`.
+     *
+     * Returns `false` when no hardware info has been loaded yet.
+     */
+    hasModule: (module: string) => boolean;
 }
 
 const SessionContext = createContext<SessionContextType | null>(null);
@@ -57,12 +88,80 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setSessionState(null);
     }, []);
 
-    const value: SessionContextType = {
+    // Permission checking utilities
+    const hasClaim = useCallback((claim: string): boolean => {
+        if (!session?.tokenPayload?.claims) {
+            return false;
+        }
+        return session.tokenPayload.claims.includes(claim);
+    }, [session]);
+
+    const hasRole = useCallback((role: string): boolean => {
+        if (!session?.tokenPayload?.roles) {
+            return false;
+        }
+        return session.tokenPayload.roles.includes(role);
+    }, [session]);
+
+    const hasAnyClaim = useCallback((claims: string[]): boolean => {
+        if (!session?.tokenPayload?.claims) {
+            return false;
+        }
+        return claims.some(claim => session.tokenPayload!.claims.includes(claim));
+    }, [session]);
+
+    const updateHardwareInfo = useCallback((info: HostHardwareInfo) => {
+        setSessionState((prev) => prev ? { ...prev, hardwareInfo: info } : prev);
+    }, []);
+
+    const hasModule = useCallback((module: string): boolean => {
+        const hw = session?.hardwareInfo;
+        if (!hw) return false;
+
+        // 1. Generic enabled_modules list (preferred — newer agent versions)
+        if (hw.enabled_modules?.includes(module)) return true;
+
+        // 2. Dedicated boolean flags (backwards-compat with older agents)
+        if (module === Modules.REVERSE_PROXY && hw.is_reverse_proxy_enabled) return true;
+
+        return false;
+    }, [session]);
+
+    const hasAllClaims = useCallback((claims: string[]): boolean => {
+        if (!session?.tokenPayload?.claims) {
+            return false;
+        }
+        return claims.every(claim => session.tokenPayload!.claims.includes(claim));
+    }, [session]);
+
+    // Keep a ref so the subscription always sees the current session without
+    // needing to re-subscribe every time the session changes.
+    const sessionRef = useRef(session);
+    sessionRef.current = session;
+
+    useEffect(() => {
+        const sub = authService.onTokenRefreshed$.subscribe(({ hostname, token }) => {
+            if (hostname !== sessionRef.current?.hostname) return;
+            const newPayload = decodeToken(token) ?? undefined;
+            if (!newPayload) return;
+            console.log('[Session] Token refreshed — updating claims/roles');
+            setSessionState((prev) => prev ? { ...prev, tokenPayload: newPayload } : prev);
+        });
+        return () => sub.unsubscribe();
+    }, []);
+
+    const value: SessionContextType = useMemo(() => ({
         session,
         setSession,
         clearSession,
         isConnected: session !== null,
-    };
+        hasClaim,
+        hasRole,
+        hasAnyClaim,
+        hasAllClaims,
+        updateHardwareInfo,
+        hasModule,
+    }), [session, setSession, clearSession, hasClaim, hasRole, hasAnyClaim, hasAllClaims, updateHardwareInfo, hasModule]);
 
     return (
         <SessionContext.Provider value={value}>

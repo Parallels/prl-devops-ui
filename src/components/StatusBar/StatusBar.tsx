@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CustomIcon } from '@/controls';
-import { useWebSocketContext } from '@/contexts/WebSocketContext';
+import { useEventsHub } from '@/contexts/EventsHubContext';
 // import { useAppStartup } from '@/contexts/AppStartupContextDefinition';
 // import { configService } from '@/services/ConfigService';
 import type { AppBehaviorConfig, DebugConfig } from '@/interfaces/AppConfig';
@@ -25,11 +25,9 @@ type ReleaseChannel = 'stable' | 'beta' | 'canary';
 
 export const StatusBar: React.FC = () => {
   //   const { isConnected, healthState } = useApplicationSse();
-  const { states } = useWebSocketContext();
+  const { isConnected, connectionState, messageCount } = useEventsHub();
   const config = useConfig();
 
-  // Simple aggregation for checking if *any* is connected or checking status
-  const isConnected = Object.values(states).some(s => s === WebSocketState.OPEN);
   const connectionStatus = isConnected ? 'connected' : 'disconnected';
 
   //   const { backendHealth } = useAppStartup();
@@ -95,10 +93,10 @@ export const StatusBar: React.FC = () => {
     () => [
       { label: 'Status', value: connectionStatus },
       { label: 'Connected', value: isConnected ? 'Yes' : 'No' },
-      //   { label: 'Last check', value: formatTimestamp(healthState.lastChecked) },
-      //   { label: 'Last healthy', value: formatTimestamp(healthState.lastHealthy) },
+      { label: 'State', value: WebSocketState[connectionState] ?? 'Unknown' },
+      { label: 'Messages', value: String(messageCount) },
     ],
-    [connectionStatus, isConnected]
+    [connectionStatus, isConnected, connectionState, messageCount]
   );
 
   const buildDetailsList = (items: Array<{ label: string; value: string }>) => (
@@ -140,12 +138,12 @@ export const StatusBar: React.FC = () => {
             size="sm"
             value={sseStatusText}
             intent={
-              isConnected
-                ? 'success'
-                : 'danger'
+              connectionState === WebSocketState.OPEN ? 'success'
+              : connectionState === WebSocketState.CONNECTING ? 'warning'
+              : 'danger'
             }
-            loading={false}
-            popoverTitle="SSE channel"
+            loading={connectionState === WebSocketState.CONNECTING}
+            popoverTitle="Events Hub"
             popoverContent={buildDetailsList(sseDetails)}
             rounded={false}
             variant="minimal"

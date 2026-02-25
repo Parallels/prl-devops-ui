@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../packages/ui-kit/src";
 
 :root {
     font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;

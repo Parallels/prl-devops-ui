@@ -49,6 +49,9 @@ class AuthService {
   private logoutSubject = new Subject<void>();
   public readonly onLogout$ = this.logoutSubject.asObservable();
 
+  private tokenRefreshedSubject = new Subject<{ hostname: string; token: string }>();
+  public readonly onTokenRefreshed$ = this.tokenRefreshedSubject.asObservable();
+
   private _currentHostname: string | null = null;
 
   public get currentHostname(): string | null {
@@ -158,9 +161,7 @@ class AuthService {
 
       // No valid token, perform login
       const credentials = await this.fetchCredentialsForHost(hostname);
-      const token = await this.performLogin(hostname, credentials);
-
-      return token;
+      return this.performLogin(hostname, credentials);
     } catch (error) {
       console.error(`Failed to get access token for ${hostname}:`, error);
       throw error;
@@ -251,7 +252,8 @@ class AuthService {
     try {
       this.clearTokenByHost(hostname);
       const credentials = await this.fetchCredentialsForHost(hostname);
-      await this.performLogin(hostname, credentials);
+      const newToken = await this.performLogin(hostname, credentials);
+      this.tokenRefreshedSubject.next({ hostname, token: newToken });
       return true;
     } catch (error) {
       console.error(`Re-authentication failed for ${hostname}:`, error);
@@ -336,10 +338,35 @@ class AuthService {
   }
 
   /**
-   * Force re-authentication for a hostname (clears token and re-logins)
+   * Force re-authentication for a hostname.
+   * Clears the cached token, performs a fresh login, and emits tokenRefreshed$
+   * so that SessionContext updates its claims/roles without requiring a full
+   * page reload.
+   *
+   * @param serverUrlOverride  When provided, the credential cache entry for this
+   *   hostname is updated to use this URL before logging in.  Pass the session's
+   *   `serverUrl` to guarantee the request goes to the real host rather than
+   *   whatever URL was stored (e.g. an empty string used for the Vite dev proxy).
    */
-  async forceReauth(hostname: string): Promise<string> {
+  async forceReauth(hostname: string, serverUrlOverride?: string): Promise<string> {
+    hostname = this.normalizeHostname(hostname);
+
+    // If a URL override is supplied, refresh the cached credentials so the login
+    // request targets the correct server.  We keep all other credential fields
+    // (username, password, api_key) unchanged.
+    if (serverUrlOverride) {
+      const existing = this.credentialsCache.get(hostname);
+      if (existing) {
+        this.credentialsCache.set(hostname, { ...existing, url: serverUrlOverride });
+      }
+    }
+
     this.clearTokenByHost(hostname);
+    // Use getAccessToken rather than emitting tokenRefreshedSubject here.
+    // tokenRefreshedSubject is intentionally reserved for the background proactive
+    // refresh path (refreshTokenInternal) so that SessionContext re-renders only
+    // when the background refresh fires — not on every WS reconnect, which would
+    // cause an infinite session-change → reconnect → session-change loop.
     return this.getAccessToken(hostname);
   }
 
@@ -366,6 +393,21 @@ class AuthService {
       }
     }
     return hostname;
+  }
+
+  /**
+   * Get the raw token string for a hostname
+   * @param hostname - Optional hostname, uses currentHostname if not provided
+   * @returns The token string or null if not found
+   */
+  getToken(hostname?: string): string | null {
+    const targetHostname = hostname ? this.normalizeHostname(hostname) : this._currentHostname;
+    if (!targetHostname) {
+      return null;
+    }
+
+    const tokenData = this.tokens.get(targetHostname);
+    return tokenData?.token ?? null;
   }
 
   /**

@@ -41,4 +41,6 @@ export interface ApiRequestOptions extends RequestInit {
   skipAuth?: boolean;
   /** Custom error message prefix */
   errorPrefix?: string;
+  /** Indicate that no response body is expected (e.g., 202 Accepted, 204 No Content) */
+  expectNoContent?: boolean;
 }

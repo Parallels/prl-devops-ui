@@ -29,7 +29,8 @@ export type ThemeColor =
   | "success"
   | "warning"
   | "danger"
-  | "theme";
+  | "theme"
+  | "parallels";
 
 export type ThemeSize = "xs" | "sm" | "md" | "lg" | "xl" | "xxl" | "xxxl" | "2xl" | "3xl" | "full";
 
@@ -67,6 +68,8 @@ type PanelToneConfig = {
   subtleBg: string;
   tonalBg: string;
   overlayGradient: string;
+  decorationShape: string;
+  decorationGradient: string;
 };
 
 type PanelTheme = Record<ThemeColor, PanelToneConfig>;
@@ -153,6 +156,7 @@ const colors: ThemeColor[] = [
   "warning",
   "danger",
   "theme",
+  "parallels",
 ];
 
 // Helper to map semantic colors to Tailwind colors
@@ -170,6 +174,8 @@ const resolveColor = (color: ThemeColor): string => {
       return "rose";
     case "theme":
       return "neutral";
+    case "parallels":
+      return "red";
     default:
       return color;
   }
@@ -287,7 +293,7 @@ const createTheme = (): ThemeDefinition => {
     } else {
       theme.multiToggle[color] = {
         active: `bg-${c}-500/90 dark:bg-${c}-400/90`,
-        activeText: "text-white dark:text-white",
+        activeText: `text-${c}-700 dark:text-${c}-200`,
         indicator: `bg-${c}-500/15 dark:bg-${c}-400/20 border border-${c}-400/40 dark:border-${c}-300/20`,
         hover: `hover:text-${c}-600 dark:hover:text-${c}-300`,
       };
@@ -351,6 +357,8 @@ const createTheme = (): ThemeDefinition => {
         subtleBg: "bg-neutral-50/80 dark:bg-neutral-900/70",
         tonalBg: "bg-neutral-100/80 dark:bg-neutral-800/70",
         overlayGradient: "from-neutral-900/70 via-neutral-900/30 to-neutral-900/20",
+        decorationShape: "bg-neutral-400/10 dark:bg-neutral-300/5",
+        decorationGradient: "from-neutral-200/50 to-transparent dark:from-neutral-600/15 dark:to-transparent",
       };
     } else {
       theme.panel[color] = {
@@ -361,6 +369,8 @@ const createTheme = (): ThemeDefinition => {
         subtleBg: `bg-${c}-50/80 dark:bg-${c}-500/10`,
         tonalBg: `bg-${c}-100/80 dark:bg-${c}-500/15`,
         overlayGradient: `from-${c}-900/70 via-${c}-900/40 to-${c}-900/15`,
+        decorationShape: `bg-${c}-400/10 dark:bg-${c}-300/5`,
+        decorationGradient: `from-${c}-100/60 to-transparent dark:from-${c}-500/10 dark:to-transparent`,
       };
     }
 

@@ -1,5 +1,5 @@
 import { apiService } from '../api';
-import {ReverseProxyResponse, ReverseProxyConfig, ReverseProxyHost, ReverseProxyHostHttpRoute, ReverseProxyHostTcpRoute} from '../../interfaces/devops';
+import { ReverseProxyResponse, ReverseProxyConfig, ReverseProxyHost, ReverseProxyHostHttpRoute, ReverseProxyHostTcpRoute } from '../../interfaces/ReverseProxy';
 
 /**
  * Reverse Proxy Service - Handles reverse proxy operations for Parallels DevOps API

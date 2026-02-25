@@ -47,7 +47,16 @@ export interface TabsProps {
   panelIdPrefix?: string;
   showDividers?: boolean;
   hideUnderlineContainer?: boolean;
+  /** Override the variant's container class (e.g. to customise the underline border color). Takes precedence over hideUnderlineContainer. */
+  containerClassName?: string;
   panelClassName?: string;
+  /**
+   * When true, renders a gradient fade at the top of each panel's scroll area so
+   * content doesn't hard-clip against the tab bar when scrolled.
+   * Pass a Tailwind `from-*` colour to match your panel background (default: white / neutral-900 dark).
+   */
+  scrollFade?: boolean;
+  scrollFadeFrom?: string;
 }
 
 const joinClasses = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
@@ -186,7 +195,7 @@ const buildVariantConfig = (
     case "underline":
     default:
       return {
-        container: hideUnderlineContainer ? undefined : "border-b border-neutral-500 dark:border-neutral-700",
+        container: hideUnderlineContainer ? undefined : "",
         list: classNames("gap-3", orientation === "vertical" && "gap-3"),
         base: joinClasses(
           "rounded-none font-medium",
@@ -198,7 +207,7 @@ const buildVariantConfig = (
           neutralTextInactive,
           hoverAccentText
         ),
-        active: joinClasses(activeAccentText, underlineActive),
+        active: joinClasses(activeAccentText, underlineActive, "after:opacity-100"),
         inactive: "",
         disabled: "text-slate-300 dark:text-slate-600 border-transparent",
         badge: badgeSubtle,
@@ -225,7 +234,10 @@ const Tabs: React.FC<TabsProps> = ({
   panelIdPrefix = "tab-panel",
   showDividers = false,
   hideUnderlineContainer = false,
+  containerClassName,
   panelClassName,
+  scrollFade = false,
+  scrollFadeFrom = "from-white dark:from-neutral-900",
 }) => {
   const renderIcon = useIconRenderer();
   const [internalValue, setInternalValue] = useState<string | undefined>(defaultValue ?? items[0]?.id);
@@ -261,12 +273,16 @@ const Tabs: React.FC<TabsProps> = ({
     listClassName
   );
 
+  const resolvedContainer = containerClassName !== undefined
+    ? containerClassName
+    : config.container;
+
   const rootClass = classNames(
     "tabs",
     "flex",
     orientation === "vertical" ? "flex-row h-full" : "flex-col h-full",
     "overflow-hidden min-h-0",
-    config.container,
+    resolvedContainer,
     className
   );
 
@@ -404,11 +420,25 @@ const Tabs: React.FC<TabsProps> = ({
             hidden={!isActive}
             aria-hidden={!isActive}
             className={classNames(
-              "focus:outline-none flex-1 overflow-auto min-h-0 scrollbar-thin",
+              "focus:outline-none flex-1 min-h-0",
+              scrollFade ? "relative overflow-hidden" : "overflow-auto scrollbar-thin",
               isActive ? panelClassName : "hidden"
             )}
           >
-            {item.panel}
+            {scrollFade ? (
+              <>
+                <div
+                  aria-hidden
+                  className={classNames(
+                    "pointer-events-none absolute inset-x-0 top-0 h-8 z-10 bg-gradient-to-b to-transparent",
+                    scrollFadeFrom
+                  )}
+                />
+                <div className="overflow-auto h-full scrollbar-thin">
+                  {item.panel}
+                </div>
+              </>
+            ) : item.panel}
           </div>
         );
       })}

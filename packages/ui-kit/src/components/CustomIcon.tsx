@@ -89,7 +89,6 @@ export const CustomIcon: React.FC<CustomIconProps> = ({
       <span
         className={`flex items-center justify-center rounded bg-neutral-100 text-xs font-bold uppercase text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400 ${className}`}
         style={baseStyle}
-        title={alt || icon}
         onClick={onClick}
       >
         {icon?.charAt(0) || "?"}
@@ -98,7 +97,7 @@ export const CustomIcon: React.FC<CustomIconProps> = ({
   }
 
   return (
-    <span className={iconClass} style={baseStyle} title={alt || icon} onClick={onClick}>
+    <span className={iconClass} style={baseStyle} onClick={onClick}>
       <IconComponent className="w-full h-full" aria-label={alt} />
     </span>
   );

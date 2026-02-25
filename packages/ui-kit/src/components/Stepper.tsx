@@ -68,6 +68,8 @@ export interface StepperProps extends Omit<React.HTMLAttributes<HTMLDivElement>,
   stepMaxHeight?: number | string;
   connectNodes?: boolean;
   connectorAlign?: StepperConnectorAlign;
+  /** Override whether the underline bar is shown beneath each step's title/subtitle. When omitted the variant default is used (`card` → true, `minimal` → false). */
+  showStepUnderline?: boolean;
 }
 
 const sizeTokens: Record<
@@ -115,9 +117,9 @@ const sizeTokens: Record<
   },
 };
 
-const variantConfig: Record<StepperVariant, { headerPadding: string; showDescription: boolean; emphasizeActiveTitle: boolean }> = {
-  card: { headerPadding: "px-2 py-1.5", showDescription: true, emphasizeActiveTitle: true },
-  minimal: { headerPadding: "px-1 py-1", showDescription: false, emphasizeActiveTitle: true },
+const variantConfig: Record<StepperVariant, { headerPadding: string; showDescription: boolean; emphasizeActiveTitle: boolean; showUnderline: boolean }> = {
+  card:    { headerPadding: "px-2 py-1.5", showDescription: true,  emphasizeActiveTitle: true, showUnderline: false },
+  minimal: { headerPadding: "px-1 py-1",   showDescription: false, emphasizeActiveTitle: true, showUnderline: false },
 };
 
 const statusIcon: Record<StepStatus, IconName | undefined> = {
@@ -196,6 +198,7 @@ export const Stepper: React.FC<StepperProps> = ({
   stepMaxHeight,
   connectNodes = false,
   connectorAlign = "center",
+  showStepUnderline,
   className,
   style,
   ...rest
@@ -233,7 +236,9 @@ export const Stepper: React.FC<StepperProps> = ({
     const derivedCompleted = state.isCompleted(resolvedId, index);
     const status: StepStatus = step.status ?? (derivedActive ? "active" : derivedCompleted ? "completed" : "pending");
 
-    const isCompleted = step.status ? step.status === "completed" : derivedCompleted;
+    // A step that is active is never "completed" for connector-fill purposes,
+    // even if its id appears in completedStepIds or its explicit status is "completed".
+    const isCompleted = (step.status ? step.status === "completed" : derivedCompleted) && !derivedActive;
 
     const nodeBaseClass =
       variant === "minimal"
@@ -359,25 +364,25 @@ export const Stepper: React.FC<StepperProps> = ({
               leftNodeStyle = "0px";
             }
             if (connectorAlign === "center") {
-              showLeft = idx > 0;
-              showRight = idx < stepMeta.length - 1;
+              showLeft = connector !== "none" && idx > 0;
+              showRight = connector !== "none" && idx < stepMeta.length - 1;
               connectorWidth = `calc(50% - ${nodeRadius}px)`;
               rightNodeStyle = `0px`;
             }
             if (connectorAlign === "right") {
-              showLeft = idx > 0;
+              showLeft = connector !== "none" && idx > 0;
               showRight = false;
-              segmentSize = "";
-              rightNodeStyle = "0px";
-              leftNodeStyle = `${nodeRadius}px`;
-              connectorWidth = `calc(50% + ${nodeRadius * 2}px)`;
-              segmentSize = "";
+              // Connector spans from the previous cell's right edge (= left: 0)
+              // to just before the current node (= calc(100% - 2r)).
+              leftNodeStyle = "0px";
+              connectorWidth = `calc(100% - ${nodeRadius * 2}px)`;
             }
           }
           const previousStep = stepMeta[idx - 1];
           const previousCompleted = previousStep?.isCompleted ?? false;
           const currentCompleted = isCompleted;
-          const detachedSegment = !connectNodes && connector !== "none" && idx < stepMeta.length - 1;
+          // For right-align the absolute left-connector handles the line; the flex segment would push the node off the right edge.
+          const detachedSegment = !connectNodes && connector !== "none" && connectorAlign !== "right" && idx < stepMeta.length - 1;
           const segmentIsCompleted = isCompleted;
 
           const connectorSegment = detachedSegment ? (
@@ -418,7 +423,7 @@ export const Stepper: React.FC<StepperProps> = ({
           return (
             <div
               key={`${resolvedId}-node`}
-              className={`relative flex flex-1  ${connectorAlign === "left" ? "items-center" : connectorAlign === "right" ? "justify-end" : "items-center justify-center"}`}
+              className={`relative flex flex-1  ${connectorAlign === "left" ? "items-center" : connectorAlign === "right" ? "items-center justify-end" : "items-center justify-center"}`}
             >
               {leftConnector}
               <NodeTag
@@ -451,7 +456,7 @@ export const Stepper: React.FC<StepperProps> = ({
     return (
       <div className={classNames("relative flex flex-col", headerClassName)}>
         {renderNodeRow()}
-        <div className="mt-4 grid items-stretch gap-6" style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
+        <div className="mt-4 grid items-stretch gap-2" style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
           {stepMeta.map((meta) => {
             const { resolvedId, status, textStyle, underlineClasses, step, index } = meta;
             const TextTag = isInteractive && !step.disabled ? "button" : "div";
@@ -482,7 +487,7 @@ export const Stepper: React.FC<StepperProps> = ({
                 </div>
                 <div className="mt-3 flex flex-col gap-1">
                   {step.optionalLabel ? <div className={sizeToken.optional}>{step.optionalLabel}</div> : null}
-                  {connector !== "none" && <div className={underlineClasses} />}
+                  {connector !== "none" && (showStepUnderline ?? variantToken.showUnderline) && <div className={underlineClasses} />}
                 </div>
               </TextTag>
             );

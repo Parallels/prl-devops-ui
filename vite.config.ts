@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import type { IncomingMessage } from "http";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -37,10 +38,20 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
     proxy: {
-      '/api': {
-        target: 'http://localhost:5680',
+      "/api": {
+        target: process.env.VITE_DEVOPS_API_URL || "http://localhost:5680",
         changeOrigin: true,
         secure: false,
+        ws: true,
+        configure: (proxy) => {
+          // The browser sends Origin: http://localhost:1421 on the WS upgrade.
+          // Most Go WebSocket upgraders reject origins that don't match the host.
+          // Rewrite Origin to the target server so the upgrader accepts it.
+          proxy.on("proxyReqWs", (proxyReq: IncomingMessage & { setHeader: (k: string, v: string) => void }) => {
+            const apiUrl = process.env.VITE_DEVOPS_API_URL || "http://localhost:5680";
+            proxyReq.setHeader("Origin", apiUrl);
+          });
+        },
       },
     },
   },

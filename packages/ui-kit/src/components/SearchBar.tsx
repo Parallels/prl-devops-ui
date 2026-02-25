@@ -13,7 +13,19 @@ export interface SearchBarProps {
   initialValue?: string;
   shouldClear?: boolean;
   leadingIcon?: string | React.ReactElement;
-  variant?: "default" | "marketplace";
+  variant?: "default" | "gradient";
+  /** Start colour of the gradient glow (gradient variant only). Accepts any CSS colour value. */
+  gradientFrom?: string;
+  /** End colour of the gradient glow (gradient variant only). Accepts any CSS colour value. */
+  gradientTo?: string;
+  /**
+   * Controls how prominent the gradient glow is (gradient variant only).
+   * - `subtle`  – barely visible; a hint of colour at the border
+   * - `soft`    – gentle glow, low key (default)
+   * - `medium`  – clearly visible glow
+   * - `strong`  – bold, wide glow
+   */
+  glowIntensity?: "subtle" | "soft" | "medium" | "strong";
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
@@ -28,7 +40,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   shouldClear = false,
   leadingIcon = "Search",
   variant = "default",
+  gradientFrom = "#60a5fa", // blue-400
+  gradientTo = "#818cf8",   // indigo-400
+  glowIntensity = "soft",
 }) => {
+  // Each intensity level controls: how far the glow bleeds out (inset), blur radius,
+  // idle opacity, and focused opacity.
+  const glowConfig = {
+    subtle: { inset: "-inset-px",   blur: "blur-sm", idleOpacity: 0.06, focusOpacity: 0.14 },
+    soft:   { inset: "-inset-0.5",  blur: "blur-sm", idleOpacity: 0.10, focusOpacity: 0.22 },
+    medium: { inset: "-inset-0.5",  blur: "blur",    idleOpacity: 0.20, focusOpacity: 0.40 },
+    strong: { inset: "-inset-1",    blur: "blur-md", idleOpacity: 0.30, focusOpacity: 0.55 },
+  } as const;
+  const glow = glowConfig[glowIntensity];
   const renderIcon = useIconRenderer();
   const [query, setQuery] = useState(initialValue);
   const [focused, setFocused] = useState(false);
@@ -120,12 +144,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     [handleClear],
   );
 
-  if (variant === "marketplace") {
+  if (variant === "gradient") {
     return (
       <div className={classNames("relative w-full group", className)}>
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-400 to-red-400 rounded-2xl opacity-20 group-focus-within:opacity-40 transition duration-500 blur leading-none"></div>
+        <div
+          className={classNames("absolute rounded-2xl transition-opacity duration-500 leading-none", glow.inset, glow.blur)}
+          style={{
+            background: `linear-gradient(to right, ${gradientFrom}, ${gradientTo})`,
+            opacity: focused ? glow.focusOpacity : glow.idleOpacity,
+          }}
+          aria-hidden
+        />
         <div className="relative flex w-full items-center rounded-xl bg-white/80 backdrop-blur-xl border border-white/20 px-4 py-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition">
-          <span className="mr-2 flex text-slate-400 group-focus-within:text-blue-500 transition-colors">{renderIcon(leadingIcon, "xs")}</span>
+          <span className="mr-2 inline-flex flex-shrink-0 items-center text-slate-400 group-focus-within:text-blue-500 transition-colors">{renderIcon(leadingIcon, "xs")}</span>
           <input
             ref={inputRef}
             type="text"
@@ -156,21 +187,18 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   return (
     <div
       className={classNames(
-        "group relative flex w-full items-center rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-2 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-400/40 dark:border-slate-700/60 dark:bg-slate-900/60",
+        "group relative flex w-full items-center rounded-lg border border-slate-200/80 bg-white/80 px-3 py-1.5 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-400/40 dark:border-slate-700/60 dark:bg-slate-900/60",
         disabled && "opacity-60",
-        focused && "ring-2 ring-blue-300/70 border-blue-400/70",
         className,
       )}
     >
-      <span className="mr-3 flex text-slate-400 dark:text-slate-500">{renderIcon(leadingIcon, "md")}</span>
+      <span className="mr-2 inline-flex flex-shrink-0 items-center text-slate-400 dark:text-slate-500">{renderIcon(leadingIcon, "sm")}</span>
       <input
         ref={inputRef}
         type="text"
         value={query}
         onChange={handleInput}
         onKeyDown={handleKeyDown}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         placeholder={placeholder}
         disabled={disabled}
         className="flex-1 border-none bg-transparent text-sm text-slate-900 placeholder-slate-400 outline-none dark:text-slate-200 dark:placeholder-slate-500"
@@ -179,10 +207,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         <button
           type="button"
           onClick={handleClear}
-          className="ml-3 inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+          className="ml-1.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-slate-200/80 text-slate-400 transition hover:bg-slate-300/80 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 dark:bg-slate-700/80 dark:text-slate-400 dark:hover:bg-slate-600/80 dark:hover:text-slate-200"
           aria-label="Clear search"
         >
-          {renderIcon("Close", "sm")}
+          {renderIcon("Close", "xs")}
         </button>
       )}
     </div>

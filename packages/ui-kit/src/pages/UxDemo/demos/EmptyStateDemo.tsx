@@ -143,7 +143,7 @@ export const EmptyStateDemo: React.FC = () => {
                     title={emptyTitle || 'Empty state title'}
                     subtitle={emptyShowSubtitle ? emptySubtitle || undefined : undefined}
                     showIcon={emptyShowIcon}
-                    buttonText={emptyShowAction ? emptyButtonText || 'Create item' : undefined}
+                    actionLabel={emptyShowAction ? emptyButtonText || 'Create item' : undefined}
                     onAction={emptyShowAction ? () => console.log('Empty state action clicked') : undefined}
                     actionVariant={emptyActionVariant}
                     actionColor={emptyActionColor}

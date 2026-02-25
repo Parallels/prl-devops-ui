@@ -1,5 +1,5 @@
 import { apiService } from '../api';
-import { CatalogCacheResponse } from '../../interfaces/devops';
+import { CatalogCacheResponse } from '../../interfaces/Cache';
 /**
  * Cache Service - Handles catalog cache operations
  * Manages catalog cache retrieval and cleanup
@@ -20,13 +20,13 @@ class CacheService {
     isOrchestrator = false
   ): Promise<CatalogCacheResponse> {
     try {
-      let endpoint = '/api/v1/catalog/cache';
+      let endpoint = '/api/v1/cache';
 
       if (isOrchestrator) {
         if (!hostId) {
           throw new Error('Host ID is required for orchestrator mode');
         }
-        endpoint = `/api/v1/orchestrator/hosts/${hostId}/catalog/cache`;
+        endpoint = `/api/v1/orchestrator/hosts/${hostId}/cache`;
       }
 
       const cache = await apiService.get<CatalogCacheResponse>(
@@ -61,13 +61,13 @@ class CacheService {
     isOrchestrator = false
   ): Promise<CatalogCacheResponse> {
     try {
-      let endpoint = '/api/v1/catalog/cache';
+      let endpoint = '/api/v1/cache';
 
       if (isOrchestrator) {
         if (!hostId) {
           throw new Error('Host ID is required for orchestrator mode');
         }
-        endpoint = `/api/v1/orchestrator/hosts/${hostId}/catalog/cache`;
+        endpoint = `/api/v1/orchestrator/hosts/${hostId}/cache`;
       }
 
       // Add catalog and version to path if provided

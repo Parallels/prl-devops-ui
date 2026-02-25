@@ -4,8 +4,9 @@ import Button, { type ButtonProps } from "./Button";
 import Loader, { type LoaderProps } from "./Loader";
 import { getPanelToneStyles, type ThemeColor } from "../theme/Theme";
 
-export type PanelVariant = "elevated" | "outlined" | "subtle" | "tonal" | "default";
+export type PanelVariant = "elevated" | "outlined" | "subtle" | "tonal" | "default" | "glass";
 export type PanelTone = ThemeColor;
+export type PanelDecoration = "none" | "gradient" | "shapes" | "both";
 export type PanelMediaPlacement = "top" | "start" | "end" | "overlay";
 export type PanelPadding = "none" | "xs" | "sm" | "md" | "lg";
 export type PanelCorner = "rounded" | "pill" | "none";
@@ -21,8 +22,11 @@ export interface PanelAction extends Pick<ButtonProps, "variant" | "color" | "si
 
 export interface PanelProps extends Omit<React.HTMLAttributes<HTMLElement>, "title"> {
   title?: React.ReactNode;
+  titleClassName?: string;
   subtitle?: React.ReactNode;
+  subtitleClassName?: string;
   description?: React.ReactNode;
+  descriptionClassName?: string;
   badge?: React.ReactNode;
   media?: React.ReactNode;
   mediaPlacement?: PanelMediaPlacement;
@@ -47,6 +51,7 @@ export interface PanelProps extends Omit<React.HTMLAttributes<HTMLElement>, "tit
   loaderProgress?: number;
   loaderColor?: LoaderProps["color"];
   hoverShadow?: boolean;
+  decoration?: PanelDecoration;
 }
 
 const variantBaseStyles: Record<PanelVariant, string> = {
@@ -55,6 +60,7 @@ const variantBaseStyles: Record<PanelVariant, string> = {
   subtle: "text-neutral-900 shadow-sm ring-1 ring-transparent dark:text-neutral-100 dark:ring-white/5",
   tonal: "text-neutral-900 shadow-sm ring-1 ring-transparent dark:text-neutral-100 dark:ring-white/5",
   default: "bg-white/80 backdrop-blur-xl text-neutral-900 shadow-2xl ring-1 ring-transparent dark:text-neutral-100 dark:ring-white/5",
+  glass: "bg-white/95 backdrop-blur-xl text-neutral-900 ring-1 ring-transparent dark:text-neutral-100 dark:ring-white/5",
 };
 
 const paddingStyles: Record<PanelPadding, string> = {
@@ -115,11 +121,18 @@ const Panel: React.FC<PanelProps> = ({
   loaderProgress,
   loaderColor,
   hoverShadow = false,
+  decoration = "none",
+  titleClassName,
+  subtitleClassName,
+  descriptionClassName,
   ...rest
 }) => {
   const palette = getPanelToneStyles(tone);
   const isOverlay = mediaPlacement === "overlay" && Boolean(media);
   const hasMedia = Boolean(media);
+  // Decoration is suppressed in overlay mode since the image + gradient already provide impact
+  const showDecorationGradient = !isOverlay && (decoration === "gradient" || decoration === "both");
+  const showDecorationShapes = !isOverlay && (decoration === "shapes" || decoration === "both");
 
   const resolvedStyle: React.CSSProperties = (() => {
     const styles: React.CSSProperties = { ...style };
@@ -142,6 +155,8 @@ const Panel: React.FC<PanelProps> = ({
         return classNames(variantBaseStyles.tonal, palette.tonalBg);
       case "default":
         return classNames(variantBaseStyles.default, "border border-white/40");
+      case "glass":
+        return classNames(variantBaseStyles.glass, "border border-neutral-200 dark:border-neutral-800");
       default:
         return classNames(variantBaseStyles.elevated, "border", palette.border);
     }
@@ -161,11 +176,11 @@ const Panel: React.FC<PanelProps> = ({
       badge
     );
 
-  const titleNode = typeof title === "string" ? <h3 className={classNames("text-xl font-semibold leading-7", headingClass)}>{title}</h3> : title;
+  const titleNode = typeof title === "string" ? <h3 className={classNames("text-xl font-semibold leading-7", headingClass, titleClassName)}>{title}</h3> : title;
 
-  const subtitleNode = typeof subtitle === "string" ? <p className={classNames("text-base font-medium leading-6", subtitleClass)}>{subtitle}</p> : subtitle;
+  const subtitleNode = typeof subtitle === "string" ? <p className={classNames("text-base font-medium leading-6", subtitleClass, subtitleClassName)}>{subtitle}</p> : subtitle;
 
-  const descriptionNode = typeof description === "string" ? <p className={classNames("text-sm leading-6", descriptionClass)}>{description}</p> : description;
+  const descriptionNode = typeof description === "string" ? <p className={classNames("text-sm leading-6", descriptionClass, descriptionClassName)}>{description}</p> : description;
 
   const headerSection =
     badgeNode || titleNode || subtitleNode || descriptionNode ? (
@@ -265,6 +280,19 @@ const Panel: React.FC<PanelProps> = ({
             <div className="h-full w-full">{media}</div>
           </div>
           <div className={classNames("pointer-events-none absolute inset-0 bg-gradient-to-br", palette.overlayGradient)} />
+        </>
+      )}
+      {showDecorationGradient && (
+        <div
+          className={classNames("pointer-events-none absolute inset-0 bg-gradient-to-br", palette.decorationGradient)}
+          aria-hidden="true"
+        />
+      )}
+      {showDecorationShapes && (
+        <>
+          <div className={classNames("pointer-events-none absolute -right-10 -top-10 w-52 h-52 rounded-full", palette.decorationShape)} aria-hidden="true" />
+          <div className={classNames("pointer-events-none absolute -left-8 -bottom-10 w-36 h-36 rounded-full opacity-70", palette.decorationShape)} aria-hidden="true" />
+          <div className={classNames("pointer-events-none absolute right-10 bottom-8 w-16 h-16 rounded-full opacity-50", palette.decorationShape)} aria-hidden="true" />
         </>
       )}
       <div className={classNames("relative z-10 flex min-h-0 flex-1 flex-col gap-4", isOverlay && "backdrop-blur-sm")}>

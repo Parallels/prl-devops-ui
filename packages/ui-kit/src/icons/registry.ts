@@ -85,6 +85,31 @@ import { Cache } from './components/Cache';
 import { Claim } from './components/Claim';
 import { Claims } from './components/Claims';
 import { KeyManagement } from './components/KeyManagement';
+import { Windows } from './components/Windows';
+import { Ubuntu } from './components/Ubuntu';
+import { Debian } from './components/Debian';
+import { Apple } from './components/Apple';
+import { KaliLinux } from './components/KaliLinux';
+import { RedHat } from './components/RedHat';
+import { Fedora } from './components/Fedora';
+import { CentOS } from './components/CentOS';
+import { Clone } from './components/Clone';
+import { Copy } from './components/Copy';
+import { Live } from './components/Live';
+import { HealthCheck } from './components/HealthCheck';
+import { ReverseProxy } from './components/ReverseProxy';
+import { ReverseProxyRoutes } from './components/ReverseProxyRoutes';
+import { ReverseProxyCORS } from './components/ReverseProxyCORS';
+import { ReverseProxyFrom } from './components/ReverseProxyFrom';
+import { ReverseProxyHeadersRequest } from './components/ReverseProxyHeadersRequest';
+import { ReverseProxyHeadersResponse } from './components/ReverseProxyHeadersResponse';
+import { ReverseProxyHTTP } from './components/ReverseProxyHTTP';
+import { ReverseProxyTLS } from './components/ReverseProxyTLS';
+import { ReverseProxyTo } from './components/ReverseProxyTo';
+import { ReverseProxyTCP } from './components/ReverseProxyTCP';
+import { Refresh } from './components/Refresh';
+import { Calendar } from './components/Calendar';
+import { Folder } from './components/Folder';
 
 export type IconName =
     | "Add"
@@ -172,7 +197,32 @@ export type IconName =
     | "Cache"
     | "Claim"
     | "Claims"
-    | "KeyManagement";
+    | "KeyManagement"
+    | "Windows"
+    | "Ubuntu"
+    | "Debian"
+    | "Apple"
+    | "KaliLinux"
+    | "RedHat"
+    | "Fedora"
+    | "CentOS"
+    | "Clone"
+    | "Copy"
+    | "Live"
+    | "HealthCheck"
+    | "ReverseProxy"
+    | "ReverseProxyCORS"
+    | "ReverseProxyRoutes"
+    | "ReverseProxyFrom"
+    | "ReverseProxyHeadersRequest"
+    | "ReverseProxyHeadersResponse"
+    | "ReverseProxyHTTP"
+    | "ReverseProxyTo"
+    | "ReverseProxyTLS"
+    | "ReverseProxyTCP"
+    | "Refresh"
+    | "Calendar"
+    | "Folder";
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
     "Add": Add,
@@ -261,4 +311,29 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
     "Claim": Claim,
     "Claims": Claims,
     "KeyManagement": KeyManagement,
+    "Windows": Windows,
+    "Ubuntu": Ubuntu,
+    "Debian": Debian,
+    "Apple": Apple,
+    "KaliLinux": KaliLinux,
+    "RedHat": RedHat,
+    "Fedora": Fedora,
+    "CentOS": CentOS,
+    "Clone": Clone,
+    "Copy": Copy,
+    "Live": Live,
+    "HealthCheck": HealthCheck,
+    "ReverseProxy": ReverseProxy,
+    "ReverseProxyCORS": ReverseProxyCORS,
+    "ReverseProxyRoutes": ReverseProxyRoutes,
+    "ReverseProxyFrom": ReverseProxyFrom,
+    "ReverseProxyHeadersRequest": ReverseProxyHeadersRequest,
+    "ReverseProxyHeadersResponse": ReverseProxyHeadersResponse,
+    "ReverseProxyHTTP": ReverseProxyHTTP,
+    "ReverseProxyTo": ReverseProxyTo,
+    "ReverseProxyTLS": ReverseProxyTLS,
+    "ReverseProxyTCP": ReverseProxyTCP,
+    "Refresh": Refresh,
+    "Calendar": Calendar,
+    "Folder": Folder,
 };
