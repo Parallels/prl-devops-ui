@@ -17,16 +17,55 @@ export interface CatalogManifestItem {
  * Catalog manifest item details
  */
 export interface CatalogManifestItemDetail {
-  id?: string;
   name?: string;
-  version?: string;
+  id?: string;
+  catalog_id?: string;
   description?: string;
   architecture?: string;
+  version?: string;
+  type?: string;
+  tags?: string[];
   size?: number;
+  path?: string;
+  pack_filename: string;
+  metadata_filename: string;
   compressed_size?: number;
+  provider: CatalogManifestProvider;
   created_at?: string;
   updated_at?: string;
-  tags?: string[];
+  required_roles?: string[];
+  required_claims?: string[];
+  last_downloaded_at?: string;
+  last_downloaded_user?: string;
+  is_compressed: boolean;
+  download_count: number;
+  tainted: boolean;
+  tainted_by?: string;
+  tainted_at?: string;
+  untainted_by?: string;
+  revoked: boolean;
+  revoked_by?: string;
+  revoked_at?: string;
+  pack_content?: CatalogManifestPackContentItem[];
+  [key: string]: unknown;
+}
+
+export interface CatalogManifestProvider {
+  type: string;
+  host: string;
+  user: string;
+  password: string;
+  meta: CatalogManifestProviderMetadata;
+  [key: string]: unknown;
+}
+
+export interface CatalogManifestProviderMetadata {
+  [key: string]: unknown;
+}
+
+export interface CatalogManifestPackContentItem {
+  path: string;
+  name: string;
   [key: string]: unknown;
 }
 

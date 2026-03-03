@@ -6,6 +6,7 @@ import { useConfig } from "@/contexts/ConfigContext";
 import { OrchestratorResource } from "@/interfaces/Orchestrator";
 import { HostConfig } from "@/interfaces/Host";
 import { devopsService } from "@/services/devops";
+import { useModuleView } from "@/components/Header/ModuleViewSwitcher";
 
 
 
@@ -186,6 +187,7 @@ function VmStatCard({ label, value, color }: { label: string; value: number; col
 
 export const Home: React.FC = () => {
     const { session, updateHardwareInfo, hasModule } = useSession();
+    const moduleView = useModuleView();
     const config = useConfig();
     const { currentStats, history, setHardwareInfo } = useSystemStats();
     const hw = session?.hardwareInfo;
@@ -195,19 +197,28 @@ export const Home: React.FC = () => {
 
     // Unified resource pages: local host first (when available), then one per
     // orchestrator CPU architecture. Both share the same OrchestratorResource shape.
+    // The module view filter determines which pages are included:
+    //   'all'          → local host + all orchestrator arch pages
+    //   'host'         → local host only
+    //   'orchestrator' → orchestrator arch pages only (can be two: ARM64 + x86_64)
+    const showLocal = moduleView === 'all' || moduleView === 'host';
+    const showOrchestrator = moduleView === 'all' || moduleView === 'orchestrator';
+
     const resourcePages = useMemo(() => {
         const pages: { title: string; res: OrchestratorResource }[] = [];
-        if (hw?.total?.logical_cpu_count) {
+        if (showLocal && hw?.total?.logical_cpu_count) {
             pages.push({
                 title: `Local Host${hw.cpu_type ? ` / ${hw.cpu_type.toUpperCase()}` : ''}`,
                 res: hw as unknown as OrchestratorResource,
             });
         }
-        orchResources.forEach((res) => {
-            pages.push({ title: (ARCH_META[res.cpu_type] ?? UNKNOWN_META).label, res });
-        });
+        if (showOrchestrator) {
+            orchResources.forEach((res) => {
+                pages.push({ title: (ARCH_META[res.cpu_type] ?? UNKNOWN_META).label, res });
+            });
+        }
         return pages;
-    }, [hw, orchResources]);
+    }, [hw, orchResources, showLocal, showOrchestrator]);
 
     // Refresh hardware info on every visit, then persist to the host config
     useEffect(() => {
@@ -358,8 +369,6 @@ export const Home: React.FC = () => {
             {resourcePages.length > 0 && (
                 <div>
                     <Section title="Agent Resources" size="lg" />
-
-
                     {/* ── Live graphs — only rendered once we have at least one data point ── */}
                     {history.length > 0 && (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

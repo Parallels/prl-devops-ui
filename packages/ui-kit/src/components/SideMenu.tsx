@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import React, { useMemo, useState } from "react";
 import CustomIcon from "./CustomIcon";
 import { type IconName } from "../icons/registry";
+import { ThemeColor } from "@/theme";
 
 export type SideMenuItemType = "link" | "group" | "divider";
 
@@ -29,6 +30,7 @@ export interface SideMenuItemBase {
 }
 
 export interface SideMenuItemLink extends SideMenuItemBase {
+  color?: ThemeColor;
   type?: "link";
   label: string;
   path: string;
@@ -53,6 +55,7 @@ export interface SideMenuItemDivider extends SideMenuItemBase {
 export type SideMenuItem = SideMenuItemLink | SideMenuItemGroup | SideMenuItemDivider;
 
 export interface SideMenuProps {
+  color?: ThemeColor;
   title?: string;
   /** Icon element shown in the logo area (always visible, collapsed or expanded) */
   logoIcon?: React.ReactNode;
@@ -68,7 +71,252 @@ export interface SideMenuProps {
   fullHeight?: boolean;
   /** Called with item.guards; return true = show. Omit to show all. */
   guardEvaluator?: (guards: SideMenuItemGuard[]) => boolean;
+  /**
+   * Active module view filter (e.g. 'all' | 'host' | 'orchestrator').
+   * When set to a non-'all' value, items whose module/anyModule guards reference
+   * a module listed in `moduleViewOptions` must match this value to be shown.
+   * Modules NOT in `moduleViewOptions` (e.g. 'reverse_proxy', 'api') are never
+   * subject to the view filter and behave as before.
+   * Items with no module guard are always shown.
+   */
+  activeModuleView?: string;
+  /**
+   * The set of module names that are treated as view-selectable
+   * (e.g. ['host', 'orchestrator']). Only module guards whose value appears
+   * in this list are subject to the activeModuleView filter.
+   * Defaults to [] (no view filtering on any module).
+   */
+  moduleViewOptions?: readonly string[];
 }
+
+
+const getSideMenuColorTokens = (color: ThemeColor) => {
+  switch (color) {
+    case 'white':
+      return {
+        bg: 'bg-white dark:bg-neutral-800',
+        text: 'text-neutral-900 dark:text-white',
+        hoverBg: 'hover:bg-neutral-100 dark:hover:bg-neutral-700/50',
+        hoverText: 'hover:text-neutral-900 dark:hover:text-white',
+        iconActive: 'text-neutral-900 dark:text-white',
+        iconHover: 'group-hover:text-neutral-900 dark:group-hover:text-white',
+      };
+    case 'neutral':
+    case 'theme':
+      return {
+        bg: 'bg-neutral-100 dark:bg-neutral-800/60',
+        text: 'text-neutral-900 dark:text-neutral-100',
+        hoverBg: 'hover:bg-neutral-200 dark:hover:bg-neutral-700/50',
+        hoverText: 'hover:text-neutral-900 dark:hover:text-neutral-100',
+        iconActive: 'text-neutral-900 dark:text-neutral-100',
+        iconHover: 'group-hover:text-neutral-900 dark:group-hover:text-neutral-100',
+      };
+    case 'brand':
+    case 'blue':
+      return {
+        bg: 'bg-blue-50 dark:bg-blue-500/10',
+        text: 'text-blue-700 dark:text-blue-400',
+        hoverBg: 'hover:bg-blue-100 dark:hover:bg-blue-500/20',
+        hoverText: 'hover:text-blue-900 dark:hover:text-blue-300',
+        iconActive: 'text-blue-600 dark:text-blue-400',
+        iconHover: 'group-hover:text-blue-700 dark:group-hover:text-blue-300',
+      };
+    case 'info':
+    case 'sky':
+      return {
+        bg: 'bg-sky-50 dark:bg-sky-500/10',
+        text: 'text-sky-700 dark:text-sky-400',
+        hoverBg: 'hover:bg-sky-100 dark:hover:bg-sky-500/20',
+        hoverText: 'hover:text-sky-900 dark:hover:text-sky-300',
+        iconActive: 'text-sky-600 dark:text-sky-400',
+        iconHover: 'group-hover:text-sky-700 dark:group-hover:text-sky-300',
+      };
+    case 'success':
+    case 'emerald':
+      return {
+        bg: 'bg-emerald-50 dark:bg-emerald-500/10',
+        text: 'text-emerald-700 dark:text-emerald-400',
+        hoverBg: 'hover:bg-emerald-100 dark:hover:bg-emerald-500/20',
+        hoverText: 'hover:text-emerald-900 dark:hover:text-emerald-300',
+        iconActive: 'text-emerald-600 dark:text-emerald-400',
+        iconHover: 'group-hover:text-emerald-700 dark:group-hover:text-emerald-300',
+      };
+    case 'warning':
+    case 'amber':
+      return {
+        bg: 'bg-amber-50 dark:bg-amber-500/10',
+        text: 'text-amber-700 dark:text-amber-400',
+        hoverBg: 'hover:bg-amber-100 dark:hover:bg-amber-500/20',
+        hoverText: 'hover:text-amber-900 dark:hover:text-amber-300',
+        iconActive: 'text-amber-600 dark:text-amber-400',
+        iconHover: 'group-hover:text-amber-700 dark:group-hover:text-amber-300',
+      };
+    case 'danger':
+    case 'rose':
+      return {
+        bg: 'bg-rose-50 dark:bg-rose-500/10',
+        text: 'text-rose-700 dark:text-rose-400',
+        hoverBg: 'hover:bg-rose-100 dark:hover:bg-rose-500/20',
+        hoverText: 'hover:text-rose-900 dark:hover:text-rose-300',
+        iconActive: 'text-rose-600 dark:text-rose-400',
+        iconHover: 'group-hover:text-rose-700 dark:group-hover:text-rose-300',
+      };
+    case 'parallels':
+    case 'red':
+      return {
+        bg: 'bg-red-50 dark:bg-red-500/10',
+        text: 'text-red-700 dark:text-red-400',
+        hoverBg: 'hover:bg-red-100 dark:hover:bg-red-500/20',
+        hoverText: 'hover:text-red-900 dark:hover:text-red-300',
+        iconActive: 'text-red-600 dark:text-red-400',
+        iconHover: 'group-hover:text-red-700 dark:group-hover:text-red-300',
+      };
+    case 'orange':
+      return {
+        bg: 'bg-orange-50 dark:bg-orange-500/10',
+        text: 'text-orange-700 dark:text-orange-400',
+        hoverBg: 'hover:bg-orange-100 dark:hover:bg-orange-500/20',
+        hoverText: 'hover:text-orange-900 dark:hover:text-orange-300',
+        iconActive: 'text-orange-600 dark:text-orange-400',
+        iconHover: 'group-hover:text-orange-700 dark:group-hover:text-orange-300',
+      };
+    case 'yellow':
+      return {
+        bg: 'bg-yellow-50 dark:bg-yellow-500/10',
+        text: 'text-yellow-700 dark:text-yellow-400',
+        hoverBg: 'hover:bg-yellow-100 dark:hover:bg-yellow-500/20',
+        hoverText: 'hover:text-yellow-900 dark:hover:text-yellow-300',
+        iconActive: 'text-yellow-600 dark:text-yellow-400',
+        iconHover: 'group-hover:text-yellow-700 dark:group-hover:text-yellow-300',
+      };
+    case 'lime':
+      return {
+        bg: 'bg-lime-50 dark:bg-lime-500/10',
+        text: 'text-lime-700 dark:text-lime-400',
+        hoverBg: 'hover:bg-lime-100 dark:hover:bg-lime-500/20',
+        hoverText: 'hover:text-lime-900 dark:hover:text-lime-300',
+        iconActive: 'text-lime-600 dark:text-lime-400',
+        iconHover: 'group-hover:text-lime-700 dark:group-hover:text-lime-300',
+      };
+    case 'green':
+      return {
+        bg: 'bg-green-50 dark:bg-green-500/10',
+        text: 'text-green-700 dark:text-green-400',
+        hoverBg: 'hover:bg-green-100 dark:hover:bg-green-500/20',
+        hoverText: 'hover:text-green-900 dark:hover:text-green-300',
+        iconActive: 'text-green-600 dark:text-green-400',
+        iconHover: 'group-hover:text-green-700 dark:group-hover:text-green-300',
+      };
+    case 'teal':
+      return {
+        bg: 'bg-teal-50 dark:bg-teal-500/10',
+        text: 'text-teal-700 dark:text-teal-400',
+        hoverBg: 'hover:bg-teal-100 dark:hover:bg-teal-500/20',
+        hoverText: 'hover:text-teal-900 dark:hover:text-teal-300',
+        iconActive: 'text-teal-600 dark:text-teal-400',
+        iconHover: 'group-hover:text-teal-700 dark:group-hover:text-teal-300',
+      };
+    case 'cyan':
+      return {
+        bg: 'bg-cyan-50 dark:bg-cyan-500/10',
+        text: 'text-cyan-700 dark:text-cyan-400',
+        hoverBg: 'hover:bg-cyan-100 dark:hover:bg-cyan-500/20',
+        hoverText: 'hover:text-cyan-900 dark:hover:text-cyan-300',
+        iconActive: 'text-cyan-600 dark:text-cyan-400',
+        iconHover: 'group-hover:text-cyan-700 dark:group-hover:text-cyan-300',
+      };
+    case 'indigo':
+      return {
+        bg: 'bg-indigo-50 dark:bg-indigo-500/10',
+        text: 'text-indigo-700 dark:text-indigo-400',
+        hoverBg: 'hover:bg-indigo-100 dark:hover:bg-indigo-500/20',
+        hoverText: 'hover:text-indigo-900 dark:hover:text-indigo-300',
+        iconActive: 'text-indigo-600 dark:text-indigo-400',
+        iconHover: 'group-hover:text-indigo-700 dark:group-hover:text-indigo-300',
+      };
+    case 'violet':
+      return {
+        bg: 'bg-violet-50 dark:bg-violet-500/10',
+        text: 'text-violet-700 dark:text-violet-400',
+        hoverBg: 'hover:bg-violet-100 dark:hover:bg-violet-500/20',
+        hoverText: 'hover:text-violet-900 dark:hover:text-violet-300',
+        iconActive: 'text-violet-600 dark:text-violet-400',
+        iconHover: 'group-hover:text-violet-700 dark:group-hover:text-violet-300',
+      };
+    case 'purple':
+      return {
+        bg: 'bg-purple-50 dark:bg-purple-500/10',
+        text: 'text-purple-700 dark:text-purple-400',
+        hoverBg: 'hover:bg-purple-100 dark:hover:bg-purple-500/20',
+        hoverText: 'hover:text-purple-900 dark:hover:text-purple-300',
+        iconActive: 'text-purple-600 dark:text-purple-400',
+        iconHover: 'group-hover:text-purple-700 dark:group-hover:text-purple-300',
+      };
+    case 'fuchsia':
+      return {
+        bg: 'bg-fuchsia-50 dark:bg-fuchsia-500/10',
+        text: 'text-fuchsia-700 dark:text-fuchsia-400',
+        hoverBg: 'hover:bg-fuchsia-100 dark:hover:bg-fuchsia-500/20',
+        hoverText: 'hover:text-fuchsia-900 dark:hover:text-fuchsia-300',
+        iconActive: 'text-fuchsia-600 dark:text-fuchsia-400',
+        iconHover: 'group-hover:text-fuchsia-700 dark:group-hover:text-fuchsia-300',
+      };
+    case 'pink':
+      return {
+        bg: 'bg-pink-50 dark:bg-pink-500/10',
+        text: 'text-pink-700 dark:text-pink-400',
+        hoverBg: 'hover:bg-pink-100 dark:hover:bg-pink-500/20',
+        hoverText: 'hover:text-pink-900 dark:hover:text-pink-300',
+        iconActive: 'text-pink-600 dark:text-pink-400',
+        iconHover: 'group-hover:text-pink-700 dark:group-hover:text-pink-300',
+      };
+    case 'slate':
+      return {
+        bg: 'bg-slate-50 dark:bg-slate-500/10',
+        text: 'text-slate-700 dark:text-slate-400',
+        hoverBg: 'hover:bg-slate-100 dark:hover:bg-slate-500/20',
+        hoverText: 'hover:text-slate-900 dark:hover:text-slate-300',
+        iconActive: 'text-slate-600 dark:text-slate-400',
+        iconHover: 'group-hover:text-slate-700 dark:group-hover:text-slate-300',
+      };
+    case 'gray':
+      return {
+        bg: 'bg-gray-50 dark:bg-gray-500/10',
+        text: 'text-gray-700 dark:text-gray-400',
+        hoverBg: 'hover:bg-gray-100 dark:hover:bg-gray-500/20',
+        hoverText: 'hover:text-gray-900 dark:hover:text-gray-300',
+        iconActive: 'text-gray-600 dark:text-gray-400',
+        iconHover: 'group-hover:text-gray-700 dark:group-hover:text-gray-300',
+      };
+    case 'zinc':
+      return {
+        bg: 'bg-zinc-50 dark:bg-zinc-500/10',
+        text: 'text-zinc-700 dark:text-zinc-400',
+        hoverBg: 'hover:bg-zinc-100 dark:hover:bg-zinc-500/20',
+        hoverText: 'hover:text-zinc-900 dark:hover:text-zinc-300',
+        iconActive: 'text-zinc-600 dark:text-zinc-400',
+        iconHover: 'group-hover:text-zinc-700 dark:group-hover:text-zinc-300',
+      };
+    case 'stone':
+      return {
+        bg: 'bg-stone-50 dark:bg-stone-500/10',
+        text: 'text-stone-700 dark:text-stone-400',
+        hoverBg: 'hover:bg-stone-100 dark:hover:bg-stone-500/20',
+        hoverText: 'hover:text-stone-900 dark:hover:text-stone-300',
+        iconActive: 'text-stone-600 dark:text-stone-400',
+        iconHover: 'group-hover:text-stone-700 dark:group-hover:text-stone-300',
+      };
+    default:
+      return {
+        bg: 'bg-blue-50 dark:bg-blue-500/10',
+        text: 'text-blue-700 dark:text-blue-400',
+        hoverBg: 'hover:bg-blue-100 dark:hover:bg-blue-500/20',
+        hoverText: 'hover:text-blue-900 dark:hover:text-blue-300',
+        iconActive: 'text-blue-600 dark:text-blue-400',
+        iconHover: 'group-hover:text-blue-700 dark:group-hover:text-blue-300',
+      };
+  }
+};
 
 export const SideMenu = ({
   title,
@@ -82,6 +330,9 @@ export const SideMenu = ({
   onCloseMobile,
   fullHeight = false,
   guardEvaluator,
+  activeModuleView,
+  moduleViewOptions = [],
+  color = 'blue',
 }: SideMenuProps) => {
   const location = useLocation();
   const [internalCollapsed, setInternalCollapsed] = useState(false);
@@ -95,10 +346,28 @@ export const SideMenu = ({
   };
 
   const visibleItems = useMemo(() => {
+    const isViewFiltered = !!activeModuleView && activeModuleView !== 'all';
+
+    const passesModuleViewFilter = (guards: SideMenuItemGuard[]): boolean => {
+      if (!isViewFiltered || moduleViewOptions.length === 0) return true;
+      for (const guard of guards) {
+        if (guard.type === 'module') {
+          // Only view-filter this guard if the module is a known view option
+          if (moduleViewOptions.includes(guard.module) && guard.module !== activeModuleView) return false;
+        } else if (guard.type === 'anyModule') {
+          // Only look at the subset of modules that are view options
+          const viewModulesInGuard = guard.modules.filter((m) => moduleViewOptions.includes(m));
+          if (viewModulesInGuard.length > 0 && !viewModulesInGuard.includes(activeModuleView!)) return false;
+        }
+      }
+      return true;
+    };
+
     const passesGuard = (item: SideMenuItem): boolean => {
       if (item.hidden) return false;
-      if (item.guards?.length && guardEvaluator) {
-        return guardEvaluator(item.guards);
+      if (item.guards?.length) {
+        if (!passesModuleViewFilter(item.guards)) return false;
+        if (guardEvaluator) return guardEvaluator(item.guards);
       }
       return true;
     };
@@ -119,7 +388,7 @@ export const SideMenu = ({
       if (item.type === 'divider') return !item.groupName || groupsWithVisibleLinks.has(item.groupName);
       return true;
     });
-  }, [items, guardEvaluator]);
+  }, [items, guardEvaluator, activeModuleView, moduleViewOptions]);
 
   // Mobile Overlay Classes
   const mobileClasses = `
@@ -136,7 +405,7 @@ export const SideMenu = ({
   `;
 
   const logoSection = (logoIcon || logoText) && (
-    <div className={`flex items-center border-b border-gray-200/60 dark:border-neutral-700/60 px-4 py-4 ${isCollapsed ? "justify-center" : ""}`}>
+    <div className={`flex items-center border-b border-gray-500/60 dark:border-neutral-700/60 px-4 py-4 ${isCollapsed ? "justify-center" : ""}`}>
       {logoIcon && (
         <div className="flex-shrink-0">{logoIcon}</div>
       )}
@@ -217,6 +486,9 @@ export const SideMenu = ({
               // Link (Default)
               const linkItem = item as SideMenuItemLink;
               const active = isActive(linkItem.path);
+              const itemColor = linkItem.color || color;
+              const tokens = getSideMenuColorTokens(itemColor);
+
               return (
                 <Link
                   key={linkItem.path}
@@ -224,15 +496,15 @@ export const SideMenu = ({
                   onClick={() => mobileOpen && onCloseMobile?.()}
                   title={isCollapsed && !isMobile ? linkItem.label : undefined}
                   className={`relative group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${active
-                    ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 shadow-sm"
-                    : "text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700/50 hover:text-gray-900 dark:hover:text-neutral-100"
+                    ? `${tokens.bg} ${tokens.text} shadow-sm`
+                    : `text-gray-600 dark:text-neutral-400 ${tokens.hoverBg} ${tokens.hoverText}`
                     } ${isCollapsed && !isMobile ? "justify-center" : ""}`}
                 >
                   {linkItem.icon && (
                     <div className={`flex items-center justify-center relative flex-shrink-0 ${isCollapsed && !isMobile ? "" : "mr-3"}`}>
                       <CustomIcon
                         icon={linkItem.icon}
-                        className={`h-5 w-5 transition-colors duration-150 ${active ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-neutral-500 group-hover:text-gray-600 dark:group-hover:text-neutral-300"}`}
+                        className={`h-5 w-5 transition-colors duration-150 ${active ? tokens.iconActive : `text-gray-400 dark:text-neutral-500 ${tokens.iconHover}`}`}
                       />
                       {/* Badge in collapsed mode: small dot over the icon */}
                       {isCollapsed && !isMobile && linkItem.badge && (

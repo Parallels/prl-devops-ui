@@ -42,6 +42,8 @@ type CheckboxTheme = Record<ThemeColor, string>;
 type SpinnerTheme = Record<ThemeColor, [string, string, string, string]>;
 type LoaderTheme = Record<ThemeColor, { track: string; bar: string }>;
 type MultiToggleTheme = Record<ThemeColor, { active: string; activeText: string; indicator: string; hover: string }>;
+type MultiToggleVariantTokens = { softIndicator: string; activeText: string; hover: string };
+type MultiToggleVariantTheme = Record<ThemeColor, MultiToggleVariantTokens>;
 
 type TabsColorTokens = {
   hoverText: string;
@@ -117,6 +119,7 @@ interface ThemeDefinition {
   spinner: SpinnerTheme;
   loader: LoaderTheme;
   multiToggle: MultiToggleTheme;
+  multiToggleVariant: MultiToggleVariantTheme;
   tabs: TabsTheme;
   panel: PanelTheme;
   stepper: StepperTheme;
@@ -160,7 +163,7 @@ const colors: ThemeColor[] = [
 ];
 
 // Helper to map semantic colors to Tailwind colors
-const resolveColor = (color: ThemeColor): string => {
+export const resolveColor = (color: ThemeColor): string => {
   switch (color) {
     case "brand":
       return "blue";
@@ -189,6 +192,7 @@ const createTheme = (): ThemeDefinition => {
     spinner: {} as SpinnerTheme,
     loader: {} as LoaderTheme,
     multiToggle: {} as MultiToggleTheme,
+    multiToggleVariant: {} as MultiToggleVariantTheme,
     tabs: {} as TabsTheme,
     panel: {} as PanelTheme,
     stepper: {} as StepperTheme,
@@ -235,7 +239,7 @@ const createTheme = (): ThemeDefinition => {
         `bg-${c}-50 text-${c}-600 ring-1 ring-inset ring-${c}-200 hover:bg-${c}-100 focus-visible:ring-2 focus-visible:ring-${c}-400 focus-visible:ring-offset-2 dark:bg-${c}-500/10 dark:text-${c}-200 dark:ring-${c}-500/40`;
       theme.button.outline[color] =
         `border border-${c}-200 text-${c}-600 hover:bg-${c}-50 focus-visible:ring-2 focus-visible:ring-${c}-400 focus-visible:ring-offset-2 dark:border-${c}-500/50 dark:text-${c}-200 dark:hover:bg-${c}-500/10`;
-      theme.button.ghost[color] = `text-${c}-600 hover:bg-${c}-50 focus-visible:ring-2 focus-visible:ring-${c}-400 focus-visible:ring-offset-2 dark:text-${c}-200 dark:hover:bg-${c}-500/10`;
+      theme.button.ghost[color] = `text-${c}-600 hover:bg-${c}-100 focus-visible:ring-2 focus-visible:ring-${c}-400 focus-visible:ring-offset-2 dark:text-${c}-200 dark:hover:bg-${c}-500/5`;
       theme.button.link[color] = `text-${c}-600 hover:text-${c}-500 hover:underline dark:text-${c}-200`;
       theme.button.clear[color] = `text-${c}-600 hover:text-${c}-500 dark:text-${c}-200`;
       theme.button.icon[color] =
@@ -296,6 +300,21 @@ const createTheme = (): ThemeDefinition => {
         activeText: `text-${c}-700 dark:text-${c}-200`,
         indicator: `bg-${c}-500/15 dark:bg-${c}-400/20 border border-${c}-400/40 dark:border-${c}-300/20`,
         hover: `hover:text-${c}-600 dark:hover:text-${c}-300`,
+      };
+    }
+
+    // MultiToggle variant (solid/soft)
+    if (isWhite || isTheme) {
+      theme.multiToggleVariant[color] = {
+        softIndicator: "bg-neutral-200 dark:bg-neutral-600",
+        activeText: "text-neutral-700 dark:text-neutral-200",
+        hover: "hover:text-neutral-700 dark:hover:text-neutral-200",
+      };
+    } else {
+      theme.multiToggleVariant[color] = {
+        softIndicator: `bg-${c}-100 dark:bg-${c}-900/30`,
+        activeText: `text-${c}-600 dark:text-${c}-400`,
+        hover: `hover:text-${c}-600 dark:hover:text-${c}-400`,
       };
     }
 
@@ -535,6 +554,9 @@ export const getLoaderProgressColors = (color: ThemeColor): { track: string; bar
 
 export const getMultiToggleColorTokens = (color: ThemeColor): { active: string; activeText: string; indicator: string; hover: string } =>
   currentTheme.multiToggle[color] ?? currentTheme.multiToggle.blue;
+
+export const getMultiToggleVariantTokens = (color: ThemeColor): MultiToggleVariantTokens =>
+  currentTheme.multiToggleVariant[color] ?? currentTheme.multiToggleVariant.blue;
 
 export const getTabsColorTokens = (color: ThemeColor): TabsColorTokens => currentTheme.tabs[color] ?? currentTheme.tabs.blue;
 

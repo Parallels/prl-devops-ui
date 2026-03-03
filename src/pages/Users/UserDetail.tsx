@@ -12,6 +12,7 @@ import {
 import { devopsService } from '@/services/devops';
 import { DevOpsUser } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 export interface UserDetailRef {
   save: () => Promise<void>;
@@ -30,6 +31,7 @@ export interface UserDetailProps {
 export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(
   ({ user, isNew = false, availableRoles = [], availableClaims = [], onSave, onDirtyChange }, ref) => {
     const { session } = useSession();
+    const { themeColor } = useSystemSettings();
     const hostname = session?.hostname ?? '';
 
     // Profile fields
@@ -240,7 +242,7 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(
                   checked={user.isSuperUser ?? false}
                   disabled={!canUpdate || !isSuperUser}
                   label={user.isSuperUser ? 'Yes' : 'No'}
-                  color="parallels"
+                  color={themeColor}
                 />
               </FormField>
             )}

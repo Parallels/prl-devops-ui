@@ -4,7 +4,13 @@ export { default as AppDivider, type AppDividerProps } from "./AppDivider";
 export { default as Badge, type BadgeProps } from "./Badge";
 export { default as BadgeIcon, type BadgeIconProps } from "./BadgeIcon";
 export { default as Pill, type PillProps } from "./Pill";
-export { default as Progress, type ProgressProps } from "./Progress";
+export {
+  default as Progress,
+  type ProgressProps,
+  type ProgressMotion,
+  type ProgressMotionSpeed,
+  type ProgressMotionDirection,
+} from "./Progress";
 export { default as MultiProgressBar, type MultiProgressBarProps, type MultiProgressBarSeries } from "./MultiProgressBar";
 export {
   default as Spinner,
@@ -37,7 +43,7 @@ export { default as Select, type SelectProps } from "./Select";
 export { default as Combobox, type ComboboxProps } from "./Combobox";
 export { default as Checkbox, type CheckboxProps } from "./Checkbox";
 export { default as Toggle, type ToggleProps } from "./Toggle";
-export { default as MultiToggle, type MultiToggleProps, type MultiToggleOption } from "./MultiToggle";
+export { default as MultiToggle, type MultiToggleProps, type MultiToggleOption, type MultiToggleVariant } from "./MultiToggle";
 export { default as FormField, type FormFieldProps } from "./FormField";
 export { default as FormLayout, type FormLayoutProps } from "./FormLayout";
 export { default as FormSection, type FormSectionProps } from "./FormSection";
@@ -46,6 +52,7 @@ export { default as MultiSelectPills, type MultiSelectPillsProps } from "./Multi
 export { default as SearchBar, type SearchBarProps } from "./SearchBar";
 
 // Layout
+export { default as TruncatedText, type TruncatedTextProps } from "./TruncatedText";
 export { default as InfoRow, type InfoRowProps, type InfoRowSize, type InfoRowPadding } from "./InfoRow";
 export { default as SectionCard, type SectionCardProps, type SectionCardVariant, type SectionCardSize } from "./SectionCard";
 export { default as Section, type SectionProps, type SectionSize, type SectionVariant } from "./Section";
@@ -84,7 +91,16 @@ export {
   type SideMenuGuardCustom,
 } from "./SideMenu";
 export { default as SideMenuLayout, type SideMenuLayoutProps } from "./SideMenuLayout";
-export { default as SplitView, type SplitViewProps, type SplitViewItem, type SplitViewItemBadge, type SplitViewSize } from "./SplitView";
+export {
+  default as SplitView,
+  type SplitViewProps,
+  type SplitViewItem,
+  type SplitViewItemBadge,
+  type SplitViewSize,
+  type SplitViewHeaderSlot,
+  type SplitViewHeaderDetails,
+  type SplitViewPanelHeaderProps,
+} from "./SplitView";
 export { default as SmartInput, type SmartInputProps } from "./SmartInput";
 export { default as SmartValue, type SmartValueProps } from "./SmartValue";
 export { default as StartupStageStepper, type StartupStageStepperProps } from "./StartupStageStepper";
@@ -114,6 +130,7 @@ export {
   TREE_INDENT_PX,
   TREE_NEUTRAL_TOKENS,
   getTreeColorTokens,
+  type TreeReorderEvent,
   type TreeTone,
   type TreeItemData,
   type TreeViewProps,

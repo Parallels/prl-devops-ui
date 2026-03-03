@@ -1,8 +1,16 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { Job } from '@/interfaces/Jobs';
 import { jobsService } from '@/services/devops/jobsService';
 import { useSession } from './SessionContext';
 import { useEventsHub } from './EventsHubContext';
+import { useNotifications } from './NotificationContext';
+import { drainUnseenMessages } from '@/utils/messageQueue';
+import { GLOBAL_NOTIFICATION_CHANNEL } from '@/constants/constants';
+
+function titleCase(s: string): string {
+    return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,6 +59,8 @@ const JobsContext = createContext<JobsContextType | null>(null);
 export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { session } = useSession();
     const { containerMessages } = useEventsHub();
+    const { addNotification } = useNotifications();
+    const navigate = useNavigate();
     const hostname = session?.hostname ?? '';
 
     const [jobsMap, dispatch] = useReducer(jobsReducer, {});
@@ -85,19 +95,74 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         const msgs = containerMessages['job_manager'];
-        if (!msgs?.length) return;
-        const latest = msgs[0]; // newest first
-        if (latest.id === lastEventIdRef.current) return;
-        lastEventIdRef.current = latest.id;
+        const unseen = drainUnseenMessages(msgs, lastEventIdRef, 'all');
+        if (unseen.length === 0) return;
 
-        const msg = latest.raw.message; // JOB_CREATED | JOB_UPDATED | JOB_COMPLETED | JOB_FAILED
-        if (!msg) return;
+        for (const event of unseen) {
+            const msg = event.raw.message; // JOB_CREATED | JOB_UPDATED | JOB_COMPLETED | JOB_FAILED
+            if (!msg) continue;
 
-        const job = latest.raw.body as Job | undefined;
-        if (!job?.id) return;
+            const job = event.raw.body as Job | undefined;
+            if (!job?.id) continue;
 
-        if (msg === 'JOB_CREATED' || msg === 'JOB_UPDATED' || msg === 'JOB_COMPLETED' || msg === 'JOB_FAILED') {
             dispatch({ type: 'UPSERT', job });
+
+            const jobLabel = `${titleCase(job.job_type)} · ${titleCase(job.job_operation)}`;
+            const viewAction = {
+                label: 'View Job',
+                icon: 'ArrowRight' as const,
+                onClick: () => navigate('/jobs', { state: { selectJobId: job.id } }),
+            };
+
+            if (msg === 'JOB_CREATED') {
+                addNotification({
+                    id: job.id,
+                    channel: GLOBAL_NOTIFICATION_CHANNEL,
+                    type: 'info',
+                    message: `Job started: ${jobLabel}`,
+                    timestamp: Date.now(),
+                    updatedAt: Date.now(),
+                    isRead: false,
+                    showAsToast: true,
+                    autoClose: true,
+                    autoCloseDuration: 15000,
+                    dismissible: true,
+                    actions: [viewAction],
+                });
+            } else if (msg === 'JOB_COMPLETED') {
+                addNotification({
+                    id: job.id,
+                    channel: GLOBAL_NOTIFICATION_CHANNEL,
+                    type: 'success',
+                    message: `Job completed: ${jobLabel}`,
+                    details: job.result || undefined,
+                    timestamp: Date.now(),
+                    updatedAt: Date.now(),
+                    isRead: false,
+                    showAsToast: true,
+                    autoClose: true,
+                    autoCloseDuration: 15000,
+                    dismissible: true,
+                    replace: true,
+                    actions: [viewAction],
+                });
+            } else if (msg === 'JOB_FAILED') {
+                addNotification({
+                    id: job.id,
+                    channel: GLOBAL_NOTIFICATION_CHANNEL,
+                    type: 'error',
+                    message: `Job failed: ${jobLabel}`,
+                    details: job.error || undefined,
+                    timestamp: Date.now(),
+                    updatedAt: Date.now(),
+                    isRead: false,
+                    showAsToast: true,
+                    autoClose: false,
+                    dismissible: true,
+                    replace: true,
+                    actions: [viewAction],
+                });
+            }
         }
     }, [containerMessages['job_manager']]); // eslint-disable-line react-hooks/exhaustive-deps
 

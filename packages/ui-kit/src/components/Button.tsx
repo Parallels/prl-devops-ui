@@ -102,8 +102,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const colorClasses = getButtonColorClasses(variant, color);
     const isIconMode = iconOnly || variant === "icon";
     const accentTone = accentColor ?? color;
-    const accentRingClass = iconAccentRing[accentTone] ?? iconAccentRing.indigo;
-    const accentHoverClass = iconAccentHover[accentTone] ?? iconAccentHover.indigo;
+    const accentRingClass = iconAccentRing[accentTone] ?? iconAccentRing.blue;
+    const accentHoverClass = iconAccentHover[accentTone] ?? iconAccentHover.blue;
     const accentClasses =
       isIconMode && accent
         ? classNames(

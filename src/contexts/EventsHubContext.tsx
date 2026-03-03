@@ -6,7 +6,9 @@ import { authService } from '../services/authService';
 
 export const EVENTS_HUB_SERVER_ID = 'events-hub';
 const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy,job_manager';
-const DEFAULT_LIMIT = 500;
+// Keep a larger in-memory buffer so consumers using queue cursors can catch up
+// during short spikes without losing intermediate events.
+const DEFAULT_LIMIT = 2000;
 const HOST_STATS_LIMIT = 60; // ~1 min of data at 1-second intervals
 const HOST_LOGS_LIMIT = 100;
 const REVERSE_PROXY_LIMIT = 100;
@@ -172,9 +174,20 @@ function reverseProxyReducer(state: ReverseProxyState, action: ReverseProxyActio
     }
 }
 
+function hasMessageId(state: ContainersState, id: string): boolean {
+    for (const container of Object.values(state)) {
+        if (container.messages.some((message) => message.id === id)) return true;
+    }
+    return false;
+}
+
 function containersReducer(state: ContainersState, action: Action): ContainersState {
     switch (action.type) {
         case 'ADD': {
+            // Guard against duplicate deliveries (e.g. reconnect replay or
+            // duplicate raw listeners) so Events view doesn't render duplicates.
+            if (hasMessageId(state, action.msg.id)) return state;
+
             const knownKey = action.key in state ? action.key : '_other';
             const container = state[knownKey];
             const next = [action.msg, ...container.messages];

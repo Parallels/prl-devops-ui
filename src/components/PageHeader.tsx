@@ -4,23 +4,30 @@ import { HelpButton, HelpButtonProps } from '@prl/ui-kit';
 // ── Icon color tokens ────────────────────────────────────────────────────────
 
 const iconColorMap = {
-    rose: 'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400',
-    amber: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
-    sky: 'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400',
-    emerald: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400',
-    violet: 'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400',
-    neutral: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
+    rose:      'bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400',
+    amber:     'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
+    sky:       'bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400',
+    emerald:   'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400',
+    violet:    'bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400',
+    neutral:   'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400',
+    parallels: 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400',
+    red:       'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400',
+    blue:      'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400',
+    green:     'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400',
+    indigo:    'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400',
+    cyan:      'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400',
+    orange:    'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400',
 } as const;
 
 // ── PageHeaderIcon helper ────────────────────────────────────────────────────
 
 export interface PageHeaderIconProps {
     children: React.ReactNode;
-    color?: keyof typeof iconColorMap;
+    color?: keyof typeof iconColorMap | (string & {});
 }
 
 export const PageHeaderIcon: React.FC<PageHeaderIconProps> = ({ children, color = 'neutral' }) => (
-    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${iconColorMap[color]}`}>
+    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${iconColorMap[color as keyof typeof iconColorMap] ?? iconColorMap.neutral}`}>
         {children}
     </div>
 );

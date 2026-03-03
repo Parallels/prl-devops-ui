@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import type { VmsDeepLinkState, HostsDeepLinkState } from '@/types/deepLink';
+import type { VmsDeepLinkState, HostsDeepLinkState, JobsDeepLinkState } from '@/types/deepLink';
 
 /**
  * Central navigation helper.
@@ -24,6 +24,11 @@ export function useNavigateTo() {
         toHost(hostId: string) {
             const state: HostsDeepLinkState = { selectHostId: hostId };
             navigate('/hosts', { state });
+        },
+
+        toJob(jobId: string) {
+            const state: JobsDeepLinkState = { selectJobId: jobId };
+            navigate('/jobs', { state });
         },
     };
 }

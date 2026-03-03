@@ -3,6 +3,12 @@ import type { ThemeColor } from '../../theme/Theme';
 
 export type TreeTone = ThemeColor;
 
+export interface TreeReorderEvent {
+    id: string;
+    oldOrder: number; // zero-based index before move
+    newOrder: number; // zero-based index after move
+}
+
 export interface TreeItemData {
     id: string;
     // Icon slot
@@ -46,11 +52,16 @@ export interface TreeViewProps {
     animated?: boolean;          // enable dot flow (default: true)
     showLine?: boolean;          // show trunk/branch lines (default: true)
     showConnectors?: boolean;    // show ring decorators (default: true)
+    connectorStyle?: 'rings' | 'dots'; // connector decoration style (default: 'rings')
+    branchColorMode?: 'item' | 'parent'; // L-branch color source (default: 'item')
+    junctionStyle?: 'rounded' | 'dot'; // L-junction style (default: 'rounded')
+    showCenterDot?: boolean;     // draw center dot inside rings (default: true)
     connectorHalf?: boolean;     // half-ring mode (default: false)
     connectorBorderSize?: 'fit' | 'xs' | 'sm' | 'md' | 'lg';
     dotSpacing?: number;         // target px between dots (default: 50)
     // Layout
     indent?: 'xs' | 'sm' | 'md' | 'lg';  // gutter width (default: 'xs' = 24 px)
+    rootChildIndentExtra?: number; // extra px for only root->first-child branch end
     rowGap?: number;             // px gap between item rows (default: 8)
     stubHeight?: number;         // px gap between root and first item (default: 12)
     className?: string;
@@ -61,6 +72,9 @@ export interface TreeViewProps {
     error?: React.ReactNode;
     errorState?: React.ReactNode;
     onRetry?: () => void;
+    // Reorder support
+    reorderable?: boolean;
+    onReorder?: (event: TreeReorderEvent) => void;
 }
 
 // ── TreeItemCard (exported standalone for advanced consumers) ───────────────
@@ -77,8 +91,13 @@ export interface TreeItemCardProps {
     tone?: TreeTone;
     body?: React.ReactNode;
     defaultExpanded?: boolean;
+    expanded?: boolean;
+    onToggleExpanded?: () => void;
+    forceToggle?: boolean;
     actions?: React.ReactNode;
     hoverActions?: React.ReactNode;
+    dragHandle?: React.ReactNode;
+    isDragging?: boolean;
     index?: number;
     className?: string;
 }
@@ -90,15 +109,22 @@ export interface TreeFlowSvgProps {
     cardAnchors?: number[];      // Y offset from row top to connector centre (collapsed h/2)
     mode?: 'tree' | 'bracket';   // 'tree' (default L-shape) or 'bracket' ([-shape with parent connecting from right)
     parentAnchorY?: number;      // specific Y offset for parent connection in bracket mode
+    parentOffset?: number;       // measured px gap from parent card border to child tree container top
     toneList: TreeTone[];        // tone per item
     activeList: boolean[];       // active state per item (drives branch color + animation)
     rootTone?: TreeTone;         // tone for root connector (default: 'neutral')
     rootActive?: boolean;        // root active (drives trunk color + animation)
     rowGap: number;
     stubHeight?: number;
+    depth?: number;
+    rootChildIndentExtra?: number;
     indent?: 'xs' | 'sm' | 'md' | 'lg';
     showLine?: boolean;
     showConnectors?: boolean;
+    connectorStyle?: 'rings' | 'dots';
+    branchColorMode?: 'item' | 'parent';
+    junctionStyle?: 'rounded' | 'dot';
+    showCenterDot?: boolean;
     connectorHalf?: boolean;
     connectorBorderSize?: 'fit' | 'xs' | 'sm' | 'md' | 'lg';
     dotSpacing?: number;

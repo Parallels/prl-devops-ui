@@ -254,6 +254,7 @@ export const InfoRow: React.FC<InfoRowProps> = ({
                 hoverable && 'rounded-md mx-1 hover:bg-neutral-50 dark:hover:bg-neutral-800/50',
                 !noBorder && !hoverable && 'border-b border-neutral-100 dark:border-neutral-800 last:border-0',
                 copied && 'bg-emerald-50/60 dark:bg-emerald-950/20',
+                copied && hoverable && 'animate-copied-flash',
                 className,
             )}
         >

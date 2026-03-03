@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { CustomIcon } from '@prl/ui-kit';
-import { useReverseProxyEvents, type ReverseProxyEventEntry, type ReverseProxyTcpBody } from '@/contexts/EventsHubContext';
+import {
+    useReverseProxyEvents,
+    type ReverseProxyEventEntry,
+    type ReverseProxyHttpBody,
+    type ReverseProxyTcpBody,
+} from '@/contexts/EventsHubContext';
+
+type ReverseProxySearchBody = {
+    target_host?: string;
+    internal_ip_address?: string;
+    path?: string;
+    method?: string;
+    source_ip?: string;
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -16,11 +29,31 @@ function formatTime(ts: number): string {
 
 // ── Entry row ─────────────────────────────────────────────────────────────────
 
-function TcpEventRow({ entry, isNew }: { entry: ReverseProxyEventEntry; isNew: boolean }) {
-    const body = entry.body as ReverseProxyTcpBody;
+function ProxyEventRow({
+    entry,
+    isNew,
+}: {
+    entry: ReverseProxyEventEntry;
+    isNew: boolean;
+}) {
+    const body = entry.body;
+    const trafficType = body.traffic_type ?? 'tcp';
+    const isHttp = trafficType === 'http';
+    const httpBody = body as ReverseProxyHttpBody;
+    const tcpBody = body as ReverseProxyTcpBody;
 
-    const source = body.source_ip ?? '—';
-    const target = body.internal_ip_address ?? body.target_host ?? '—';
+    const common = body as ReverseProxySearchBody;
+    const source = isHttp
+        ? `${httpBody.method ?? 'HTTP'} ${httpBody.path ?? '/'}`
+        : (tcpBody.source_ip ?? '—');
+    const target = common.internal_ip_address ?? common.target_host ?? '—';
+    const badgeClass = isHttp
+        ? 'bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300'
+        : 'bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300';
+    const arrowClass = isHttp
+        ? 'text-sky-400 dark:text-sky-500'
+        : 'text-violet-400 dark:text-violet-500';
+    const badgeLabel = isHttp ? 'HTTP' : 'TCP';
 
     return (
         <div className={classNames(
@@ -38,9 +71,12 @@ function TcpEventRow({ entry, isNew }: { entry: ReverseProxyEventEntry; isNew: b
                 {formatTime(entry.ts)}
             </span>
 
-            {/* TCP badge */}
-            <span className="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300 w-[36px] justify-center">
-                TCP
+            {/* Traffic badge */}
+            <span className={classNames(
+                'shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide w-[42px] justify-center',
+                badgeClass,
+            )}>
+                {badgeLabel}
             </span>
 
             {/* ── Traffic flow: source → icon → target ── */}
@@ -53,7 +89,7 @@ function TcpEventRow({ entry, isNew }: { entry: ReverseProxyEventEntry; isNew: b
                 {/* Direction icon */}
                 <CustomIcon
                     icon="ReverseProxyTo"
-                    className="shrink-0 h-3.5 w-3.5 text-violet-400 dark:text-violet-500"
+                    className={classNames('shrink-0 h-3.5 w-3.5', arrowClass)}
                 />
 
                 {/* Destination */}
@@ -72,12 +108,14 @@ function TcpEventRow({ entry, isNew }: { entry: ReverseProxyEventEntry; isNew: b
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export interface TcpLogsTabProps {
+export interface ProxyTrafficLogsTabProps {
     /** The ReverseProxyHost id — used to scope to this host's events */
     hostId: string;
+    /** Which traffic type to show; defaults to tcp for backwards compatibility */
+    trafficType?: 'tcp' | 'http' | 'all';
 }
 
-export function TcpLogsTab({ hostId }: TcpLogsTabProps) {
+export function ProxyTrafficLogsTab({ hostId, trafficType = 'tcp' }: ProxyTrafficLogsTabProps) {
     const rawEntries = useReverseProxyEvents(hostId);
     const [search, setSearch] = useState('');
     const [autoScroll, setAutoScroll] = useState(true);
@@ -86,22 +124,25 @@ export function TcpLogsTab({ hostId }: TcpLogsTabProps) {
     const prevCountRef = useRef(0);
     const isProgrammaticRef = useRef(false);
 
-    // Filter to tcp only, oldest-first
-    const tcpEntries = useMemo(
-        () => rawEntries.filter((e) => e.body.traffic_type === 'tcp'),
-        [rawEntries],
+    // Filter by requested traffic type, oldest-first
+    const scopedEntries = useMemo(
+        () => rawEntries.filter((e) => {
+            if (trafficType === 'all') return true;
+            return e.body.traffic_type === trafficType;
+        }),
+        [rawEntries, trafficType],
     );
 
     // Apply search
     const filtered = useMemo(() => {
         const needle = search.trim().toLowerCase();
-        if (!needle) return tcpEntries;
-        return tcpEntries.filter((e) => {
-            const b = e.body as ReverseProxyTcpBody;
-            const hay = `${e.message} ${b.target_host ?? ''} ${b.internal_ip_address ?? ''}`.toLowerCase();
+        if (!needle) return scopedEntries;
+        return scopedEntries.filter((e) => {
+            const b = e.body as ReverseProxySearchBody;
+            const hay = `${e.message} ${b.target_host ?? ''} ${b.internal_ip_address ?? ''} ${b.path ?? ''} ${b.method ?? ''} ${b.source_ip ?? ''}`.toLowerCase();
             return hay.includes(needle);
         });
-    }, [tcpEntries, search]);
+    }, [scopedEntries, search]);
 
     // Reset on search change
     useLayoutEffect(() => {
@@ -113,8 +154,8 @@ export function TcpLogsTab({ hostId }: TcpLogsTabProps) {
 
     // New-arrival flash (2 s)
     useEffect(() => {
-        if (tcpEntries.length > prevCountRef.current) {
-            const added = tcpEntries.slice(prevCountRef.current).map((e) => e.id);
+        if (scopedEntries.length > prevCountRef.current) {
+            const added = scopedEntries.slice(prevCountRef.current).map((e) => e.id);
             setNewIds((prev) => new Set([...prev, ...added]));
             const t = setTimeout(() => {
                 setNewIds((prev) => {
@@ -123,11 +164,11 @@ export function TcpLogsTab({ hostId }: TcpLogsTabProps) {
                     return next;
                 });
             }, 2000);
-            prevCountRef.current = tcpEntries.length;
+            prevCountRef.current = scopedEntries.length;
             return () => clearTimeout(t);
         }
-        prevCountRef.current = tcpEntries.length;
-    }, [tcpEntries.length]);
+        prevCountRef.current = scopedEntries.length;
+    }, [scopedEntries]);
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -184,7 +225,7 @@ export function TcpLogsTab({ hostId }: TcpLogsTabProps) {
                     type="button"
                     onClick={handleClear}
                     title="Clear flash indicators"
-                    disabled={tcpEntries.length === 0}
+                    disabled={scopedEntries.length === 0}
                     className="px-2 py-1 rounded text-xs font-mono border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 hover:border-rose-400 dark:hover:border-rose-500/40 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >✕</button>
             </div>
@@ -202,11 +243,11 @@ export function TcpLogsTab({ hostId }: TcpLogsTabProps) {
             >
                 {filtered.length === 0 ? (
                     <p className="text-xs font-mono text-neutral-400 dark:text-neutral-600 py-4 text-center">
-                        {tcpEntries.length === 0 ? 'Waiting for TCP traffic…' : 'No matches.'}
+                        {scopedEntries.length === 0 ? `Waiting for ${trafficType.toUpperCase()} traffic…` : 'No matches.'}
                     </p>
                 ) : (
                     filtered.map((entry) => (
-                        <TcpEventRow
+                        <ProxyEventRow
                             key={entry.id}
                             entry={entry}
                             isNew={newIds.has(entry.id)}
@@ -217,7 +258,7 @@ export function TcpLogsTab({ hostId }: TcpLogsTabProps) {
 
             {/* ── Footer ───────────────────────────────────────────────── */}
             <div className="flex items-center justify-between px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 flex-shrink-0">
-                <span>{filtered.length} / {tcpEntries.length} TCP events</span>
+                <span>{filtered.length} / {scopedEntries.length} {trafficType.toUpperCase()} events</span>
                 {!hostId && (
                     <span className="text-amber-500 dark:text-amber-400">no host ID — events unavailable</span>
                 )}

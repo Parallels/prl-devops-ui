@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { Notification } from '../types/Notification';
 import notificationService from '@/services/NotificationService';
+import toastService from '@/services/ToastService';
 import {
   NotificationAction,
   NotificationContextValue,
@@ -410,6 +411,18 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
 
   const addNotification = useCallback((notification: Notification) => {
     dispatch({ type: 'ADD_NOTIFICATION', notification });
+    if (notification.showAsToast && !notification.alreadyShownToast) {
+      toastService.showToast({
+        id: notification.id,
+        message: notification.message,
+        details: notification.details,
+        type: notification.type as 'info' | 'success' | 'warning' | 'error',
+        autoClose: notification.autoClose,
+        autoCloseDuration: notification.autoCloseDuration,
+        dismissible: notification.dismissible,
+        actions: notification.actions,
+      });
+    }
   }, []);
 
   const updateNotification = useCallback((notification: Notification) => {

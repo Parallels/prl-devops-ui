@@ -11,6 +11,7 @@ import {
     Toggle,
     type MultiToggleOption,
 } from '@prl/ui-kit';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -181,6 +182,7 @@ const EMPTY_AUTO: AutoInstallFormData = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onSubmit, onAutoInstall }) => {
+    const { themeColor } = useSystemSettings();
     const portId   = useId();
     const sshPortId = useId();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -383,7 +385,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                 </div>
                 <Progress
                     value={progressValue}
-                    color={installPhase === 'error' ? 'danger' : installPhase === 'success' ? 'success' : 'parallels'}
+                    color={installPhase === 'error' ? 'danger' : installPhase === 'success' ? 'success' : themeColor}
                     size="sm"
                     showShimmer={isInstalling}
                 />
@@ -448,7 +450,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                     <Input
                         placeholder="e.g. Production Build Server"
                         value={manual.name}
-                        tone="parallels"
+                        tone={themeColor}
                         disabled={submitting}
                         onChange={(e) => setManualField('name', e.target.value)}
                     />
@@ -464,7 +466,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                     <Input
                         placeholder="e.g. 192.168.1.42 or build-host.local"
                         value={manual.address}
-                        tone="parallels"
+                        tone={themeColor}
                         leadingIcon="Globe"
                         disabled={submitting}
                         onChange={(e) => setManualField('address', e.target.value)}
@@ -479,7 +481,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                             min={1}
                             max={65535}
                             value={String(manual.port)}
-                            tone="parallels"
+                            tone={themeColor}
                             disabled={submitting}
                             onChange={(e) => {
                                 const v = parseInt(e.target.value, 10);
@@ -491,7 +493,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                     <FormField label="Secure Connection (HTTPS)">
                         <div className="flex items-center gap-3 py-2">
                             <Toggle
-                                color="parallels"
+                                color={themeColor}
                                 checked={manual.secure}
                                 disabled={submitting}
                                 onChange={(e) => handleSecureToggle(e.target.checked)}
@@ -510,7 +512,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                     <MultiToggle
                         options={MANUAL_AUTH_OPTIONS}
                         value={manual.authType}
-                        color="parallels"
+                        color={themeColor}
                         fullWidth
                         onChange={(v) => setManualField('authType', v as AuthType)}
                     />
@@ -528,7 +530,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                             type={showApiKey ? 'text' : 'password'}
                             placeholder="Enter API key"
                             value={manual.apiKey}
-                            tone="parallels"
+                            tone={themeColor}
                             disabled={submitting}
                             autoComplete="off"
                             trailingIcon={
@@ -554,7 +556,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                             <Input
                                 placeholder="Enter username"
                                 value={manual.username}
-                                tone="parallels"
+                                tone={themeColor}
                                 leadingIcon="User"
                                 disabled={submitting}
                                 autoComplete="username"
@@ -572,7 +574,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                                 type={showManualPassword ? 'text' : 'password'}
                                 placeholder="Enter password"
                                 value={manual.password}
-                                tone="parallels"
+                                tone={themeColor}
                                 disabled={submitting}
                                 autoComplete="current-password"
                                 trailingIcon={
@@ -621,7 +623,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                     <Input
                         placeholder="e.g. 192.168.1.50 or worker-01.local"
                         value={auto.targetHost}
-                        tone="parallels"
+                        tone={themeColor}
                         leadingIcon="Globe"
                         onChange={(e) => setAutoField('targetHost', e.target.value)}
                     />
@@ -639,7 +641,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                             min={1}
                             max={65535}
                             value={String(auto.sshPort)}
-                            tone="parallels"
+                            tone={themeColor}
                             onChange={(e) => {
                                 const v = parseInt(e.target.value, 10);
                                 if (!isNaN(v)) setAutoField('sshPort', v);
@@ -654,7 +656,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                         <Input
                             placeholder="latest"
                             value={auto.version}
-                            tone="parallels"
+                            tone={themeColor}
                             onChange={(e) => setAutoField('version', e.target.value || DEFAULT_VERSION)}
                         />
                     </FormField>
@@ -667,7 +669,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                     <MultiToggle
                         options={SSH_AUTH_OPTIONS}
                         value={auto.sshAuthType}
-                        color="parallels"
+                        color={themeColor}
                         fullWidth
                         onChange={(v) => setAutoField('sshAuthType', v as SshAuthType)}
                     />
@@ -683,7 +685,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                     <Input
                         placeholder="e.g. admin or root"
                         value={auto.sshUsername}
-                        tone="parallels"
+                        tone={themeColor}
                         leadingIcon="User"
                         autoComplete="username"
                         onChange={(e) => setAutoField('sshUsername', e.target.value)}
@@ -701,7 +703,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                             type={showSshPassword ? 'text' : 'password'}
                             placeholder="Enter SSH password"
                             value={auto.sshPassword}
-                            tone="parallels"
+                            tone={themeColor}
                             autoComplete="current-password"
                             trailingIcon={
                                 <button type="button" tabIndex={-1}
@@ -736,7 +738,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                                 <Input
                                     placeholder="~/.ssh/id_rsa"
                                     value={auto.sshKeyPath}
-                                    tone="parallels"
+                                    tone={themeColor}
                                     className="flex-1"
                                     onChange={(e) => setAutoField('sshKeyPath', e.target.value)}
                                 />
@@ -761,7 +763,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                                 type={showKeyPassphrase ? 'text' : 'password'}
                                 placeholder="Optional passphrase"
                                 value={auto.sshKeyPassphrase}
-                                tone="parallels"
+                                tone={themeColor}
                                 autoComplete="off"
                                 trailingIcon={
                                     <button type="button" tabIndex={-1}
@@ -808,7 +810,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                     </Button>
                     <Button
                         variant="solid"
-                        color="parallels"
+                        color={themeColor}
                         size="sm"
                         loading={submitting}
                         onClick={() => void handleManualSubmit()}
@@ -827,7 +829,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                 </Button>
                 <Button
                     variant="solid"
-                    color="parallels"
+                    color={themeColor}
                     size="sm"
                     onClick={() => void handleStartInstall()}
                 >
@@ -857,7 +859,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
                         <MultiToggle
                             options={MODE_OPTIONS}
                             value={mode}
-                            color="parallels"
+                            color={themeColor}
                             fullWidth
                             onChange={(v) => setMode(v as ModalMode)}
                         />

@@ -1,4 +1,5 @@
 import type { ThemeColor } from "./Theme";
+import { resolveColor } from "./Theme";
 
 const colors: ThemeColor[] = [
   "red",
@@ -32,27 +33,6 @@ const colors: ThemeColor[] = [
   "theme",
   "parallels",
 ];
-
-const resolveColor = (color: ThemeColor): string => {
-  switch (color) {
-    case "brand":
-      return "indigo";
-    case "info":
-      return "sky";
-    case "success":
-      return "emerald";
-    case "warning":
-      return "amber";
-    case "danger":
-      return "rose";
-    case "theme":
-      return "neutral";
-    case "parallels":
-      return "red";
-    default:
-      return color;
-  }
-};
 
 const createIconAccentRing = (): Record<ThemeColor, string> => {
   const rings: Record<string, string> = {};

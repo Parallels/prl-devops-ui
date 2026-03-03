@@ -9,7 +9,7 @@ export type PanelTone = ThemeColor;
 export type PanelDecoration = "none" | "gradient" | "shapes" | "both";
 export type PanelMediaPlacement = "top" | "start" | "end" | "overlay";
 export type PanelPadding = "none" | "xs" | "sm" | "md" | "lg";
-export type PanelCorner = "rounded" | "pill" | "none";
+export type PanelCorner = "rounded" | "rounded-sm" | "rounded-md" | "rounded-lg" | "rounded-full" | "pill" | "none";
 export type PanelActionLayout = "auto" | "stacked" | "inline";
 export type PanelLoaderType = Exclude<LoaderProps["variant"], undefined>;
 
@@ -52,6 +52,11 @@ export interface PanelProps extends Omit<React.HTMLAttributes<HTMLElement>, "tit
   loaderColor?: LoaderProps["color"];
   hoverShadow?: boolean;
   decoration?: PanelDecoration;
+  /**
+   * Adds a subtle background tint on hover and lightens any decoration elements.
+   * Defaults to `true` when an `onClick` handler is present, otherwise `false`.
+   */
+  hoverable?: boolean;
 }
 
 const variantBaseStyles: Record<PanelVariant, string> = {
@@ -72,7 +77,11 @@ const paddingStyles: Record<PanelPadding, string> = {
 };
 
 const cornerStyles: Record<PanelCorner, string> = {
-  rounded: "rounded-xl",
+  rounded: "rounded-sm",
+  "rounded-sm": "rounded-lg",
+  "rounded-md": "rounded-2xl",
+  "rounded-lg": "rounded-3xl",
+  "rounded-full": "rounded-full",
   pill: "rounded-3xl",
   none: "rounded-none",
 };
@@ -103,7 +112,7 @@ const Panel: React.FC<PanelProps> = ({
   variant = "elevated",
   tone = "neutral",
   padding = "md",
-  corner = "rounded",
+  corner = "rounded-sm",
   fullWidth,
   maxWidth,
   minHeight,
@@ -122,12 +131,14 @@ const Panel: React.FC<PanelProps> = ({
   loaderColor,
   hoverShadow = false,
   decoration = "none",
+  hoverable,
   titleClassName,
   subtitleClassName,
   descriptionClassName,
   ...rest
 }) => {
   const palette = getPanelToneStyles(tone);
+  const isHoverable = hoverable ?? Boolean(rest.onClick);
   const isOverlay = mediaPlacement === "overlay" && Boolean(media);
   const hasMedia = Boolean(media);
   // Decoration is suppressed in overlay mode since the image + gradient already provide impact
@@ -156,7 +167,7 @@ const Panel: React.FC<PanelProps> = ({
       case "default":
         return classNames(variantBaseStyles.default, "border border-white/40");
       case "glass":
-        return classNames(variantBaseStyles.glass, "border border-neutral-200 dark:border-neutral-800");
+        return classNames(variantBaseStyles.glass, "border", palette.border);
       default:
         return classNames(variantBaseStyles.elevated, "border", palette.border);
     }
@@ -266,6 +277,7 @@ const Panel: React.FC<PanelProps> = ({
         fullWidth ? "w-full" : undefined,
         isOverlay ? overlayClasses : undefined,
         hoverShadow && "transition-shadow duration-200 hover:shadow-xl hover:-translate-y-[1px]",
+        isHoverable && "group cursor-pointer",
         className,
       )}
       style={resolvedStyle}
@@ -284,16 +296,26 @@ const Panel: React.FC<PanelProps> = ({
       )}
       {showDecorationGradient && (
         <div
-          className={classNames("pointer-events-none absolute inset-0 bg-gradient-to-br", palette.decorationGradient)}
+          className={classNames(
+            "pointer-events-none absolute inset-0 bg-gradient-to-br",
+            palette.decorationGradient,
+            isHoverable && "transition-opacity duration-200 group-hover:opacity-50",
+          )}
           aria-hidden="true"
         />
       )}
       {showDecorationShapes && (
         <>
-          <div className={classNames("pointer-events-none absolute -right-10 -top-10 w-52 h-52 rounded-full", palette.decorationShape)} aria-hidden="true" />
-          <div className={classNames("pointer-events-none absolute -left-8 -bottom-10 w-36 h-36 rounded-full opacity-70", palette.decorationShape)} aria-hidden="true" />
-          <div className={classNames("pointer-events-none absolute right-10 bottom-8 w-16 h-16 rounded-full opacity-50", palette.decorationShape)} aria-hidden="true" />
+          <div className={classNames("pointer-events-none absolute -right-10 -top-10 w-52 h-52 rounded-full", palette.decorationShape, isHoverable && "transition-opacity duration-200 group-hover:opacity-50")} aria-hidden="true" />
+          <div className={classNames("pointer-events-none absolute -left-8 -bottom-10 w-36 h-36 rounded-full opacity-70", palette.decorationShape, isHoverable && "transition-opacity duration-200 group-hover:opacity-40")} aria-hidden="true" />
+          <div className={classNames("pointer-events-none absolute right-10 bottom-8 w-16 h-16 rounded-full opacity-50", palette.decorationShape, isHoverable && "transition-opacity duration-200 group-hover:opacity-25")} aria-hidden="true" />
         </>
+      )}
+      {isHoverable && (
+        <div
+          className="pointer-events-none absolute inset-0 rounded-[inherit] bg-transparent transition-colors duration-200 group-hover:bg-black/[0.025] dark:group-hover:bg-white/[0.04]"
+          aria-hidden="true"
+        />
       )}
       <div className={classNames("relative z-10 flex min-h-0 flex-1 flex-col gap-4", isOverlay && "backdrop-blur-sm")}>
         {disabled && <div className="absolute inset-0 z-10 bg-white/70 dark:bg-slate-900/70" aria-hidden="true" />}

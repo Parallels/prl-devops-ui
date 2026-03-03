@@ -2,6 +2,7 @@ export * from "./iconUtils";
 export * from "./focusUtils";
 export * from "./stringUtils";
 export * from "./durationUtils";
+export * from "./bytesUtils";
 export * from "./renderIcon";
 export * from "./dependencyUtils";
 export * from "./gravatar";

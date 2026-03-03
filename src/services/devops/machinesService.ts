@@ -2,7 +2,7 @@ import { apiService } from '../api';
 import { VirtualMachine } from '../../interfaces/VirtualMachine';
 import { VmCloneRequest } from '../../interfaces/devops';
 import { authService } from '../authService';
-import { MachineStateResponse } from '@/interfaces/Machine';
+import { CreateMachineAsyncRequest, MachineStateResponse } from '@/interfaces/Machine';
 
 
 /**
@@ -351,6 +351,33 @@ class MachinesService {
       return vm;
     } catch (error) {
       console.error('Failed to create VM from catalog:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create/download a virtual machine asynchronously from a catalog manifest.
+   *
+   * Endpoint: POST /api/v1/machines/async
+   */
+  async createVirtualMachineFromCatalogAsync(
+    hostname: string | undefined,
+    request: CreateMachineAsyncRequest
+  ): Promise<void> {
+    try {
+      const targetHost = hostname || authService.currentHostname;
+      if (!targetHost) {
+        throw new Error('No hostname provided and no active session found');
+      }
+
+      await apiService.post<void>(
+        targetHost,
+        '/api/v1/machines/async',
+        request,
+        { errorPrefix: 'Failed to start VM download from catalog', expectNoContent: true }
+      );
+    } catch (error) {
+      console.error('Failed to create VM asynchronously from catalog:', error);
       throw error;
     }
   }

@@ -24,6 +24,7 @@ import {
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { devopsService } from '@/services/devops';
 import { useSession } from '@/contexts/SessionContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -376,6 +377,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({
     onSubmit,
 }) => {
     const { session } = useSession();
+    const { themeColor } = useSystemSettings();
     const hostname = session?.hostname ?? '';
 
     // Wizard phase: 'select' = route type picker, 'wizard' = stepper
@@ -791,7 +793,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({
                         Applies cross-origin headers to all HTTP responses from this host
                     </p>
                 </div>
-                <Toggle checked={corsEnabled} onChange={(e) => setCorsEnabled(e.target.checked)} color="parallels" />
+                <Toggle checked={corsEnabled} onChange={(e) => setCorsEnabled(e.target.checked)} color={themeColor} />
             </div>
 
             {corsEnabled && (
@@ -848,7 +850,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({
                                 Include credentials (cookies, auth headers) in CORS requests
                             </p>
                         </div>
-                        <Toggle checked={corsCredentials} onChange={(e) => setCorsCredentials(e.target.checked)} color="parallels" size="sm" />
+                        <Toggle checked={corsCredentials} onChange={(e) => setCorsCredentials(e.target.checked)} color={themeColor} size="sm" />
                     </div>
 
                     <FormField label="Max Age (seconds)" description='How long preflight results can be cached.'>
@@ -1042,7 +1044,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({
                         </Button>
                         <Button
                             variant="solid"
-                            color={routeMode === 'tcp' ? 'violet' : 'parallels'}
+                            color={routeMode === 'tcp' ? 'violet' : themeColor}
                             size="sm"
                             trailingIcon="ChevronRight"
                             onClick={() => { setStep(0); setPhase('wizard'); }}
@@ -1059,7 +1061,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({
                         orientation="horizontal"
                         variant="card"
                         connector="progress"
-                        tone="parallels"
+                        tone={themeColor as any}
                         interactive
                         onChange={(newIndex) => {
                             if (newIndex < step) {
@@ -1084,7 +1086,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({
                             {isLastStep ? (
                                 <Button
                                     variant="solid"
-                                    color="parallels"
+                                    color={themeColor}
                                     size="sm"
                                     loading={saving}
                                     onClick={() => void handleSubmit()}
@@ -1094,7 +1096,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({
                             ) : (
                                 <Button
                                     variant="solid"
-                                    color="parallels"
+                                    color={themeColor}
                                     size="sm"
                                     onClick={handleNext}
                                 >
@@ -1140,6 +1142,7 @@ export const HttpRouteModal: React.FC<HttpRouteModalProps> = ({
     onClose,
     onSubmit,
 }) => {
+    const { themeColor } = useSystemSettings();
     const [path, setPath] = useState('/');
     const [schema, setSchema] = useState<'http' | 'https'>('http');
     const [pattern, setPattern] = useState('');
@@ -1358,7 +1361,7 @@ export const HttpRouteModal: React.FC<HttpRouteModalProps> = ({
                 <Button variant="outline" color="slate" size="sm" onClick={onClose}>Cancel</Button>
                 <Button
                     variant="solid"
-                    color="parallels"
+                    color={themeColor}
                     size="sm"
                     loading={saving}
                     onClick={() => void handleSubmit()}

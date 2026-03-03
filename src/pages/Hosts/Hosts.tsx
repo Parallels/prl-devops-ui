@@ -11,6 +11,7 @@ import {
 } from '@prl/ui-kit';
 import { useSession } from '@/contexts/SessionContext';
 import { useEventsHub } from '@/contexts/EventsHubContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { Claims } from '@/interfaces/tokenTypes';
 import { HostDetailPanel } from './HostDetailPanel';
 import { AddHostModal, type AddHostFormData } from './AddHostModal';
@@ -20,7 +21,8 @@ import { OsIcon } from '@/utils/virtualMachine';
 import { useNavigateTo } from '@/hooks/useNavigateTo';
 import type { HostsDeepLinkState } from '@/types/deepLink';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
-import { getStateTone } from '@/utils/vmUtils';
+import { getStateTone, parseVmReferenceBody, parseVmStateChangeBody, parseVmUptimeChangeBody, sortVirtualMachines, upsertVirtualMachine } from '@/utils/vmUtils';
+import { drainUnseenMessages } from '@/utils/messageQueue';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -68,12 +70,14 @@ function HostSubtitleLabel({ host }: { host: DevOpsRemoteHost }) {
 export const Hosts: React.FC = () => {
     const { hasClaim, session } = useSession();
     const { containerMessages } = useEventsHub();
+    const { themeColor } = useSystemSettings();
     const canCreate = hasClaim(Claims.CREATE_REVERSE_PROXY_HOST);
     const { toVm } = useNavigateTo();
     const location = useLocation();
     const deepLink = location.state as HostsDeepLinkState | null;
     const deepLinkConsumedRef = useRef(false);
     const lastOrchestratorEventIdRef = useRef<string | null>(null);
+    const lastPdfmEventIdRef = useRef<string | null>(null);
 
     const [hosts, setHosts] = useState<DevOpsRemoteHost[]>([]);
     const [loading, setLoading] = useState(true);
@@ -90,7 +94,7 @@ export const Hosts: React.FC = () => {
         let hostVms: VirtualMachine[] = [];
         if (h.state == 'healthy') {
             const data = await devopsService.orchestrator.getOrchestratorVMs(session?.hostname ?? '', h.id ?? '');
-            hostVms = data ?? [];
+            hostVms = sortVirtualMachines(data ?? []);
         }
         return {
             ...h,
@@ -117,62 +121,167 @@ export const Hosts: React.FC = () => {
 
     useEffect(() => { void fetchHosts(); }, [fetchHosts]);
 
+    const applyVmStateChange = useCallback((vmId: string, currentState: string, hostId?: string) => {
+        setHosts((prev) => prev.map((host) => {
+            if (hostId && host.id !== hostId) return host;
+
+            const vms = host.vms ?? [];
+            let changed = false;
+            const updatedVms = vms.map((vm) => {
+                if (vm.ID !== vmId) return vm;
+                changed = true;
+                return vm.State === currentState ? vm : { ...vm, State: currentState };
+            });
+
+            if (!changed) return host;
+            return { ...host, vms: updatedVms };
+        }));
+    }, []);
+
+    const applyVmUptimeChange = useCallback((vmId: string, uptime: string, hostId?: string) => {
+        setHosts((prev) => prev.map((host) => {
+            if (hostId && host.id !== hostId) return host;
+
+            const vms = host.vms ?? [];
+            let changed = false;
+            const updatedVms = vms.map((vm) => {
+                if (vm.ID !== vmId) return vm;
+                changed = true;
+                return vm.Uptime === uptime ? vm : { ...vm, Uptime: uptime };
+            });
+
+            if (!changed) return host;
+            return { ...host, vms: updatedVms };
+        }));
+    }, []);
+
+    const applyVmAddition = useCallback((vm: VirtualMachine, hostId?: string) => {
+        const resolvedHostId = hostId ?? (typeof vm.host_id === 'string' ? vm.host_id : undefined);
+        if (!resolvedHostId) return;
+
+        setHosts((prev) => prev.map((host) => {
+            if (host.id !== resolvedHostId) return host;
+            const updatedVms = upsertVirtualMachine(host.vms ?? [], vm);
+            return { ...host, vms: updatedVms };
+        }));
+    }, []);
+
+    const applyVmRemoval = useCallback((vmId: string, hostId?: string) => {
+        setHosts((prev) => prev.map((host) => {
+            if (hostId && host.id !== hostId) return host;
+
+            const vms = host.vms ?? [];
+            const updatedVms = vms.filter((vm) => vm.ID !== vmId);
+            if (updatedVms.length === vms.length) return host;
+            return { ...host, vms: updatedVms };
+        }));
+    }, []);
+
     // ── Real-time VM state updates ──────────────────────────────────────────
-    // HOST_VM_STATE_CHANGED carries the new state directly — patch the VM inside
-    // the matching host's vms array without re-fetching anything.
+    // Apply VM state changes from orchestrator events directly into the host VM
+    // lists without re-fetching.
     useEffect(() => {
         const msgs = containerMessages['orchestrator'];
-        if (!msgs || msgs.length === 0) return;
-        const latest = msgs[0];
-        if (latest.id === lastOrchestratorEventIdRef.current) return;
-        lastOrchestratorEventIdRef.current = latest.id;
+        const unseen = drainUnseenMessages(msgs, lastOrchestratorEventIdRef);
+        if (unseen.length === 0) return;
 
-        const { raw } = latest;
+        for (const msg of unseen) {
+            const { raw } = msg;
 
-        if (raw.message === 'HOST_VM_STATE_CHANGED') {
-            const hostId = raw.body?.host_id as string | undefined;
-            const event = raw.body?.event as { vm_id?: string; current_state?: string } | undefined;
-            const vmId = event?.vm_id;
-            const currentState = event?.current_state;
-            if (!hostId || !vmId || !currentState) return;
+            if (raw.message === 'HOST_VM_STATE_CHANGED' || raw.message === 'VM_STATE_CHANGED') {
+                const { hostId, vmId, currentState } = parseVmStateChangeBody(raw.body);
+                if (!vmId || !currentState) continue;
+                applyVmStateChange(vmId, currentState, hostId);
+            } else if (raw.message === 'HOST_VM_ADDED' || raw.message === 'VM_ADDED') {
+                const { hostId, vmId } = parseVmReferenceBody(raw.body);
+                if (!vmId || !session?.hostname) continue;
 
-            setHosts((prev) => prev.map((host) => {
-                if (host.id !== hostId) return host;
-                const updatedVms = (host.vms ?? []).map((vm) =>
-                    vm.ID === vmId ? { ...vm, State: currentState } : vm
-                );
-                return { ...host, vms: updatedVms };
-            }));
-        } else if (raw.message === 'HOST_HEALTH_UPDATE') {
-            const hostId = raw.body?.host_id as string | undefined;
-            const state = raw.body?.state as 'healthy' | 'unhealthy' | undefined;
-            if (!hostId || !state) return;
+                devopsService.machines
+                    .getVirtualMachine(session.hostname, vmId, true)
+                    .then((vm) => applyVmAddition(vm, hostId))
+                    .catch((err) => console.warn('[Hosts] Failed to fetch added orchestrator VM:', err));
+            } else if (raw.message === 'HOST_VM_UPTIME_CHANGED' || raw.message === 'VM_UPTIME_CHANGED') {
+                const { hostId, vmId, uptime } = parseVmUptimeChangeBody(raw.body);
+                if (!vmId || !uptime) continue;
+                applyVmUptimeChange(vmId, uptime, hostId);
+            } else if (raw.message === 'HOST_VM_REMOVED' || raw.message === 'VM_REMOVED') {
+                const { hostId, vmId } = parseVmReferenceBody(raw.body);
+                if (!vmId) continue;
+                applyVmRemoval(vmId, hostId);
+            } else if (raw.message === 'HOST_HEALTH_UPDATE') {
+                const hostId = raw.body?.host_id as string | undefined;
+                const state = raw.body?.state as 'healthy' | 'unhealthy' | undefined;
+                if (!hostId || !state) continue;
 
-            if (state === 'healthy') {
-                // If it became healthy, we need to fetch the full host again to get its VMs and full status
-                const existingHost = hosts.find(h => h.id === hostId);
-                if (existingHost) {
-                    void mapRemoteHost({ ...existingHost, state }).then(mappedHost => {
-                        setHosts(prev => prev.map(host => host.id === hostId ? mappedHost : host));
-                    });
+                if (state === 'healthy') {
+                    // If it became healthy, we need to fetch the full host again to get its VMs and full status
+                    const existingHost = hosts.find(h => h.id === hostId);
+                    if (existingHost) {
+                        void mapRemoteHost({ ...existingHost, state }).then(mappedHost => {
+                            setHosts(prev => prev.map(host => host.id === hostId ? mappedHost : host));
+                        });
+                    }
+                } else {
+                    setHosts((prev) => prev.map((host) => {
+                        if (host.id !== hostId) return host;
+                        return { ...host, state: state };
+                    }));
                 }
-            } else {
+            } else if (raw.message === 'HOST_WEBSOCKET_DISCONNECTED') {
+                const hostId = raw.body?.host_id as string | undefined;
+                if (!hostId) continue;
+
                 setHosts((prev) => prev.map((host) => {
                     if (host.id !== hostId) return host;
-                    return { ...host, state: state };
+                    return { ...host, state: 'unhealthy' };
                 }));
             }
-        } else if (raw.message === 'HOST_WEBSOCKET_DISCONNECTED') {
-            const hostId = raw.body?.host_id as string | undefined;
-            if (!hostId) return;
-
-            setHosts((prev) => prev.map((host) => {
-                if (host.id !== hostId) return host;
-                return { ...host, state: 'unhealthy' };
-            }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [containerMessages['orchestrator']]);
+
+    // Some deployments emit VM updates on pdfm with vm_id in body. Apply state
+    // and uptime changes against host VM lists without re-fetching.
+    useEffect(() => {
+        const msgs = containerMessages['pdfm'];
+        const unseen = drainUnseenMessages(msgs, lastPdfmEventIdRef);
+        if (unseen.length === 0) return;
+
+        for (const msg of unseen) {
+            const { raw } = msg;
+            if (raw.message === 'VM_ADDED') {
+                const { hostId, vmId } = parseVmReferenceBody(raw.body);
+                if (!vmId || !session?.hostname) continue;
+
+                devopsService.machines
+                    .getVirtualMachine(session.hostname, vmId, false)
+                    .then((vm) => applyVmAddition(vm, hostId))
+                    .catch((err) => console.warn('[Hosts] Failed to fetch added local VM:', err));
+                continue;
+            }
+
+            if (raw.message === 'VM_STATE_CHANGED') {
+                const { hostId, vmId, currentState } = parseVmStateChangeBody(raw.body);
+                if (!vmId || !currentState) continue;
+                applyVmStateChange(vmId, currentState, hostId);
+                continue;
+            }
+
+            if (raw.message === 'VM_UPTIME_CHANGED') {
+                const { hostId, vmId, uptime } = parseVmUptimeChangeBody(raw.body);
+                if (!vmId || !uptime) continue;
+                applyVmUptimeChange(vmId, uptime, hostId);
+                continue;
+            }
+
+            if (raw.message === 'VM_REMOVED') {
+                const { hostId, vmId } = parseVmReferenceBody(raw.body);
+                if (!vmId) continue;
+                applyVmRemoval(vmId, hostId);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [containerMessages['pdfm']]);
 
     // Consume deep-link state once hosts have loaded
     useEffect(() => {
@@ -284,7 +393,7 @@ export const Hosts: React.FC = () => {
                 listTitle={`Hosts (${hosts.length})`}
                 autoHideList={false}
                 borderLeft
-                color="parallels"
+                color={themeColor}
                 collapsible
                 resizable
                 autoExpand={false}
@@ -305,9 +414,9 @@ export const Hosts: React.FC = () => {
                             <IconButton
                                 variant="ghost"
                                 size="xs"
-                                color="parallels"
+                                color={themeColor}
                                 accent={true}
-                                accentColor="parallels"
+                                accentColor={themeColor}
                                 icon="Add"
                                 onClick={() => setShowAddModal(true)}
                                 aria-label="Add host"
@@ -316,7 +425,7 @@ export const Hosts: React.FC = () => {
                         <IconButton
                             variant="ghost"
                             size="xs"
-                            color="parallels"
+                            color={themeColor}
                             icon="Restart"
                             onClick={() => void fetchHosts()}
                             aria-label="Refresh hosts"

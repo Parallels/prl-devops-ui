@@ -45,6 +45,7 @@ export interface Notification {
     alreadyShownToast?: boolean;
     progress?: NotificationProgress;
     autoClose?: boolean;
+    autoCloseDuration?: number;
     dismissible?: boolean;
     data?: Record<string, unknown>;
 }

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { EmptyState, Pill, SplitView, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { useSession } from '@/contexts/SessionContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { CachePanel } from './CachePanel';
 
@@ -24,6 +25,7 @@ function CacheItemLabel({ label, state }: { label: string; state?: string }) {
 // ── Page component ────────────────────────────────────────────────────────────
 export const Cache: React.FC = () => {
     const { session, hasModule } = useSession();
+    const { themeColor } = useSystemSettings();
     const hostname = session?.hostname ?? '';
 
     const isOrchestratorMode = hasModule('orchestrator');
@@ -100,7 +102,7 @@ export const Cache: React.FC = () => {
                 listTitle="Cache"
                 autoHideList={false}
                 borderLeft
-                color="parallels"
+                color={themeColor}
                 collapsible
                 resizable
                 autoExpand={false}

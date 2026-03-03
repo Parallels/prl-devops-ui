@@ -4,7 +4,7 @@ import SideMenu, { type SideMenuProps } from "./SideMenu";
 import CustomIcon from "./CustomIcon";
 
 export interface SideMenuLayoutProps {
-  /** Props passed to the SideMenu component */
+  /** Props passed to the SideMenu component (including color). */
   sideMenuProps: SideMenuProps;
   /** Content rendered in the fixed header bar at the top of the main area */
   header?: React.ReactNode;

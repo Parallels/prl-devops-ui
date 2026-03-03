@@ -111,6 +111,11 @@ import { Refresh } from './components/Refresh';
 import { Calendar } from './components/Calendar';
 import { Folder } from './components/Folder';
 import { Jobs } from './components/Jobs';
+import { Warning } from './components/Warning';
+import { Artifactory } from './components/Artifactory';
+import { Azure } from './components/Azure';
+import { Minio } from './components/Minio';
+import { Aws } from './components/Aws';
 
 export type IconName =
     | "Add"
@@ -224,7 +229,12 @@ export type IconName =
     | "Refresh"
     | "Calendar"
     | "Folder"
-    | "Jobs";
+    | "Jobs"
+    | "Warning"
+    | "Artifactory"
+    | "Azure"
+    | "Minio"
+    | "Aws";
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
     "Add": Add,
@@ -339,4 +349,9 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
     "Calendar": Calendar,
     "Folder": Folder,
     "Jobs": Jobs,
+    "Warning": Warning,
+    "Artifactory": Artifactory,
+    "Azure": Azure,
+    "Minio": Minio,
+    "Aws": Aws,
 };

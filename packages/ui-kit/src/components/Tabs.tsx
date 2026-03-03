@@ -4,6 +4,7 @@ import { useIconRenderer } from "../contexts/IconContext";
 import { getTabsColorTokens, type ThemeColor } from "../theme/Theme";
 import IconButton from "./IconButton";
 import { iconAccentActive } from "../theme/ButtonTypes";
+import Badge from "./Badge";
 
 export type TabsVariant = "underline" | "soft" | "pill" | "segmented" | "minimal";
 export type TabsSize = "sm" | "md" | "lg";
@@ -24,9 +25,10 @@ export interface TabItem {
   label: ReactNode;
   icon?: string | React.ReactElement;
   description?: ReactNode;
-  badge?: ReactNode;
+  badge?: string | number;
   disabled?: boolean;
   panel?: ReactNode;
+  badgeColor?: ThemeColor;
   actions?: TabItemAction[];
 }
 
@@ -361,14 +363,7 @@ const Tabs: React.FC<TabsProps> = ({
                   ) : null}
                 </span>
                 {item.badge ? (
-                  <span
-                    className={classNames(
-                      "ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                      isActive ? badgeActive : badgeInactive
-                    )}
-                  >
-                    {item.badge}
-                  </span>
+                  <Badge count={item.badge} tone={item.badgeColor} />
                 ) : null}
               </button>
               {showDividerAfter ? (

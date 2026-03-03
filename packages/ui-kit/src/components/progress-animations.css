@@ -1,0 +1,15 @@
+@keyframes progress-shimmer {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+/* Stripes scroll continuously: 34px = 24px-period × √2 (one full horizontal repeat of the 45° pattern) */
+@keyframes progress-stripes {
+  0%   { background-position: 0 0; }
+  100% { background-position: 34px 0; }
+}
+
+@keyframes progress-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}

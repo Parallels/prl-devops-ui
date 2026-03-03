@@ -231,7 +231,7 @@ export const NotificationWrapper: React.FC<NotificationWrapperProps> = ({
                         <Badge
                           dot={showDot}
                           count={showCount ? unreadCount : undefined}
-                          variant="danger"
+                          tone="danger"
                         />
                       </span>
                     )}

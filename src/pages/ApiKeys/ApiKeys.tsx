@@ -19,6 +19,7 @@ import {
 import { devopsService } from '@/services/devops';
 import { DevOpsApiKey } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { PageHeader, PageHeaderIcon } from '@/components/PageHeader';
 
 const NEW_KEY_ID = '__new__';
@@ -38,6 +39,7 @@ function generateSecret(): string {
 // ── Encoded-key reveal modal ──────────────────────────────────────────────────
 
 function NewKeyModal({ encodedKey, onClose }: { encodedKey: string; onClose: () => void }) {
+    const { themeColor } = useSystemSettings();
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
@@ -73,7 +75,7 @@ function NewKeyModal({ encodedKey, onClose }: { encodedKey: string; onClose: () 
                 </div>
             </div>
             <ModalActions>
-                <Button variant="solid" color="parallels" onClick={onClose}>Done</Button>
+                <Button variant="solid" color={themeColor} onClick={onClose}>Done</Button>
             </ModalActions>
         </Modal>
     );
@@ -83,6 +85,7 @@ function NewKeyModal({ encodedKey, onClose }: { encodedKey: string; onClose: () 
 
 export const ApiKeys: React.FC = () => {
     const { session, hasClaim } = useSession();
+    const { themeColor } = useSystemSettings();
     const hostname = session?.hostname ?? '';
 
     const [keys, setKeys] = useState<DevOpsApiKey[]>([]);
@@ -360,7 +363,7 @@ export const ApiKeys: React.FC = () => {
 
             {/* ── Header ──────────────────────────────────────────────── */}
             <PageHeader
-                icon={<PageHeaderIcon color="rose"><CustomIcon icon="KeyManagement" className="w-5 h-5" /></PageHeaderIcon>}
+                icon={<PageHeaderIcon color={themeColor}><CustomIcon icon="KeyManagement" className="w-5 h-5" /></PageHeaderIcon>}
                 title="API Keys"
                 subtitle={loading ? 'Loading…' : `${keys.length} key${keys.length !== 1 ? 's' : ''} · Manage programmatic access tokens`}
                 search={<SearchBar leadingIcon="Search" variant="gradient" glowIntensity="soft" onSearch={(q) => setSearch(q)} placeholder="Search keys…" />}
@@ -381,7 +384,7 @@ export const ApiKeys: React.FC = () => {
                             </Button>
                             <Button
                                 variant="solid"
-                                color="parallels"
+                                color={themeColor}
                                 size="sm"
                                 loading={saving}
                                 leadingIcon="Key"
@@ -394,7 +397,7 @@ export const ApiKeys: React.FC = () => {
                         canCreate && (
                             <Button
                                 variant="soft"
-                                color="parallels"
+                                color={themeColor}
                                 size="sm"
                                 leadingIcon="Add"
                                 onClick={handleAddNew}

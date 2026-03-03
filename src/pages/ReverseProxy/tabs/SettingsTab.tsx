@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, FormField, Input, Toggle } from '@prl/ui-kit';
 import { ReverseProxyHost } from '@/interfaces/ReverseProxy';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 // ── Tag input (for CORS arrays) ───────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ interface SettingsTabProps {
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({ proxyHost, canUpdate, onSave }) => {
+    const { themeColor } = useSystemSettings();
     const hasTcpRoute = !!(proxyHost.tcp_route);
 
     const [name, setName] = useState(proxyHost.name ?? '');
@@ -169,7 +171,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ proxyHost, canUpdate, 
                                 checked={corsEnabled}
                                 onChange={(e) => { setCorsEnabled(e.target.checked); markDirty(); }}
                                 disabled={!canUpdate}
-                                color="parallels"
+                                color={themeColor}
                             />
                         </div>
 
@@ -234,7 +236,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ proxyHost, canUpdate, 
                 <div className="flex justify-end pt-2 border-t border-neutral-100 dark:border-neutral-800">
                     <Button
                         variant="solid"
-                        color="parallels"
+                        color={themeColor}
                         size="sm"
                         loading={saving}
                         onClick={() => void handleSave()}

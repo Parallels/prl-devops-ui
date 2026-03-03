@@ -1,122 +1,695 @@
-import React, { useState } from "react";
-import { SplitView, type SplitViewItem, Button, SearchBar, Table, type Column } from "@prl/ui-kit";
-import { PageHeader } from "@/components/PageHeader";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Button,
+  CustomIcon,
+  DeleteConfirmModal,
+  EmptyState,
+  IconButton,
+  Pill,
+  SearchBar,
+  SidePanel,
+  SplitView,
+  Tabs,
+  type SplitViewItem,
+} from '@prl/ui-kit';
+import { useSession } from '@/contexts/SessionContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { CatalogManager } from '@/interfaces/CatalogManager';
+import { Claims } from '@/interfaces/tokenTypes';
+import { devopsService } from '@/services/devops';
+import { PageHeaderIcon } from '@/components/PageHeader';
+import { CatalogDetailContent, CatalogVersionsContent } from './CatalogDetailPanel';
+import { CatalogManagerEditorModal, DeleteCatalogManagerModal } from './CatalogManagerModals';
+import { DownloadCatalogVmModal, DownloadVmFormData } from './CatalogVmModals';
+import { CatalogManagersPanel, CatalogSourcePanel, type CatalogSourceStats } from './CatalogPanels';
+import {
+  CatalogManifestItem,
+  CatalogRow,
+  CatalogSource,
+  defaultManagerForm,
+  managerToForm,
+  normalizeForDirtyCheck,
+  toManagerRequest,
+} from './CatalogModels';
 
-/* ------------------------------------------------------------------ */
-/*  Demo data                                                          */
-/* ------------------------------------------------------------------ */
-
-interface CatalogImage {
-  name: string;
-  os: string;
-  osIcon: string;
-  version: string;
-  size: string;
-  created: string;
+interface SelectedCatalogItem {
+  source: CatalogSource;
+  manifest: CatalogManifestItem;
 }
 
-const productionImages: CatalogImage[] = [
-  { name: "Ubuntu-Base", os: "Ubuntu 22.04 LTS", osIcon: "linux", version: "22.04 LTS", size: "19.05 GB", created: "Sep 3, 2024 11:17:13" },
-  { name: "Win-Srv-2019", os: "Win3rvs-2019", osIcon: "windows", version: "1.3.1", size: "16.05 GB", created: "Sep 3, 2024 11:17:17" },
-  { name: "Redis-Cache", os: "Win3rvs-2019", osIcon: "windows", version: "1.0.1", size: "253.39 GB", created: "Sep 8, 2024 11:15:27" },
-  { name: "Redis-Cache-LX", os: "Ubuntu", osIcon: "linux", version: "22.04", size: "6.62 MB", created: "Sep 1, 2024 11:22:04" },
-  { name: "Ubuntu-Extended", os: "Ubuntu", osIcon: "linux", version: "22.04 LTS", size: "14.93 GB", created: "Sep 1, 2024 11:22:36" },
-];
+interface CatalogDeleteTarget {
+  source: CatalogSource;
+  manifestId: string;
+  version?: string;
+}
 
-const stagingImages: CatalogImage[] = [
-  { name: "Dev-Box-Ubuntu", os: "Ubuntu 24.04", osIcon: "linux", version: "24.04", size: "8.12 GB", created: "Oct 1, 2024 09:30:00" },
-  { name: "Test-Runner", os: "Alpine Linux", osIcon: "linux", version: "3.19", size: "256 MB", created: "Oct 2, 2024 14:15:22" },
-];
+interface CatalogDownloadTarget {
+  source: CatalogSource;
+  row: CatalogRow;
+}
 
-const legacyImages: CatalogImage[] = [
-  { name: "CentOS-7-Base", os: "CentOS 7", osIcon: "linux", version: "7.9", size: "4.20 GB", created: "Jan 15, 2023 08:00:00" },
-  { name: "Win-2016-Legacy", os: "Windows Server 2016", osIcon: "windows", version: "1.0.0", size: "22.80 GB", created: "Mar 20, 2022 10:45:00" },
-];
+const defaultDownloadVmForm: DownloadVmFormData = {
+  owner: '',
+  name: '',
+  startOnCreate: false,
+  path: '',
+  cpu: '',
+  memory: '',
+};
 
-/* ------------------------------------------------------------------ */
-/*  Image table columns                                                */
-/* ------------------------------------------------------------------ */
-
-const imageColumns: Column<CatalogImage>[] = [
-  { id: "name", header: "Name", accessor: "name", sortable: true },
-  { id: "os", header: "OS", accessor: "os", sortable: true },
-  { id: "version", header: "Ver", accessor: "version" },
-  { id: "size", header: "Size", accessor: "size" },
-  { id: "created", header: "Created", accessor: "created", sortable: true },
-];
-
-const ImageTable: React.FC<{ images: CatalogImage[] }> = ({ images }) => (
-  <Table<CatalogImage>
-    columns={imageColumns}
-    data={images}
-    variant="flat"
-    rowKey={(row) => row.name}
-    hoverable
-  />
-);
-
-/* ------------------------------------------------------------------ */
-/*  Panel header builder                                               */
-/* ------------------------------------------------------------------ */
-
-const LibraryPanelHeader: React.FC<{ label: React.ReactNode }> = ({ label }) => (
-  <PageHeader
-    title={<>Library: <span className="text-neutral-700 dark:text-neutral-300">{label}</span></>}
-    search={<SearchBar leadingIcon="Search" variant="gradient" glowIntensity="soft" placeholder="Search for images" onSearch={() => { }} className="w-52" />}
-    actions={<>
-      <Button variant="solid" color="red" size="sm" leadingIcon="Add">Upload ISO</Button>
-      <Button variant="outline" color="gray" size="sm" leadingIcon="Settings">Settings</Button>
-    </>}
-  />
-);
-
-/* ------------------------------------------------------------------ */
-/*  Split view items                                                   */
-/* ------------------------------------------------------------------ */
-
-const libraryItems: SplitViewItem[] = [
-  {
-    id: "production",
-    label: "PRODUCTION REPO",
-    subtitle: `${productionImages.length} images`,
-    badges: [{ label: "Active", tone: "green", variant: "soft" }],
-    panel: <ImageTable images={productionImages} />,
-  },
-  {
-    id: "staging",
-    label: "STAGING-REPO",
-    subtitle: `${stagingImages.length} images`,
-    badges: [],
-    panel: <ImageTable images={stagingImages} />,
-  },
-  {
-    id: "legacy",
-    label: "LEGACY-ARCHIVE",
-    subtitle: `${legacyImages.length} images`,
-    badges: [{ label: "Deprecated", tone: "amber", variant: "soft" }],
-    panel: <ImageTable images={legacyImages} />,
-  },
-];
-
-/* ------------------------------------------------------------------ */
-/*  Page                                                               */
-/* ------------------------------------------------------------------ */
+const formatCount = (value: number, singular: string, plural: string): string =>
+  `${value} ${value === 1 ? singular : plural}`;
 
 export const Catalogs: React.FC = () => {
+  const { session, hasModule, hasClaim } = useSession();
+  const { themeColor } = useSystemSettings();
+  const hostname = session?.hostname ?? '';
+  const sessionUserId = session?.tokenPayload?.uid ?? '';
+
   const [collapsed, setCollapsed] = useState(false);
+  const [query, setQuery] = useState('');
+  const [loadingSources, setLoadingSources] = useState(false);
+  const [sourcesError, setSourcesError] = useState<string | null>(null);
+  const [sources, setSources] = useState<CatalogSource[]>([]);
+  const [selectedSourceId, setSelectedSourceId] = useState<string | undefined>();
+  const [allManagers, setAllManagers] = useState<CatalogManager[]>([]);
+  const [sourceStats, setSourceStats] = useState<Record<string, CatalogSourceStats>>({});
+  const [catalogReloadToken, setCatalogReloadToken] = useState(0);
+
+  const [isManagingManagers, setIsManagingManagers] = useState(false);
+  const [managerSearch, setManagerSearch] = useState('');
+  const [selectedCatalogItem, setSelectedCatalogItem] = useState<SelectedCatalogItem | null>(null);
+  const [activeDetailTab, setActiveDetailTab] = useState<'details' | 'versions'>('details');
+
+  const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
+  const [editingManager, setEditingManager] = useState<CatalogManager | null>(null);
+  const [managerForm, setManagerForm] = useState(defaultManagerForm);
+  const [managerFormSnapshot, setManagerFormSnapshot] = useState<string>(normalizeForDirtyCheck(defaultManagerForm));
+  const [managerFormError, setManagerFormError] = useState<string | null>(null);
+  const [savingManager, setSavingManager] = useState(false);
+
+  const [managerToDelete, setManagerToDelete] = useState<CatalogManager | null>(null);
+  const [deletingManager, setDeletingManager] = useState(false);
+  const [catalogToDelete, setCatalogToDelete] = useState<CatalogDeleteTarget | null>(null);
+  const [deletingCatalog, setDeletingCatalog] = useState(false);
+  const [downloadVmModalItem, setDownloadVmModalItem] = useState<CatalogDownloadTarget | null>(null);
+  const [downloadVmForm, setDownloadVmForm] = useState<DownloadVmFormData>(defaultDownloadVmForm);
+  const [downloadVmError, setDownloadVmError] = useState<string | null>(null);
+  const [downloadVmLoading, setDownloadVmLoading] = useState(false);
+
+  const hasCreateManager = hasClaim(Claims.CATALOG_MANAGER_CREATE);
+  const hasCreateManagerOwn = hasClaim(Claims.CATALOG_MANAGER_CREATE_OWN);
+  const hasUpdateManager = hasClaim(Claims.CATALOG_MANAGER_UPDATE);
+  const hasUpdateManagerOwn = hasClaim(Claims.CATALOG_MANAGER_UPDATE_OWN);
+
+  const canCreateManager = hasCreateManager || hasCreateManagerOwn;
+
+  const canEditManager = useCallback((manager: CatalogManager): boolean => {
+    if (hasUpdateManager) return true;
+    return manager.owner_id === sessionUserId && hasUpdateManagerOwn;
+  }, [hasUpdateManager, hasUpdateManagerOwn, sessionUserId]);
+
+  const canDeleteManager = useCallback((manager: CatalogManager): boolean => {
+    if (hasClaim(Claims.CATALOG_MANAGER_DELETE)) return true;
+    return manager.owner_id === sessionUserId && hasClaim(Claims.CATALOG_MANAGER_DELETE_OWN);
+  }, [hasClaim, sessionUserId]);
+
+  const fetchCatalogContext = useCallback(async () => {
+    if (!hostname) return;
+
+    setLoadingSources(true);
+    setSourcesError(null);
+
+    const nextSources: CatalogSource[] = [];
+    if (hasModule('catalog')) {
+      nextSources.push({
+        id: 'local',
+        type: 'local',
+        title: 'Local Catalogs',
+        subtitle: hostname,
+      });
+    }
+
+    try {
+      const managers = (await devopsService.catalogManagers.getCatalogManagers(hostname)) ?? [];
+      setAllManagers(managers);
+
+      managers
+        .filter((manager) => manager.active)
+        .forEach((manager) => {
+          nextSources.push({
+            id: `manager-${manager.id}`,
+            type: 'manager',
+            managerId: manager.id,
+            title: manager.name,
+            subtitle: manager.url,
+          });
+        });
+    } catch (err: any) {
+      setAllManagers([]);
+      setSourcesError(err?.message ?? 'Failed to load catalog sources');
+    } finally {
+      setSources(nextSources);
+      setLoadingSources(false);
+    }
+  }, [hasModule, hostname]);
+
+  useEffect(() => {
+    void fetchCatalogContext();
+  }, [fetchCatalogContext]);
+
+  useEffect(() => {
+    if (isManagingManagers) return;
+    if (selectedSourceId && sources.some((src) => src.id === selectedSourceId)) return;
+    setSelectedSourceId(sources[0]?.id);
+  }, [isManagingManagers, selectedSourceId, sources]);
+
+  useEffect(() => {
+    if (!selectedCatalogItem) return;
+    const activeSource = sources.find((src) => src.id === selectedCatalogItem.source.id);
+    if (!activeSource || activeSource.id !== selectedSourceId || isManagingManagers) {
+      setSelectedCatalogItem(null);
+    }
+  }, [isManagingManagers, selectedCatalogItem, selectedSourceId, sources]);
+
+  const openManagerManagement = useCallback(() => {
+    setIsManagingManagers(true);
+    setSelectedSourceId(undefined);
+    setSelectedCatalogItem(null);
+  }, []);
+
+  const openAddManagerModal = useCallback(() => {
+    openManagerManagement();
+    setEditingManager(null);
+    setManagerForm(defaultManagerForm);
+    setManagerFormSnapshot(normalizeForDirtyCheck(defaultManagerForm));
+    setManagerFormError(null);
+    setIsManagerModalOpen(true);
+  }, [openManagerManagement]);
+
+  const openEditManagerModal = useCallback((manager: CatalogManager) => {
+    openManagerManagement();
+    const form = managerToForm(manager);
+    setEditingManager(manager);
+    setManagerForm(form);
+    setManagerFormSnapshot(normalizeForDirtyCheck(form));
+    setManagerFormError(null);
+    setIsManagerModalOpen(true);
+  }, [openManagerManagement]);
+
+  const closeManagerModal = useCallback(() => {
+    setIsManagerModalOpen(false);
+    setSavingManager(false);
+    setManagerFormError(null);
+  }, []);
+
+  const isEditMode = Boolean(editingManager);
+  const isFormDirty = normalizeForDirtyCheck(managerForm) !== managerFormSnapshot;
+  const showAdvancedFlags = isEditMode ? hasUpdateManager : hasCreateManager;
+
+  const handleSaveManager = useCallback(async () => {
+    const payload = toManagerRequest(managerForm);
+
+    if (!payload.name) {
+      setManagerFormError('Name is required.');
+      return;
+    }
+
+    if (!payload.url) {
+      setManagerFormError('URL is required.');
+      return;
+    }
+
+    try {
+      new URL(payload.url);
+    } catch {
+      setManagerFormError('Please provide a valid URL.');
+      return;
+    }
+
+    if (payload.authentication_method === 'credentials') {
+      if (!payload.username || !payload.password) {
+        setManagerFormError('Username and password are required for credentials authentication.');
+        return;
+      }
+    } else if (!payload.api_key) {
+      setManagerFormError('API key is required for API key authentication.');
+      return;
+    }
+
+    setSavingManager(true);
+    setManagerFormError(null);
+
+    try {
+      if (editingManager) {
+        const success = await devopsService.catalogManagers.updateCatalogManager(
+          hostname,
+          editingManager.id,
+          payload,
+        );
+        if (!success) throw new Error('Could not update catalog manager.');
+      } else {
+        const success = await devopsService.catalogManagers.createCatalogManager(hostname, payload);
+        if (!success) throw new Error('Could not create catalog manager.');
+      }
+
+      await fetchCatalogContext();
+      closeManagerModal();
+    } catch (err: any) {
+      setManagerFormError(err?.message ?? 'Failed to save catalog manager.');
+    } finally {
+      setSavingManager(false);
+    }
+  }, [closeManagerModal, editingManager, fetchCatalogContext, hostname, managerForm]);
+
+  const handleDeleteManager = useCallback(async (manager: CatalogManager) => {
+    setDeletingManager(true);
+    try {
+      const success = await devopsService.catalogManagers.deleteCatalogManager(hostname, manager.id);
+      if (!success) throw new Error('Could not delete catalog manager.');
+      await fetchCatalogContext();
+      setManagerToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete catalog manager:', err);
+    } finally {
+      setDeletingManager(false);
+    }
+  }, [fetchCatalogContext, hostname]);
+
+  const handleDeleteCatalog = useCallback(async () => {
+    if (!catalogToDelete) return;
+
+    setDeletingCatalog(true);
+    try {
+      const { source, manifestId, version } = catalogToDelete;
+
+      if (source.type === 'manager' && source.managerId) {
+        await devopsService.catalogManagers.removeCatalogManifest(
+          hostname,
+          source.managerId,
+          manifestId,
+          version,
+        );
+      } else {
+        await devopsService.catalog.removeCatalogManifest(
+          hostname,
+          manifestId,
+          version,
+        );
+      }
+
+      setCatalogToDelete(null);
+      setSelectedCatalogItem(null);
+      setCatalogReloadToken((prev) => prev + 1);
+    } catch (err) {
+      console.error('Failed to delete catalog item:', err);
+    } finally {
+      setDeletingCatalog(false);
+    }
+  }, [catalogToDelete, hostname]);
+
+  const openDownloadVmModal = useCallback((item: CatalogDownloadTarget) => {
+    setDownloadVmModalItem(item);
+    setDownloadVmError(null);
+    setDownloadVmLoading(false);
+    setDownloadVmForm({
+      owner: '',
+      name: item.row.name !== '-' ? item.row.name : item.row.manifestId,
+      startOnCreate: false,
+      path: '',
+      cpu: item.row.specs.cpu ?? '',
+      memory: item.row.specs.memory ?? '',
+    });
+  }, [session?.tokenPayload?.username]);
+
+  const closeDownloadVmModal = useCallback(() => {
+    setDownloadVmModalItem(null);
+    setDownloadVmError(null);
+    setDownloadVmLoading(false);
+  }, []);
+
+  const handleDownloadVm = useCallback(async () => {
+    if (!downloadVmModalItem) return;
+
+    const trimmedName = downloadVmForm.name.trim();
+    const trimmedOwner = downloadVmForm.owner.trim();
+    const architecture = downloadVmModalItem.row.architecture?.trim();
+
+    if (!trimmedName) {
+      setDownloadVmError('VM name is required.');
+      return;
+    }
+    if (!architecture || architecture === '-') {
+      setDownloadVmError('Architecture is missing for this catalog item.');
+      return;
+    }
+
+    const specs: { cpu?: string; memory?: string } = {};
+    if (downloadVmForm.cpu.trim()) specs.cpu = downloadVmForm.cpu.trim();
+    if (downloadVmForm.memory.trim()) specs.memory = downloadVmForm.memory.trim();
+    const trimmedPath = downloadVmForm.path.trim();
+
+    setDownloadVmLoading(true);
+    setDownloadVmError(null);
+
+    try {
+      const catalogManifestPayload: {
+        catalog_id: string;
+        version?: string;
+        catalog_manager_id?: string;
+        path?: string;
+        specs?: { cpu?: string; memory?: string };
+      } = {
+        catalog_id: downloadVmModalItem.row.manifestId,
+        version: downloadVmModalItem.row.version !== '-' ? downloadVmModalItem.row.version : undefined,
+        catalog_manager_id: downloadVmModalItem.source.managerId,
+        ...(trimmedPath ? { path: trimmedPath } : {}),
+        ...(Object.keys(specs).length > 0 ? { specs } : {}),
+      };
+
+      await devopsService.machines.createVirtualMachineFromCatalogAsync(hostname, {
+        name: trimmedName,
+        startOnCreate: downloadVmForm.startOnCreate,
+        architecture,
+        owner: trimmedOwner,
+        catalog_manifest: catalogManifestPayload,
+      });
+      closeDownloadVmModal();
+    } catch (err: any) {
+      setDownloadVmError(err?.message ?? 'Failed to start VM download.');
+    } finally {
+      setDownloadVmLoading(false);
+    }
+  }, [closeDownloadVmModal, downloadVmForm, downloadVmModalItem, hostname]);
+
+  const items = useMemo<SplitViewItem[]>(
+    () =>
+      sources.map((source) => {
+        const manager =
+          source.type === 'manager'
+            ? allManagers.find((entry) => entry.id === source.managerId)
+            : undefined;
+
+        const actions =
+          source.type === 'manager' && manager
+            ? (
+              <div className="flex items-center gap-1">
+                {canEditManager(manager) && (
+                  <IconButton
+                    icon="Edit"
+                    size="xs"
+                    variant="ghost"
+                    color="slate"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditManagerModal(manager);
+                    }}
+                    aria-label="Edit catalog manager"
+                  />
+                )}
+                {canDeleteManager(manager) && (
+                  <IconButton
+                    icon="Trash"
+                    size="xs"
+                    variant="ghost"
+                    color="danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openManagerManagement();
+                      setManagerToDelete(manager);
+                    }}
+                    aria-label="Delete catalog manager"
+                  />
+                )}
+              </div>
+            )
+            : undefined;
+
+        return {
+          id: source.id,
+          label: source.title,
+          subtitle: source.subtitle,
+          actions,
+          panel: (
+            <CatalogSourcePanel
+              hostname={hostname}
+              source={source}
+              query={query}
+              reloadToken={catalogReloadToken}
+              selectedManifestId={selectedCatalogItem?.source.id === source.id ? selectedCatalogItem.manifest.id : undefined}
+              onManifestClick={(manifest, tab) => {
+                setSelectedCatalogItem({ source, manifest });
+                setActiveDetailTab(tab ?? 'details');
+              }}
+              onDownloadRow={(row) => openDownloadVmModal({ source, row })}
+              onDeleteRow={(row) => {
+                setCatalogToDelete({
+                  source,
+                  manifestId: row.manifestId,
+                  version: row.version !== '-' ? row.version : undefined,
+                });
+              }}
+              onStatsChange={(stats) => {
+                setSourceStats((prev) => ({ ...prev, [source.id]: stats }));
+              }}
+            />
+          ),
+        };
+      }),
+    [
+      allManagers,
+      canDeleteManager,
+      canEditManager,
+      catalogReloadToken,
+      hostname,
+      openDownloadVmModal,
+      openEditManagerModal,
+      openManagerManagement,
+      query,
+      setSourceStats,
+      sources,
+    ],
+  );
+
+  const panelEmptyState = isManagingManagers
+    ? (
+      <CatalogManagersPanel
+        managers={allManagers}
+        search={managerSearch}
+        setSearch={setManagerSearch}
+        canCreateManager={canCreateManager}
+        canEditManager={canEditManager}
+        canDeleteManager={canDeleteManager}
+        onAdd={openAddManagerModal}
+        onEdit={openEditManagerModal}
+        onDelete={(manager) => setManagerToDelete(manager)}
+        onRefresh={() => void fetchCatalogContext()}
+      />
+    )
+    : (
+      <EmptyState
+        disableBorder
+        icon="Catalog"
+        title={items.length === 0 ? 'No catalogs available' : 'Select a source'}
+        subtitle={
+          items.length === 0
+            ? 'No local or external catalog sources are currently available.'
+            : 'Select a catalog source from the list to view its items.'
+        }
+        tone="neutral"
+      />
+    );
+
   return (
-    <SplitView
-      resizable={true}
-      collapsed={collapsed}
-      collapsible={true}
-      onCollapsedChange={() => setCollapsed(!collapsed)}
-      items={libraryItems}
-      defaultValue="production"
-      listTitle={`Catalogs (${libraryItems.length})`}
-      searchPlaceholder="Search"
-      color="parallels"
-      panelHeader={(activeItem) => <LibraryPanelHeader label={activeItem.label} />}
-      className="h-full"
-    />
+    <div className="relative flex h-full min-h-0">
+      <SplitView
+        className="flex-1 min-w-0"
+        resizable
+        collapsed={collapsed}
+        collapsible
+        onCollapsedChange={() => setCollapsed(!collapsed)}
+        items={items}
+        value={selectedSourceId}
+        onChange={(id) => {
+          setSelectedSourceId(id);
+          setIsManagingManagers(false);
+          setSelectedCatalogItem(null);
+        }}
+        loading={loadingSources}
+        error={sourcesError ?? undefined}
+        onRetry={() => void fetchCatalogContext()}
+        listTitle={`Catalogs (${items.length})`}
+        listActions={
+          canCreateManager
+            ? <IconButton icon="Add" size="sm" variant="ghost" color={themeColor} onClick={openAddManagerModal} />
+            : undefined
+        }
+        searchPlaceholder="Search sources"
+        color={themeColor}
+        panelHeaderProps={(activeItem) => {
+          const stats = sourceStats[activeItem.id] ?? { manifests: 0, versions: 0, images: 0 };
+          const hasDetails = stats.manifests > 0 || stats.versions > 0 || stats.images > 0;
+          return {
+            title: <span className="text-neutral-700 dark:text-neutral-300">{activeItem.label}</span>,
+            icon: (
+              <PageHeaderIcon color={themeColor}>
+                <CustomIcon icon="Library" className="w-5 h-5" />
+              </PageHeaderIcon>
+            ),
+            subtitle: activeItem.subtitle,
+            search: (
+              <SearchBar
+                leadingIcon="Search"
+                variant="gradient"
+                glowIntensity="soft"
+                placeholder="Search catalogs, versions, tags"
+                onSearch={setQuery}
+                className="w-52"
+              />
+            ),
+            helper: {
+              title: 'Upload Catalog',
+              color: themeColor,
+              content: "Catalogs are used to store and manage catalog metadata for download of virtual machines golden images for each user. [See documentation](https://parallels.github.io/prl-devops-service/docs/devops/catalog/overview/)"
+            },
+            actions: (
+              <Button variant="soft" color={themeColor} size="sm" leadingIcon="Add">Upload Catalog</Button>
+            ),
+            headerDetails: hasDetails
+              ? {
+                title: 'Catalog Overview',
+                tone: 'neutral',
+                variant: 'subtle',
+                decoration: 'none',
+                bordered: false,
+                tags: (
+                  <>
+                    <Pill size="sm" tone={themeColor} variant="soft">
+                      {formatCount(stats.manifests, 'manifest', 'manifests')}
+                    </Pill>
+                    <Pill size="sm" tone="info" variant="soft">
+                      {formatCount(stats.versions, 'version', 'versions')}
+                    </Pill>
+                    <Pill size="sm" tone="neutral" variant="soft">
+                      {formatCount(stats.images, 'image', 'images')}
+                    </Pill>
+                  </>
+                ),
+              }
+              : undefined,
+          };
+        }}
+        panelEmptyState={panelEmptyState}
+      />
+
+      <SidePanel
+        isOpen={!!selectedCatalogItem}
+        onClose={() => setSelectedCatalogItem(null)}
+        title={selectedCatalogItem?.manifest.title ?? 'Catalog Details'}
+        subtitle={selectedCatalogItem?.manifest.manifestId}
+        width={520}
+        headerActions={(
+          <>
+            <IconButton
+              icon="Trash"
+              size="sm"
+              variant="ghost"
+              color="danger"
+              aria-label="Delete catalog manifest"
+              onClick={() => selectedCatalogItem && setCatalogToDelete({
+                source: selectedCatalogItem.source,
+                manifestId: selectedCatalogItem.manifest.manifestId,
+              })}
+            />
+          </>
+        )}
+      >
+        {selectedCatalogItem && (
+          <Tabs
+            value={activeDetailTab}
+            onChange={(id) => setActiveDetailTab(id as 'details' | 'versions')}
+            variant="underline"
+            size="sm"
+            color={themeColor}
+            panelClassName="overflow-y-auto"
+            items={[
+              {
+                id: 'details',
+                label: 'Details',
+                panel: (
+                  <CatalogDetailContent manifest={selectedCatalogItem.manifest} />
+                ),
+              },
+              {
+                id: 'versions',
+                label: `Versions (${selectedCatalogItem.manifest.versions.length})`,
+                panel: (
+                  <CatalogVersionsContent
+                    manifest={selectedCatalogItem.manifest}
+                    onDownloadItem={(row) => openDownloadVmModal({ source: selectedCatalogItem.source, row })}
+                    onDeleteItem={(row) => setCatalogToDelete({
+                      source: selectedCatalogItem.source,
+                      manifestId: row.manifestId,
+                      version: row.version !== '-' ? row.version : undefined,
+                    })}
+                  />
+                ),
+              },
+            ]}
+          />
+        )}
+      </SidePanel>
+
+      <CatalogManagerEditorModal
+        isOpen={isManagerModalOpen}
+        isEditMode={isEditMode}
+        showAdvancedFlags={showAdvancedFlags}
+        savingManager={savingManager}
+        isFormDirty={isFormDirty}
+        managerForm={managerForm}
+        managerFormError={managerFormError}
+        onClose={closeManagerModal}
+        onSave={() => void handleSaveManager()}
+        onFormChange={setManagerForm}
+      />
+
+      <DeleteCatalogManagerModal
+        manager={managerToDelete}
+        deleting={deletingManager}
+        onClose={() => setManagerToDelete(null)}
+        onConfirm={() => managerToDelete && void handleDeleteManager(managerToDelete)}
+      />
+
+      <DeleteConfirmModal
+        isOpen={!!catalogToDelete}
+        onClose={() => setCatalogToDelete(null)}
+        onConfirm={() => void handleDeleteCatalog()}
+        title="Delete Catalog Item"
+        icon="Trash"
+        confirmLabel={deletingCatalog ? 'Deleting…' : 'Delete'}
+        isConfirmDisabled={deletingCatalog}
+        confirmValue={catalogToDelete?.manifestId ?? ''}
+        confirmValueLabel="catalog manifest name"
+        size="md"
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          This action is irreversible and removes the selected catalog manifest/version from this source.
+        </p>
+      </DeleteConfirmModal>
+
+      <DownloadCatalogVmModal
+        isOpen={!!downloadVmModalItem}
+        loading={downloadVmLoading}
+        error={downloadVmError}
+        form={downloadVmForm}
+        catalogId={downloadVmModalItem?.row.manifestId ?? ''}
+        version={downloadVmModalItem?.row.version !== '-' ? downloadVmModalItem?.row.version : undefined}
+        architecture={downloadVmModalItem?.row.architecture !== '-' ? downloadVmModalItem?.row.architecture : undefined}
+        managerId={downloadVmModalItem?.source.managerId}
+        onClose={closeDownloadVmModal}
+        onSubmit={() => void handleDownloadVm()}
+        onFormChange={setDownloadVmForm}
+      />
+    </div>
   );
 };

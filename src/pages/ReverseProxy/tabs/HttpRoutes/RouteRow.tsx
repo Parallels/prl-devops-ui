@@ -3,6 +3,8 @@ import { devopsService } from '@/services/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useEventsHub } from '@/contexts/EventsHubContext';
 import type { ReverseProxyHostHttpRoute } from '@/interfaces/ReverseProxy';
+import { parseVmStateChangeBody } from '@/utils/vmUtils';
+import { drainUnseenMessages } from '@/utils/messageQueue';
 import { getVmHealth, type VmHealth } from './routeTypes';
 
 interface RouteRowProps {
@@ -60,16 +62,18 @@ const RouteRow: React.FC<RouteRowProps> = ({
         const vmId = route.target_vm_id;
         if (!vmId) return;
         const msgs = containerMessages['orchestrator'];
-        if (!msgs?.length) return;
-        const latest = msgs[0];
-        if (latest.id === lastOrchestratorIdRef.current) return;
-        lastOrchestratorIdRef.current = latest.id;
-        if (latest.raw.message !== 'HOST_VM_STATE_CHANGED') return;
-        const event = latest.raw.body?.event as { vm_id?: string; current_state?: string } | undefined;
-        if (event?.vm_id !== vmId || !event?.current_state) return;
-        setVmHealth(getVmHealth(event.current_state));
-        stopPolling();
-        setActionLoading(false);
+        const unseen = drainUnseenMessages(msgs, lastOrchestratorIdRef);
+        if (unseen.length === 0) return;
+
+        for (const msg of unseen) {
+            if (msg.raw.message !== 'HOST_VM_STATE_CHANGED') continue;
+            const event = parseVmStateChangeBody(msg.raw.body);
+            if (event.vmId !== vmId || !event.currentState) continue;
+
+            setVmHealth(getVmHealth(event.currentState));
+            stopPolling();
+            setActionLoading(false);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [containerMessages['orchestrator'], route.target_vm_id]);
 
@@ -78,16 +82,27 @@ const RouteRow: React.FC<RouteRowProps> = ({
         const vmId = route.target_vm_id;
         if (!vmId) return;
         const msgs = containerMessages['pdfm'];
-        if (!msgs?.length) return;
-        const latest = msgs[0];
-        if (latest.id === lastPdfmIdRef.current) return;
-        lastPdfmIdRef.current = latest.id;
-        if (latest.raw.message !== 'VM_STATE_CHANGED') return;
-        if ((latest.raw.body?.vm_id as string | undefined) !== vmId) return;
-        devopsService.machines
-            .getVirtualMachine(hostname, vmId, !!orchestratorHostId)
-            .then(vm => { setVmHealth(getVmHealth(vm.State)); stopPolling(); setActionLoading(false); })
-            .catch(() => undefined);
+        const unseen = drainUnseenMessages(msgs, lastPdfmIdRef);
+        if (unseen.length === 0) return;
+
+        for (const msg of unseen) {
+            if (msg.raw.message !== 'VM_STATE_CHANGED') continue;
+
+            const event = parseVmStateChangeBody(msg.raw.body);
+            if (event.vmId !== vmId) continue;
+
+            if (event.currentState) {
+                setVmHealth(getVmHealth(event.currentState));
+                stopPolling();
+                setActionLoading(false);
+                continue;
+            }
+
+            devopsService.machines
+                .getVirtualMachine(hostname, vmId, !!orchestratorHostId)
+                .then(vm => { setVmHealth(getVmHealth(vm.State)); stopPolling(); setActionLoading(false); })
+                .catch(() => undefined);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [containerMessages['pdfm'], route.target_vm_id]);
 

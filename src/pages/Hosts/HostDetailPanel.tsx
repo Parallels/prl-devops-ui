@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button, ConfirmModal, CustomIcon, HealthCheck, Live, Tabs, Pause, Run, Trash } from '@prl/ui-kit';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { PageHeader, PageHeaderIcon } from '@/components/PageHeader';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { OverviewTab } from './tabs/OverviewTab';
 import { PerformanceTab } from './tabs/PerformanceTab';
 import { CacheTab } from './tabs/CacheTab';
@@ -24,6 +25,7 @@ function isHealthy(host: DevOpsRemoteHost): boolean {
 // ── Panel ─────────────────────────────────────────────────────────────────────
 
 export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host, onPause, onRemove, onEnable }) => {
+    const { themeColor } = useSystemSettings();
     const [pendingAction, setPendingAction] = useState<'disable' | 'enable' | null>(null);
 
     return (
@@ -70,7 +72,7 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host, onPause,
             {/* Tabs */}
             <Tabs
                 variant="underline"
-                color="parallels"
+                color={themeColor}
                 size="sm"
                 className="flex-1 min-h-0"
                 listClassName="bg-white dark:bg-neutral-900 px-1"

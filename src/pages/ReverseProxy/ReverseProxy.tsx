@@ -16,6 +16,7 @@ import { ReverseProxyConfig, ReverseProxyHost } from '@/interfaces/ReverseProxy'
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { useSession } from '@/contexts/SessionContext';
 import { Claims } from '@/interfaces/tokenTypes';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { ReverseProxyDetailPanel } from './ReverseProxyDetailPanel';
 import { CreateProxyHostModal } from './ReverseProxyModals';
 import { PageHeader, PageHeaderIcon } from '@/components/PageHeader';
@@ -65,6 +66,7 @@ interface ReverseProxyProps {
 
 export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }) => {
     const { session, hasClaim } = useSession();
+    const { themeColor } = useSystemSettings();
     const hostname = session?.hostname ?? '';
 
     const canCreate = hasClaim(Claims.CREATE_REVERSE_PROXY_HOST);
@@ -193,7 +195,7 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }
 
             {/* ── Page header ─────────────────────────────────────────── */}
             <PageHeader
-                icon={<PageHeaderIcon color="rose"><CustomIcon icon="ReverseProxy" className="w-5 h-5" /></PageHeaderIcon>}
+                icon={<PageHeaderIcon color={themeColor}><CustomIcon icon="ReverseProxy" className="w-5 h-5" /></PageHeaderIcon>}
                 title="Reverse Proxy"
                 subtitle={subtitle}
                 actions={<>
@@ -240,7 +242,7 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }
                     listTitle={`Proxy Hosts (${hosts.length})`}
                     autoHideList={false}
                     borderLeft
-                    color="parallels"
+                    color={themeColor}
                     collapsible
                     resizable
                     minListWidth={220}
@@ -252,7 +254,7 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }
                             title="Select a proxy host"
                             subtitle="Choose a proxy host from the list to view and manage its routes."
                             tone="neutral"
-                            actionColor="parallels"
+                            actionColor={themeColor}
                             actionLeadingIcon="Add"
                             actionVariant="solid"
                             actionLabel="Add proxy host"
@@ -265,9 +267,9 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }
                                 <IconButton
                                     variant="ghost"
                                     size="xs"
-                                    color="parallels"
+                                    color={themeColor}
                                     accent
-                                    accentColor="parallels"
+                                    accentColor={themeColor}
                                     icon="Add"
                                     onClick={() => setShowAddModal(true)}
                                     aria-label="Add proxy host"
@@ -276,7 +278,7 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }
                             <IconButton
                                 variant="ghost"
                                 size="xs"
-                                color="parallels"
+                                color={themeColor}
                                 icon="Restart"
                                 onClick={() => void fetchAll()}
                                 aria-label="Refresh"

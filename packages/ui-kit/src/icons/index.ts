@@ -110,6 +110,10 @@ export * from './components/Refresh';
 export * from './components/Calendar';
 export * from './components/Folder';
 export * from './components/Jobs';
-
+export * from './components/Warning';
+export * from './components/Artifactory';
+export * from './components/Azure';
+export * from './components/Minio';
+export * from './components/Aws';
 
 

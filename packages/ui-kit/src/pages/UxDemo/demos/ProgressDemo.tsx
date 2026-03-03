@@ -1,16 +1,20 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import { Progress, Toggle, MultiToggle } from '../../..';
+import { Progress, MultiToggle } from '../../..';
 import { PlaygroundSection } from '../PlaygroundSection';
 import { colorOptions } from '../constants';
 import { ProgressSize } from '../../..';
 import { SpinnerColor } from '../../..';
+import { ProgressMotion, ProgressMotionSpeed } from '../../..';
+import { ProgressMotionDirection } from '../../..';
 
 export const ProgressDemo: React.FC = () => {
     const [progressValue, setProgressValue] = useState(45);
     const [progressSize, setProgressSize] = useState<ProgressSize>('md');
     const [progressColor, setProgressColor] = useState<SpinnerColor>('blue');
-    const [progressShimmer, setProgressShimmer] = useState(true);
+    const [progressMotion, setProgressMotion] = useState<ProgressMotion>('shimmer');
+    const [progressMotionSpeed, setProgressMotionSpeed] = useState<ProgressMotionSpeed>('normal');
+    const [progressMotionDirection, setProgressMotionDirection] = useState<ProgressMotionDirection>('forward');
 
     return (
         <PlaygroundSection
@@ -57,12 +61,48 @@ export const ProgressDemo: React.FC = () => {
                             />
                         </label>
                     </div>
-                    <label className="flex items-center justify-between">
-                        <span>Show shimmer</span>
-                        <Toggle
+                    <label className="flex flex-col gap-2">
+                        <span>Motion</span>
+                        <MultiToggle
+                            fullWidth
+                            options={[
+                                { label: 'None', value: 'none' },
+                                { label: 'Shimmer', value: 'shimmer' },
+                                { label: 'Pulse', value: 'pulse' },
+                                { label: 'Stripes', value: 'stripes' },
+                                { label: 'Stripes + Shimmer', value: 'stripes-shimmer' },
+                                { label: 'Both', value: 'shimmer-pulse' },
+                            ]}
+                            value={progressMotion}
                             size="sm"
-                            checked={progressShimmer}
-                            onChange={(event) => setProgressShimmer(event.target.checked)}
+                            onChange={(value) => setProgressMotion(value as ProgressMotion)}
+                        />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                        <span>Motion Speed</span>
+                        <MultiToggle
+                            fullWidth
+                            options={[
+                                { label: 'Slow', value: 'slow' },
+                                { label: 'Normal', value: 'normal' },
+                                { label: 'Fast', value: 'fast' },
+                            ]}
+                            value={progressMotionSpeed}
+                            size="sm"
+                            onChange={(value) => setProgressMotionSpeed(value as ProgressMotionSpeed)}
+                        />
+                    </label>
+                    <label className="flex flex-col gap-2">
+                        <span>Direction</span>
+                        <MultiToggle
+                            fullWidth
+                            options={[
+                                { label: 'Forward', value: 'forward' },
+                                { label: 'Reverse', value: 'reverse' },
+                            ]}
+                            value={progressMotionDirection}
+                            size="sm"
+                            onChange={(value) => setProgressMotionDirection(value as ProgressMotionDirection)}
                         />
                     </label>
                 </div>
@@ -73,9 +113,11 @@ export const ProgressDemo: React.FC = () => {
                         value={progressValue}
                         size={progressSize}
                         color={progressColor}
-                        showShimmer={progressShimmer}
+                        motion={progressMotion}
+                        motionSpeed={progressMotionSpeed}
+                        motionDirection={progressMotionDirection}
                     />
-                    <Progress value={100} size="sm" color="emerald" showShimmer={false} />
+                    <Progress value={100} size="sm" color="emerald" motion="stripes-shimmer" motionDirection={progressMotionDirection} />
                 </div>
             }
         />

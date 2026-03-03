@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import classNames from "classnames";
 import Button, { type ButtonProps, type ButtonSize } from "./Button";
 import DropdownMenu, { type DropdownMenuOption } from "./DropdownMenu";
@@ -16,6 +16,11 @@ export interface DropdownButtonProps
   dropdownIcon?: ButtonProps["leadingIcon"];
   fullWidth?: boolean;
   split?: boolean;
+  /**
+   * Hide the dropdown caret trigger when there are no menu options.
+   * Defaults to true so empty split buttons render as a single clean button.
+   */
+  hideDropdownTriggerWhenEmpty?: boolean;
   menuWidth?: number | "trigger";
   menuClassName?: string;
 }
@@ -33,6 +38,7 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
   disabled,
   fullWidth = false,
   split = true,
+  hideDropdownTriggerWhenEmpty = true,
   menuWidth = 220,
   menuClassName,
   ...buttonProps
@@ -59,6 +65,16 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
     event.stopPropagation();
     setOpen((prev) => !prev);
   };
+
+  const menuOptions = useMemo(() => options ?? [], [options]);
+  const hasOptions = menuOptions.length > 0;
+  const showCaret = hasOptions || !hideDropdownTriggerWhenEmpty;
+
+  useEffect(() => {
+    if (!hasOptions && open) {
+      setOpen(false);
+    }
+  }, [hasOptions, open]);
 
   const caretWidthMap: Record<ButtonSize, string> = {
     xs: "min-w-[2rem]",
@@ -103,7 +119,7 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
       variant={variant}
       color={color}
       size={size}
-      className={classNames(split && "rounded-r-none", fullWidth ? "flex-1" : "")}
+      className={classNames(split && showCaret && "rounded-r-none", fullWidth ? "flex-1" : "")}
       disabled={disabled}
       onClick={handlePrimaryClick}
       {...restButtonProps}
@@ -112,17 +128,13 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
     </Button>
   );
 
-  const caretButton = renderCaretButton();
-
-  const menuOptions = useMemo(() => options ?? [], [options]);
-
   return (
     <div ref={anchorRef} className={containerClasses}>
       {mainButton}
-      {caretButton}
+      {showCaret ? renderCaretButton() : null}
       <DropdownMenu
         anchorRef={anchorRef}
-        open={open && menuOptions.length > 0}
+        open={open && hasOptions && showCaret}
         onClose={() => setOpen(false)}
         items={menuOptions}
         onSelect={handleSelect}

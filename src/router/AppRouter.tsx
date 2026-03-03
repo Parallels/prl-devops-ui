@@ -8,6 +8,7 @@ import { Catalogs } from '../pages/Catalogs/Catalogs';
 import { Vms } from '../pages/Vms/Vms';
 import { StartupGuard } from '../components/StartupGuard';
 import { Onboarding, OnboardingPrefill } from '../pages/Onboarding/Onboarding';
+import { Login, LoginPrefill } from '../pages/Login/Login';
 import { Hosts } from '@/pages/Hosts/Hosts';
 import { NotFound } from '../pages/NotFound';
 import { Forbidden } from '../pages/Forbidden';
@@ -30,10 +31,21 @@ const OnboardingRoute: React.FC = () => {
     return <Onboarding prefill={prefill} />;
 };
 
+const LoginRoute: React.FC = () => {
+    const location = useLocation();
+    const prefill = (location.state as { prefill?: LoginPrefill } | null)?.prefill;
+
+    return <Login prefill={prefill} />;
+};
+
 export const router = createBrowserRouter([
     {
         path: '/onboarding',
         element: <OnboardingRoute />,
+    },
+    {
+        path: '/login',
+        element: <LoginRoute />,
     },
     {
         path: '/forbidden',

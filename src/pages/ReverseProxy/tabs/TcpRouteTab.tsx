@@ -1,13 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, CustomIcon, FormField, Input, MultiToggle, Select } from '@prl/ui-kit';
+import { CustomIcon } from '@prl/ui-kit';
 import { ReverseProxyHostTcpRoute } from '@/interfaces/ReverseProxy';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
-
-type TargetType = 'static' | 'vm';
-
-/** target_vm_id presence always wins — target_host may be set by the backend as the resolved VM IP */
-const resolveTargetType = (route: Pick<ReverseProxyHostTcpRoute, 'target_vm_id'> | null | undefined): TargetType =>
-    route?.target_vm_id ? 'vm' : 'static';
+import TcpRouteConfigTabs from './TcpRoutes/TcpRouteConfigTabs';
+import TcpRouteEditor from './TcpRoutes/TcpRouteEditor';
+import { resolveTargetType, type TargetType } from './TcpRoutes/types';
 
 interface TcpRouteTabProps {
     tcpRoute: ReverseProxyHostTcpRoute | null | undefined;
@@ -38,6 +35,7 @@ export const TcpRouteTab: React.FC<TcpRouteTabProps> = ({
         setTargetHost(tcpRoute?.target_host ?? '');
         setTargetPort(tcpRoute?.target_port ?? '');
         setTargetVmId(tcpRoute?.target_vm_id ?? '');
+        setErrors({});
     }, [tcpRoute]);
 
     const validate = () => {
@@ -63,11 +61,6 @@ export const TcpRouteTab: React.FC<TcpRouteTabProps> = ({
         }
     }, [targetType, targetHost, targetPort, targetVmId, onSave]);
 
-    const vmOptions = [
-        { value: '', label: 'Select a VM…' },
-        ...availableVms.map((vm) => ({ value: vm.ID ?? '', label: `${vm.Name ?? vm.ID} (${vm.State ?? 'unknown'})` })),
-    ];
-
     const statusColor = () => {
         if (!tcpRoute) return 'bg-neutral-50 dark:bg-neutral-950/30 border-neutral-200 dark:border-neutral-800';
         if (tcpRoute.target_vm_details) return 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800';
@@ -76,7 +69,6 @@ export const TcpRouteTab: React.FC<TcpRouteTabProps> = ({
 
     return (
         <div className="p-4 space-y-5">
-            {/* HTTP routes conflict warning */}
             {hasHttpRoutes && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                     <CustomIcon icon="Info" className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
@@ -87,10 +79,9 @@ export const TcpRouteTab: React.FC<TcpRouteTabProps> = ({
                 </div>
             )}
 
-            {/* Current status */}
             {tcpRoute ? (
                 <div className={`flex items-center gap-2 p-3 rounded-lg border ${statusColor()}`}>
-                    <CustomIcon icon="Script" className="w-4 h-4 text-sky-600 dark:text--400 flex-shrink-0" />
+                    <CustomIcon icon="Script" className="w-4 h-4 text-sky-600 dark:text-sky-400 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-sky-800 dark:text-sky-300">TCP route active</p>
                         <p className="text-xs text-sky-600 dark:text-sky-400 font-mono truncate">
@@ -108,97 +99,36 @@ export const TcpRouteTab: React.FC<TcpRouteTabProps> = ({
                 </div>
             )}
 
-            {/* Target type toggle */}
-            <FormField label="Target Type">
-                <MultiToggle
-                    value={targetType}
-                    onChange={(v) => { setTargetType(v as TargetType); setErrors({}); }}
-                    options={[
-                        { value: 'static', label: 'Static IP / Host' },
-                        { value: 'vm', label: 'Virtual Machine' },
-                    ]}
-                    size="sm"
+            <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50">
+                <TcpRouteConfigTabs
+                    routePanel={
+                        <TcpRouteEditor
+                            targetType={targetType}
+                            targetHost={targetHost}
+                            targetPort={targetPort}
+                            targetVmId={targetVmId}
+                            errors={errors}
+                            availableVms={availableVms}
+                            onTargetTypeChange={(value) => {
+                                setTargetType(value);
+                                setErrors({});
+                            }}
+                            onTargetHostChange={setTargetHost}
+                            onTargetPortChange={setTargetPort}
+                            onTargetVmIdChange={setTargetVmId}
+                            onClearError={(key) => setErrors((prev) => ({ ...prev, [key]: '' }))}
+                        />
+                    }
+                    canEdit={canCreate}
+                    canClear={!!tcpRoute}
+                    canSave
+                    saveLabel={tcpRoute ? 'Update TCP Route' : 'Save TCP Route'}
+                    saving={saving}
+                    panelIdPrefix="tcp-route-tab"
+                    onSave={() => void handleSave()}
+                    onClear={onClear}
                 />
-            </FormField>
-
-            {/* Target fields */}
-            {targetType === 'static' ? (
-                <div className="flex gap-3">
-                    <div className="flex-1">
-                        <FormField label="Target Host" required>
-                            <Input
-                                placeholder="10.0.0.5 or hostname"
-                                value={targetHost}
-                                onChange={(e) => { setTargetHost(e.target.value); setErrors((p) => ({ ...p, targetHost: '' })); }}
-                                validationStatus={errors.targetHost ? 'error' : 'none'}
-                                className="font-mono"
-                            />
-                            {errors.targetHost && <p className="mt-1 text-xs text-rose-500">{errors.targetHost}</p>}
-                        </FormField>
-                    </div>
-                    <div className="w-28">
-                        <FormField label="Port" required>
-                            <Input
-                                placeholder="22"
-                                value={targetPort}
-                                onChange={(e) => { setTargetPort(e.target.value); setErrors((p) => ({ ...p, targetPort: '' })); }}
-                                validationStatus={errors.targetPort ? 'error' : 'none'}
-                                className="font-mono"
-                            />
-                            {errors.targetPort && <p className="mt-1 text-xs text-rose-500">{errors.targetPort}</p>}
-                        </FormField>
-                    </div>
-                </div>
-            ) : (
-                <div className="flex gap-3">
-                    <div className="flex-1">
-                        <FormField label="Virtual Machine" required>
-                            <Select
-                                value={targetVmId}
-                                onChange={(e) => { setTargetVmId(e.target.value); setErrors((p) => ({ ...p, targetVmId: '' })); }}
-                                validationStatus={errors.targetVmId ? 'error' : 'none'}
-                            >
-                                {vmOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </Select>
-                            {errors.targetVmId && <p className="mt-1 text-xs text-rose-500">{errors.targetVmId}</p>}
-                        </FormField>
-                    </div>
-                    <div className="w-28">
-                        <FormField label="Port" required>
-                            <Input
-                                placeholder="22"
-                                value={targetPort}
-                                onChange={(e) => { setTargetPort(e.target.value); setErrors((p) => ({ ...p, targetPort: '' })); }}
-                                validationStatus={errors.targetPort ? 'error' : 'none'}
-                                className="font-mono"
-                            />
-                            {errors.targetPort && <p className="mt-1 text-xs text-rose-500">{errors.targetPort}</p>}
-                        </FormField>
-                    </div>
-                </div>
-            )}
-
-            {/* Actions */}
-            {canCreate && (
-                <div className="flex items-center justify-between pt-2 border-t border-neutral-100 dark:border-neutral-800">
-                    {tcpRoute && (
-                        <Button variant="outline" color="rose" size="sm" leadingIcon="Trash" onClick={onClear}>
-                            Clear TCP Route
-                        </Button>
-                    )}
-                    <div className="ml-auto">
-                        <Button
-                            variant="solid"
-                            color="parallels"
-                            size="sm"
-                            loading={saving}
-                            onClick={() => void handleSave()}
-                        >
-                            {tcpRoute ? 'Update TCP Route' : 'Save TCP Route'}
-                        </Button>
-                    </div>
-                </div>
-            )}
+            </div>
         </div>
     );
 };

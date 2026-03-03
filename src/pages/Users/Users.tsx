@@ -3,8 +3,8 @@ import { Button, ConfirmModal, getGravatarUrl, IconButton, NotificationModal, Sp
 import { devopsService } from '@/services/devops';
 import { DevOpsUser } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { UserDetail, type UserDetailRef } from './UserDetail';
-import { PageHeader } from '@/components/PageHeader';
 
 const NEW_USER_ID = '__new__';
 
@@ -15,6 +15,7 @@ export const Users: React.FC = () => {
     const [availableRoles, setAvailableRoles] = useState<string[]>([]);
     const [availableClaims, setAvailableClaims] = useState<string[]>([]);
     const { session } = useSession();
+    const { themeColor } = useSystemSettings();
     const hostname = session?.hostname ?? '';
 
     const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -203,45 +204,43 @@ export const Users: React.FC = () => {
         [allUsers, handleSave, availableRoles, availableClaims],
     );
 
-    const panelHeader = useCallback(
+    const panelHeaderProps = useCallback(
         (activeItem: SplitViewItem) => {
             const isNew = activeItem.id === NEW_USER_ID;
             const user = isNew ? newUser : users.find((u) => u.id === activeItem.id);
-            if (!user) return null;
-            return (
-                <PageHeader
-                    icon={
-                        <UserAvatar
-                            user={{
-                                name: user.name || undefined,
-                                email: user.email || undefined,
-                                username: user.username || undefined,
-                                avatarUrl: getGravatarUrl(user.email ?? ''),
-                            }}
-                            size={40}
-                            variant="circle"
-                        />
-                    }
-                    title={isNew ? 'New User' : (user.name ?? user.username ?? 'Unknown')}
-                    subtitle={isNew ? 'Create a new user account' : (user.email ?? user.username ?? '')}
-                    actions={(isDirty || isNew) && canUpdate ? (
-                        <>
-                            <Button variant="outline" color="theme" size="sm" onClick={handleHeaderCancel}>
-                                Cancel
-                            </Button>
-                            <Button
-                                variant="solid"
-                                color="parallels"
-                                size="sm"
-                                loading={saving}
-                                onClick={() => void handleHeaderSave()}
-                            >
-                                Save
-                            </Button>
-                        </>
-                    ) : undefined}
-                />
-            );
+            if (!user) return undefined;
+            return {
+                icon: (
+                    <UserAvatar
+                        user={{
+                            name: user.name || undefined,
+                            email: user.email || undefined,
+                            username: user.username || undefined,
+                            avatarUrl: getGravatarUrl(user.email ?? ''),
+                        }}
+                        size={40}
+                        variant="circle"
+                    />
+                ),
+                title: isNew ? 'New User' : (user.name ?? user.username ?? 'Unknown'),
+                subtitle: isNew ? 'Create a new user account' : (user.email ?? user.username ?? ''),
+                actions: (isDirty || isNew) && canUpdate ? (
+                    <>
+                        <Button variant="outline" color="theme" size="sm" onClick={handleHeaderCancel}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="solid"
+                            color={themeColor}
+                            size="sm"
+                            loading={saving}
+                            onClick={() => void handleHeaderSave()}
+                        >
+                            Save
+                        </Button>
+                    </>
+                ) : undefined,
+            };
         },
         [users, newUser, isDirty, saving, handleHeaderCancel, handleHeaderSave],
     );
@@ -259,10 +258,10 @@ export const Users: React.FC = () => {
                     error={error}
                     onRetry={() => void fetchUsers()}
                     listTitle={`Users (${users.length})`}
-                    panelHeader={panelHeader}
+                    panelHeaderProps={panelHeaderProps}
                     autoHideList={false}
                     borderLeft
-                    color='parallels'
+                    color={themeColor}
                     searchPlaceholder="Search users..."
                     listActions={
                         <>
@@ -270,9 +269,9 @@ export const Users: React.FC = () => {
                                 <IconButton
                                     variant="ghost"
                                     size="xs"
-                                    color="parallels"
+                                    color={themeColor}
                                     accent={true}
-                                    accentColor='parallels'
+                                    accentColor={themeColor}
                                     icon="Add"
                                     onClick={handleAddNew}
                                 />

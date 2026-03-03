@@ -3,8 +3,8 @@ import { Button, ConfirmModal, CustomIcon, IconButton, NotificationModal, SplitV
 import { devopsService } from '@/services/devops';
 import { DevOpsRolesAndClaims } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { RoleDetail, type RoleDetailRef } from './RoleDetail';
-import { PageHeader, PageHeaderIcon } from '@/components/PageHeader';
 
 const NEW_ROLE_ID = '__new__';
 
@@ -13,6 +13,7 @@ export const Roles: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>();
     const { session, hasClaim } = useSession();
+    const { themeColor } = useSystemSettings();
     const hostname = session?.hostname ?? '';
 
     const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -152,34 +153,36 @@ export const Roles: React.FC = () => {
         [allRoles, handleSave, canDelete],
     );
 
-    const panelHeader = useCallback(
+    const panelHeaderProps = useCallback(
         (activeItem: SplitViewItem) => {
             const isNew = activeItem.id === NEW_ROLE_ID;
             const role = isNew ? newRole : roles.find((r) => r.id === activeItem.id);
-            if (!role) return null;
-            return (
-                <PageHeader
-                    icon={<PageHeaderIcon color="rose"><CustomIcon icon="Role" className="w-5 h-5" /></PageHeaderIcon>}
-                    title={isNew ? 'New Role' : (role.name ?? 'Unknown')}
-                    subtitle={isNew ? 'Create a new role' : (role.description ?? `${(role.users ?? []).length} user(s) assigned`)}
-                    actions={isNew ? (
-                        <>
-                            <Button variant="outline" color="theme" size="sm" onClick={handleHeaderCancel}>
-                                Cancel
-                            </Button>
-                            <Button
-                                variant="solid"
-                                color="parallels"
-                                size="sm"
-                                loading={saving}
-                                onClick={() => void handleHeaderSave()}
-                            >
-                                Save
-                            </Button>
-                        </>
-                    ) : undefined}
-                />
-            );
+            if (!role) return undefined;
+            return {
+                icon: (
+                    <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
+                        <CustomIcon icon="Role" className="w-5 h-5" />
+                    </div>
+                ),
+                title: isNew ? 'New Role' : (role.name ?? 'Unknown'),
+                subtitle: isNew ? 'Create a new role' : (role.description ?? `${(role.users ?? []).length} user(s) assigned`),
+                actions: isNew ? (
+                    <>
+                        <Button variant="outline" color="theme" size="sm" onClick={handleHeaderCancel}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="solid"
+                            color={themeColor}
+                            size="sm"
+                            loading={saving}
+                            onClick={() => void handleHeaderSave()}
+                        >
+                            Save
+                        </Button>
+                    </>
+                ) : undefined,
+            };
         },
         [roles, newRole, saving, handleHeaderCancel, handleHeaderSave],
     );
@@ -197,10 +200,10 @@ export const Roles: React.FC = () => {
                     error={error}
                     onRetry={() => void fetchRoles()}
                     listTitle={`Roles (${roles.length})`}
-                    panelHeader={panelHeader}
+                    panelHeaderProps={panelHeaderProps}
                     autoHideList={false}
                     borderLeft
-                    color="parallels"
+                    color={themeColor}
                     searchPlaceholder="Search roles..."
                     listActions={
                         <>
@@ -208,9 +211,9 @@ export const Roles: React.FC = () => {
                                 <IconButton
                                     variant="ghost"
                                     size="xs"
-                                    color="parallels"
+                                    color={themeColor}
                                     accent={true}
-                                    accentColor="parallels"
+                                    accentColor={themeColor}
                                     icon="Add"
                                     onClick={handleAddNew}
                                 />

@@ -7,7 +7,7 @@ export interface BadgeProps {
   /**
    * Content to display inside the badge
    */
-  count?: number;
+  count?: number | string;
 
   /**
    * Show only a dot indicator (no count)
@@ -24,7 +24,7 @@ export interface BadgeProps {
    * Badge color variant
    * @default "danger"
    */
-  variant?: ThemeColor;
+  tone?: ThemeColor;
 
   /**
    * Additional class names
@@ -44,7 +44,7 @@ export const Badge: React.FC<BadgeProps> = ({
   count,
   dot = false,
   maxCount = 99,
-  variant = "danger",
+  tone = "neutral",
   className = "",
   style,
 }) => {
@@ -52,19 +52,19 @@ export const Badge: React.FC<BadgeProps> = ({
     return null;
   }
 
-  const colorClass = getBadgeColorClasses(variant);
+  const colorClass = getBadgeColorClasses(tone);
 
   let content: React.ReactNode;
 
   if (dot) {
     content = <span className={classNames("h-2 w-2 rounded-full", colorClass)} aria-hidden="true" />;
   } else {
-    const displayValue = count !== undefined ? (count > maxCount ? `${maxCount}+` : count) : "";
+    const displayValue = count !== undefined ? (Number(count) > maxCount ? `${maxCount}+` : count) : "";
     content = displayValue;
   }
 
   const badgeClasses = classNames(
-    "inline-flex items-center justify-center rounded-full text-[10px] font-semibold leading-4",
+    "inline-grid place-items-center text-center rounded-full text-[10px] font-semibold leading-4",
     "min-h-[1.125rem] min-w-[1.125rem] border border-white/80 dark:border-neutral-900/60",
     dot ? "px-1 py-1 bg-transparent text-transparent" : "px-1.5",
     !dot && colorClass,

@@ -22,3 +22,8 @@ export interface HostsDeepLinkState {
     /** Host ID to select in the list */
     selectHostId?: string;
 }
+
+export interface JobsDeepLinkState {
+    /** Job ID to highlight in the list */
+    selectJobId?: string;
+}

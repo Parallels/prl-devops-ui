@@ -17,15 +17,34 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
     subtitle, subtitleClassName,
     description, descriptionClassName,
     tone, body, defaultExpanded = false,
+    expanded,
+    onToggleExpanded,
+    forceToggle = false,
     actions, hoverActions,
+    dragHandle,
+    isDragging = false,
     index = 0, className,
 }) => {
     const tokens = getTreeColorTokens(tone);
-    const [expanded, setExpanded] = useState(defaultExpanded);
+    const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
+    const isExpanded = expanded ?? internalExpanded;
+    const canExpand = forceToggle || (body !== undefined && body !== null);
+
+    const handleToggle = () => {
+        if (onToggleExpanded) {
+            onToggleExpanded();
+            return;
+        }
+        setInternalExpanded(v => !v);
+    };
 
     return (
         <div
-            className={classNames('relative', className)}
+            className={classNames(
+                'relative transition-[transform,opacity] duration-200 ease-out',
+                isDragging && 'opacity-70',
+                className,
+            )}
             style={index > 0 ? {
                 animation: 'fadeIn 0.3s ease both',
                 animationDelay: `${index * 0.05}s`,
@@ -94,21 +113,28 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
                         </div>
                     )}
 
-                    {/* Expand toggle — only when body is provided */}
-                    {body !== undefined && body !== null && (
+                    {/* Drag handle */}
+                    {dragHandle && (
+                        <div className="flex items-center flex-shrink-0 self-start mt-1">
+                            {dragHandle}
+                        </div>
+                    )}
+
+                    {/* Expand toggle */}
+                    {canExpand && (
                         <div className="flex items-center flex-shrink-0 self-start mt-1">
                             <button
                                 type="button"
-                                onClick={() => setExpanded(v => !v)}
+                                onClick={handleToggle}
                                 className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                                aria-label={expanded ? 'Collapse' : 'Expand'}
-                                aria-expanded={expanded}
+                                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                                aria-expanded={isExpanded}
                             >
                                 <svg
                                     className={classNames(
                                         'w-4 h-4 transition-transform duration-200',
                                         tokens.labelText,
-                                        expanded && 'rotate-180',
+                                        isExpanded && 'rotate-180',
                                     )}
                                     fill="none"
                                     viewBox="0 0 24 24"
@@ -125,7 +151,7 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
                 {body !== undefined && body !== null && (
                     <div className={classNames(
                         'grid transition-[grid-template-rows,opacity] duration-300 ease-in-out',
-                        expanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
+                        isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0',
                     )}>
                         <div className="min-h-0 bg-white dark:bg-neutral-900 rounded-b-xl">
                             <div className="border-t border-neutral-200 dark:border-neutral-700" />

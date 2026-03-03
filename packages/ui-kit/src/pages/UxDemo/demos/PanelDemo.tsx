@@ -80,7 +80,7 @@ export const PanelDemo: React.FC = () => {
             variant={panelVariant}
             media={panelHasMedia ? <img src={parallels} alt="Parallels" /> : null}
             mediaPlacement={panelMediaPlacement}
-            badge={panelHasBadge ? <Badge count={10} variant="primary" /> : null}
+            badge={panelHasBadge ? <Badge count={10} tone="primary" /> : null}
             corner={panelCorner}
             loaderProgress={30}
             loading={panelLoading}

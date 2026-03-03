@@ -2,6 +2,7 @@ import classNames from 'classnames';
 import { Calendar, Folder, IconButton, MultiProgressBar, Panel, Pill, ThemeColor, formatDate, formatMB } from '@prl/ui-kit';
 import type { CatalogCacheManifestItem } from '@/interfaces/Cache';
 import { formatCacheSize } from '@/utils/cacheUtils';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 export function CacheManifestCard({
     manifest,
@@ -20,6 +21,7 @@ export function CacheManifestCard({
     maxSize?: number;
     seriesColor: string;
 }) {
+    const { themeColor } = useSystemSettings();
     const minReq = manifest.minimum_requirements as { cpu?: number; memory?: number; disk?: number } | undefined;
     const archColor: ThemeColor =
         manifest.architecture === 'arm64' ? 'rose'
@@ -34,7 +36,7 @@ export function CacheManifestCard({
         <Panel
             variant='glass'
             padding='none'
-            tone='parallels'
+            tone={themeColor}
             className={classNames(
                 'transition-opacity duration-200',
                 isDeleting && 'opacity-40 pointer-events-none',

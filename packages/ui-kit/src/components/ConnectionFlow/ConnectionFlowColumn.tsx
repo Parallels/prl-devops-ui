@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import classNames from 'classnames';
 import TreeItemCard from '../TreeView/TreeItemCard';
 import TreeFlowSvg, { INDENT_PX } from '../TreeView/TreeFlowSvg';
 import type { TreeTone } from '../TreeView/types';
@@ -99,6 +100,7 @@ export interface ConnectionFlowColumnProps {
     connectorHalf?: boolean;
     connectorBorderSize?: 'fit' | 'xs' | 'sm' | 'md' | 'lg';
     dotSpacing?: number;
+    itemWidth?: number | string;
     /** Reports geometry so ConnectionFlow can build a multi-source connector. */
     onGeometryChange?: (geo: ColumnGeometry) => void;
     /** When true, forces all child branches to animate (mirrors parent connection state). */
@@ -115,6 +117,7 @@ const ConnectionFlowColumn: React.FC<ConnectionFlowColumnProps> = ({
     childIndent = 'xs', childRowGap = CHILD_ROW_MB,
     animated = true, showLine = true,
     connectorHalf = true, connectorBorderSize = 'xs', dotSpacing = 50,
+    itemWidth,
     onGeometryChange, flowActive = false,
 }) => {
     const hasChildren = !!(item.children && item.children.length > 0);
@@ -174,7 +177,11 @@ const ConnectionFlowColumn: React.FC<ConnectionFlowColumnProps> = ({
     const mergedActiveList = flowActive ? activeList.map(() => true) : activeList;
 
     return (
-        <div ref={columnRef} className="flex flex-col flex-1 min-w-0 relative">
+        <div
+            ref={columnRef}
+            className={classNames("flex flex-col relative", itemWidth ? "flex-shrink-0" : "flex-1 min-w-0")}
+            style={itemWidth ? { width: itemWidth } : undefined}
+        >
             {/* Parent card — full width */}
             <div ref={parentCardRef}>
                 <TreeItemCard

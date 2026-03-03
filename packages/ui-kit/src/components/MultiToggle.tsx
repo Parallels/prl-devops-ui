@@ -9,10 +9,12 @@ import React, {
 } from "react";
 import classNames from "classnames";
 import { useIconRenderer } from "../contexts/IconContext";
-import { getMultiToggleColorTokens, type ThemeColor } from "../theme/Theme";
+import { getMultiToggleColorTokens, getMultiToggleVariantTokens, type ThemeColor } from "../theme/Theme";
 import type { IconSize } from "../types/Icon";
 
 export type MultiToggleSize = "sm" | "md" | "lg";
+export type MultiToggleShape = "none" | "xs" | "sm" | "md" | "lg" | "xl" | "full";
+export type MultiToggleVariant = "theme" | "solid" | "soft";
 
 type LiteralUnion<T extends U, U = string> = T | (U & Record<never, never>);
 
@@ -30,6 +32,8 @@ export interface MultiToggleOption {
 export interface MultiToggleProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "onChange" | "value"> {
   options: MultiToggleOption[];
   value: string;
+  rounded?: MultiToggleShape;
+
   onChange: (value: string) => void;
   size?: MultiToggleSize;
   color?: ThemeColor;
@@ -40,6 +44,7 @@ export interface MultiToggleProps extends Omit<ButtonHTMLAttributes<HTMLButtonEl
   adaptiveWidth?: boolean;
   optionMaxWidth?: number | string;
   activeWidthStrategy?: MultiToggleActiveWidthStrategy;
+  variant?: MultiToggleVariant;
 }
 
 const sizeTokens: Record<
@@ -55,35 +60,35 @@ const sizeTokens: Record<
   }
 > = {
   sm: {
-    track: "h-9 text-xs",
+    track: "h-8 text-xs",
     indicatorInset: "inset-y-[0px]",
-    cell: "px-2 py-1.5",
+    cell: "px-2 py-1",
     gap: "gap-1",
     label: "text-xs",
+    icon: "h-4 w-4",
+    paddingY: "py-0.5",
+  },
+  md: {
+    track: "h-9 text-sm",
+    indicatorInset: "inset-y-[0px]",
+    cell: "px-2.5 py-1.5",
+    gap: "gap-1.5",
+    label: "text-sm",
     icon: "h-5 w-5",
     paddingY: "py-1",
   },
-  md: {
-    track: "h-11 text-sm",
-    indicatorInset: "inset-y-[0px]",
-    cell: "px-3 py-2",
-    gap: "gap-1.5",
-    label: "text-sm",
-    icon: "h-6 w-6",
-    paddingY: "py-1",
-  },
   lg: {
-    track: "h-12 text-base",
+    track: "h-11 text-base",
     indicatorInset: "inset-y-[0px]",
-    cell: "px-4 py-2.5",
+    cell: "px-3.5 py-2",
     gap: "gap-2",
     label: "text-base",
-    icon: "h-7 w-7",
+    icon: "h-6 w-6",
     paddingY: "py-1",
   },
 };
 
-const CONTAINER_HORIZONTAL_PADDING = 4;
+const CONTAINER_HORIZONTAL_PADDING = 2;
 const INDICATOR_MARGIN = 1;
 
 const computeInset = (segmentWidth: number) => {
@@ -119,8 +124,10 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
   adaptiveWidth = false,
   optionMaxWidth,
   disabled,
+  rounded = "lg",
   style: sharedButtonStyle,
   activeWidthStrategy = "auto",
+  variant = "theme",
   ...buttonProps
 }) => {
   const renderIcon = useIconRenderer();
@@ -132,6 +139,8 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
   const [maxOptionWidth, setMaxOptionWidth] = useState<number>();
   const parsedOptionMaxWidth = toCssDimension(optionMaxWidth);
   const shouldLockToMaxWidth = hasCustomWidths && activeWidthStrategy === "max";
+  const controlRounded = rounded === "none" ? "" : rounded === "xs" ? "rounded-xs" : rounded === "sm" ? "rounded-sm" : rounded === "md" ? "rounded-md" : rounded === "lg" ? "rounded-lg" : rounded === "xl" ? "rounded-xl" : "rounded-full";
+
 
   const optionCount = options.length ?? 0;
   const activeIndex = Math.max(
@@ -140,6 +149,8 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
   );
   const sizeStyles = sizeTokens[size] ?? sizeTokens.md;
   const colorStyles = getMultiToggleColorTokens(color);
+  const variantTokens = getMultiToggleVariantTokens(color);
+  const isVariantMode = variant === "solid" || variant === "soft";
   const usesSegmentLayout = !hasCustomWidths && !shouldLockToMaxWidth;
   optionRefs.current.length = optionCount;
   measurementRefs.current.length = optionCount;
@@ -175,11 +186,12 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
     const paddingRight = parseFloat(containerStyles?.paddingRight ?? "0") || 0;
     const containerInnerWidth = Math.max(0, container.clientWidth - paddingLeft - paddingRight);
 
+
     if (usesSegmentLayout) {
       const segmentWidth = containerInnerWidth / optionCount;
       const inset = computeInset(segmentWidth);
       const indicatorWidth = Math.max(0, segmentWidth - inset * 2);
-      const offset = CONTAINER_HORIZONTAL_PADDING + activeIndex * segmentWidth + inset;
+      const offset = paddingLeft + activeIndex * segmentWidth + inset;
       setIndicatorInlineStyle({
         width: `${indicatorWidth}px`,
         transform: `translateX(${offset}px)`,
@@ -190,8 +202,10 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
     const baseWidth = shouldLockToMaxWidth && maxOptionWidth ? maxOptionWidth : activeButton.offsetWidth;
     const inset = computeInset(baseWidth);
     const indicatorWidth = Math.max(0, Math.min(baseWidth, containerInnerWidth) - inset * 2);
-    let offset = activeButton.offsetLeft - paddingLeft + inset;
-    const maxOffset = Math.max(inset, containerInnerWidth - indicatorWidth - inset);
+    // offsetLeft is relative to the container's border-box edge (same as `absolute left-0`),
+    // so do NOT subtract paddingLeft — that would shift the pill left and create unequal gutters.
+    let offset = activeButton.offsetLeft + inset;
+    const maxOffset = Math.max(inset, container.clientWidth - indicatorWidth - inset);
     offset = Math.min(Math.max(offset, inset), maxOffset);
 
     setIndicatorInlineStyle({
@@ -279,7 +293,11 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
     <div
       ref={containerRef}
       className={classNames(
-        "relative inline-flex select-none items-center  bg-neutral-100 rounded-full p-1 shadow-inner dark:bg-neutral-600",
+        "relative inline-flex select-none items-center p-0.5",
+        isVariantMode
+          ? "bg-neutral-100 dark:bg-neutral-700"
+          : "bg-neutral-100 shadow-inner dark:bg-neutral-600",
+        controlRounded,
         sizeStyles.track,
         fullWidth && "w-full",
         disabled && "opacity-60 cursor-not-allowed",
@@ -296,7 +314,15 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
         )}
         style={computedIndicatorStyle ?? indicatorStyle}
       >
-        <span className={classNames("h-full w-full rounded-full", colorStyles.indicator)} />
+        <span
+          className={classNames(
+            "h-full w-full",
+            controlRounded,
+            variant === "solid" && "bg-white dark:bg-neutral-800 shadow-sm",
+            variant === "soft" && variantTokens.softIndicator,
+            variant === "theme" && colorStyles.indicator,
+          )}
+        />
       </span>
 
       {shouldLockToMaxWidth && (
@@ -404,7 +430,8 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
             key={option.value}
             type="button"
             className={classNames(
-              "relative z-[1] flex min-w-0 items-center justify-center rounded-full transition-colors duration-150",
+              "relative z-[1] flex min-w-0 items-center justify-center transition-colors duration-150",
+              controlRounded,
               sizeStyles.cell,
               sizeStyles.gap,
               hasCustomWidths ? "flex-none" : "flex-1",
@@ -412,8 +439,8 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
                 ? "text-neutral-400 dark:text-neutral-500 cursor-not-allowed"
                 : classNames(
                   "cursor-pointer text-neutral-600 dark:text-neutral-300",
-                  colorStyles.hover,
-                  isActive && colorStyles.activeText
+                  isVariantMode ? variantTokens.hover : colorStyles.hover,
+                  isActive && (isVariantMode ? variantTokens.activeText : colorStyles.activeText)
                 )
             )}
             onClick={() => {

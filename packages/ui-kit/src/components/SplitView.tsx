@@ -8,6 +8,8 @@ import { useResizable } from "../hooks/useResizable";
 import Loader from "./Loader";
 import IconButton from "./IconButton";
 import SearchBar from "./SearchBar";
+import HelpButton, { type HelpButtonProps } from "./HelpButton";
+import Panel, { type PanelDecoration, type PanelTone, type PanelVariant } from "./Panel";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -43,6 +45,48 @@ export interface SplitViewItem {
   subContent?: React.ReactNode;
 }
 
+export type SplitViewHeaderSlot<T> = T | ((activeItem: SplitViewItem) => T);
+
+export interface SplitViewHeaderDetails {
+  title?: React.ReactNode;
+  subtitle?: React.ReactNode;
+  description?: React.ReactNode;
+  /** Right-aligned tag/badge area. Accepts any React node(s). */
+  tags?: React.ReactNode;
+  tone?: PanelTone;
+  variant?: PanelVariant;
+  /** Alias for `variant` */
+  variants?: PanelVariant;
+  decoration?: PanelDecoration;
+  /** Alias for `decoration` */
+  decorations?: PanelDecoration;
+  /** Optional divider between header row and details block (default: true). */
+  bordered?: boolean;
+  className?: string;
+}
+
+export interface SplitViewPanelHeaderProps {
+  /** Full icon node (left side) */
+  icon?: SplitViewHeaderSlot<React.ReactNode>;
+  /** Defaults to the active item's label when omitted */
+  title?: SplitViewHeaderSlot<React.ReactNode>;
+  subtitle?: SplitViewHeaderSlot<React.ReactNode>;
+  /** Right side actions in the main row */
+  actions?: SplitViewHeaderSlot<React.ReactNode>;
+  /** Extra customizable content rendered between identity and search */
+  body?: SplitViewHeaderSlot<React.ReactNode>;
+  search?: SplitViewHeaderSlot<React.ReactNode>;
+  searchWidth?: string;
+  /** Second row, right-aligned actions */
+  bottomActions?: SplitViewHeaderSlot<React.ReactNode>;
+  /** Optional details block rendered below the header row and styled like a Panel. */
+  headerDetails?: SplitViewHeaderSlot<SplitViewHeaderDetails | null | undefined>;
+  /** Optional help button inserted after title */
+  helper?: SplitViewHeaderSlot<HelpButtonProps | undefined>;
+  border?: boolean;
+  className?: string;
+}
+
 export interface SplitViewProps {
   items: SplitViewItem[];
   /** Controlled selected id */
@@ -61,7 +105,7 @@ export interface SplitViewProps {
   color?: ThemeColor;
   size?: SplitViewSize;
 
-  /** When true and only 1 visible item exists, skip the list panel entirely (default: true) */
+  /** Deprecated: one visible item is now always shown as detail-only (list hidden). */
   autoHideList?: boolean;
 
   /** Allow collapsing the list panel */
@@ -88,6 +132,11 @@ export interface SplitViewProps {
   panelClassName?: string;
   /** Content rendered above the detail panel (header area) */
   panelHeader?: React.ReactNode | ((activeItem: SplitViewItem) => React.ReactNode);
+  /**
+   * Built-in SplitView header renderer (PageHeader-like) with support for dynamic slots.
+   * When provided, this takes precedence over `panelHeader`.
+   */
+  panelHeaderProps?: SplitViewPanelHeaderProps | ((activeItem: SplitViewItem) => SplitViewPanelHeaderProps | null | undefined);
   /** Rendered when no items match the search filter in the list */
   emptyState?: React.ReactNode;
   /** Action buttons rendered in the list header row (e.g. an "Add" button) */
@@ -213,6 +262,7 @@ const SplitView: React.FC<SplitViewProps> = ({
   listClassName,
   panelClassName,
   panelHeader,
+  panelHeaderProps,
   emptyState,
   listActions,
   panelEmptyState,
@@ -228,6 +278,9 @@ const SplitView: React.FC<SplitViewProps> = ({
   panelScrollable = true,
 }) => {
   const visibleItems = useMemo(() => items.filter((i) => !i.hidden), [items]);
+  const isSingleVisibleItem = visibleItems.length === 1;
+  // Single-item mode is now always detail-only; keep autoHideList reference for backward compatibility.
+  const shouldHideList = isSingleVisibleItem || (autoHideList && visibleItems.length === 1);
   const [internalValue, setInternalValue] = useState<string | undefined>(defaultValue ?? visibleItems[0]?.id);
   const activeId = value ?? internalValue;
 
@@ -241,11 +294,9 @@ const SplitView: React.FC<SplitViewProps> = ({
   const [filter, setFilter] = useState("");
 
   /* ---- Collapse state (controlled / uncontrolled) ---- */
-  const [internalCollapsed, setInternalCollapsed] = useState(
-    collapsible ? visibleItems.length <= 1 : defaultCollapsed
-  );
+  const [internalCollapsed, setInternalCollapsed] = useState(defaultCollapsed);
   const isCollapsedControlled = typeof controlledCollapsed === "boolean";
-  const isCollapsed = collapsible && (isCollapsedControlled ? controlledCollapsed : internalCollapsed);
+  const isCollapsed = collapsible && !shouldHideList && (isCollapsedControlled ? controlledCollapsed : internalCollapsed);
 
   const toggleCollapsed = useCallback(() => {
     const next = !isCollapsed;
@@ -269,7 +320,7 @@ const SplitView: React.FC<SplitViewProps> = ({
     initialWidth: validInitialWidth,
     minWidth: minListWidth,
     maxWidth: getMaxWidth,
-    enabled: resizable && !isCollapsed,
+    enabled: resizable && !isCollapsed && !shouldHideList,
   });
 
   // Keep selection in sync when items change
@@ -279,16 +330,6 @@ const SplitView: React.FC<SplitViewProps> = ({
       setInternalValue(visibleItems[0]?.id);
     }
   }, [visibleItems, value, internalValue]);
-
-  // Auto-select when single item
-  const shouldHideList = autoHideList && visibleItems.length === 1;
-
-  // Auto-collapse when ≤1 item, auto-expand when >1 item
-  useEffect(() => {
-    if (collapsible && !isCollapsedControlled) {
-      setInternalCollapsed(visibleItems.length <= 1);
-    }
-  }, [visibleItems.length, collapsible, isCollapsedControlled]);
 
   useEffect(() => {
     if (shouldHideList && visibleItems[0] && activeId !== visibleItems[0].id) {
@@ -358,6 +399,133 @@ const SplitView: React.FC<SplitViewProps> = ({
     );
   };
 
+  const resolveHeaderSlot = <T,>(slot: SplitViewHeaderSlot<T> | undefined, item: SplitViewItem): T | undefined => {
+    if (typeof slot === "function") {
+      return (slot as (activeItem: SplitViewItem) => T)(item);
+    }
+    return slot;
+  };
+
+  const renderBuiltInHeader = (item: SplitViewItem, options?: { promoteItemActions?: boolean }) => {
+    if (panelHeaderProps === undefined) return null;
+
+    const headerProps = typeof panelHeaderProps === "function" ? panelHeaderProps(item) : panelHeaderProps;
+    if (!headerProps) return null;
+
+    const icon = resolveHeaderSlot(headerProps.icon, item);
+    const title = resolveHeaderSlot(headerProps.title, item) ?? item.label;
+    const subtitle = resolveHeaderSlot(headerProps.subtitle, item);
+    const body = resolveHeaderSlot(headerProps.body, item);
+    const search = resolveHeaderSlot(headerProps.search, item);
+    const helper = resolveHeaderSlot(headerProps.helper, item);
+    const bottomActions = resolveHeaderSlot(headerProps.bottomActions, item);
+    const headerDetails = resolveHeaderSlot(headerProps.headerDetails, item);
+    const customActions = resolveHeaderSlot(headerProps.actions, item);
+    const promotedActions = options?.promoteItemActions ? item.actions : undefined;
+    const mergedActions = customActions && promotedActions
+      ? (
+        <>
+          {customActions}
+          {promotedActions}
+        </>
+      )
+      : (customActions ?? promotedActions);
+    const border = headerProps.border ?? true;
+    const detailsVariant = headerDetails?.variant ?? headerDetails?.variants ?? "subtle";
+    const detailsDecoration = headerDetails?.decoration ?? headerDetails?.decorations ?? "none";
+    const detailsTone = headerDetails?.tone ?? "neutral";
+    const hasHeaderDetailsContent = Boolean(
+      headerDetails?.title || headerDetails?.subtitle || headerDetails?.description || headerDetails?.tags
+    );
+    const isDetailsBordered = headerDetails?.bordered ?? true;
+
+    return (
+      <div
+        className={classNames(
+          "flex-none",
+          border,
+          headerProps.className,
+        )}
+      >
+        <div className="flex items-center gap-3 px-4 py-3">
+          {icon && <div className="flex-shrink-0">{icon}</div>}
+          <div className="flex-1 min-w-0">
+            <h2 className="flex items-center text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+              <span>{title}</span>
+              {helper && <HelpButton {...helper} />}
+            </h2>
+            {subtitle && (
+              <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400 truncate">
+                {subtitle}
+              </p>
+            )}
+          </div>
+          {body && <div className="flex-shrink-0">{body}</div>}
+          {search && <div className={classNames("flex-shrink-0", headerProps.searchWidth)}>{search}</div>}
+          {mergedActions && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {mergedActions}
+            </div>
+          )}
+        </div>
+        {bottomActions && (
+          <div className="flex items-center justify-end gap-2 px-4 pb-3">
+            {bottomActions}
+          </div>
+        )}
+        {headerDetails && hasHeaderDetailsContent && (
+          <div className={classNames(isDetailsBordered && "border-t border-b border-neutral-200 dark:border-neutral-700")}>
+            <Panel
+              tone={detailsTone}
+              variant={detailsVariant}
+              decoration={detailsDecoration}
+              corner="none"
+              padding="none"
+
+              className={classNames("w-full shadow-none px-3 py-4", headerDetails.className)}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  {headerDetails.title && (
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:text-neutral-400">
+                      {headerDetails.title}
+                    </div>
+                  )}
+                  {headerDetails.subtitle && (
+                    <div className="mt-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                      {headerDetails.subtitle}
+                    </div>
+                  )}
+                  {headerDetails.description && (
+                    <div className="mt-1 text-[12px] text-neutral-600 dark:text-neutral-400">
+                      {headerDetails.description}
+                    </div>
+                  )}
+                </div>
+                {headerDetails.tags && (
+                  <div className="flex items-center justify-end gap-2 flex-wrap">
+                    {headerDetails.tags}
+                  </div>
+                )}
+              </div>
+            </Panel>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderPanelHeader = (item: SplitViewItem, options?: { promoteItemActions?: boolean }) => {
+    if (panelHeaderProps !== undefined) {
+      return renderBuiltInHeader(item, options);
+    }
+    if (!panelHeader) return null;
+    return typeof panelHeader === "function" ? panelHeader(item) : panelHeader;
+  };
+  const singleItem = shouldHideList ? visibleItems[0] : undefined;
+  const singleHeader = singleItem ? renderPanelHeader(singleItem, { promoteItemActions: true }) : null;
+  const activeHeader = activeItem ? renderPanelHeader(activeItem, { promoteItemActions: false }) : null;
+
   /* ---- List panel width ---- */
   const listPanelStyle: React.CSSProperties | undefined =
     isCollapsed
@@ -389,7 +557,7 @@ const SplitView: React.FC<SplitViewProps> = ({
     }
     if (error) {
       return (
-        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-[inherit] bg-white/60 backdrop-blur-md p-6 dark:bg-neutral-900/50">
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-white/60 backdrop-blur-md p-6 dark:bg-neutral-900/50">
           {errorState ?? (
             <EmptyState
               icon="Error"
@@ -413,16 +581,15 @@ const SplitView: React.FC<SplitViewProps> = ({
 
   /* ---- Auto-hide: just render the detail panel ---- */
   if (shouldHideList) {
-    const singleItem = visibleItems[0];
     return (
       <div className={classNames("relative flex h-full min-h-0 overflow-hidden", borderLeft && "border-l border-gray-200 dark:border-gray-700", className)}>
         {renderOverlay()}
         <div className={classNames("flex flex-1 flex-col min-w-0 h-full overflow-hidden", panelClassName)}>
           {singleItem && (
             <>
-              {panelHeader && (
+              {singleHeader && (
                 <div className="flex-shrink-0">
-                  {typeof panelHeader === "function" ? panelHeader(singleItem) : panelHeader}
+                  {singleHeader}
                 </div>
               )}
               <div className={classNames("flex-1", panelScrollable ? "overflow-y-auto" : "overflow-hidden")}>
@@ -658,9 +825,9 @@ const SplitView: React.FC<SplitViewProps> = ({
         {activeItem ? (
           <>
             {/* Panel Header */}
-            {panelHeader && (
+            {activeHeader && (
               <div className="flex-shrink-0">
-                {typeof panelHeader === "function" ? panelHeader(activeItem) : panelHeader}
+                {activeHeader}
               </div>
             )}
             {/* Panel Body */}

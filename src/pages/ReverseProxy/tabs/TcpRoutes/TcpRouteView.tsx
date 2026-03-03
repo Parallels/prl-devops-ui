@@ -1,0 +1,291 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@prl/ui-kit';
+import { ReverseProxyHost, ReverseProxyHostTcpRoute } from '@/interfaces/ReverseProxy';
+import { VirtualMachine } from '@/interfaces/VirtualMachine';
+import { devopsService } from '@/services/devops';
+import { useSession } from '@/contexts/SessionContext';
+import { useEventsHub } from '@/contexts/EventsHubContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { parseVmStateChangeBody } from '@/utils/vmUtils';
+import { drainUnseenMessages } from '@/utils/messageQueue';
+import TcpFlowHeader from './TcpFlowHeader';
+import TcpRouteEditor from './TcpRouteEditor';
+import { getVmHealth, resolveTargetType, type TargetType, type VmHealth } from './types';
+
+export interface TcpRouteViewProps {
+    proxyHost: ReverseProxyHost;
+    availableVms: VirtualMachine[];
+    orchestratorHostId?: string;
+    proxyEnabled: boolean;
+    canCreate: boolean;
+    canUpdate: boolean;
+    onSaveRoute: (route: Partial<ReverseProxyHostTcpRoute>) => Promise<void>;
+    onClearRoute: () => void;
+}
+
+export const TcpRouteView: React.FC<TcpRouteViewProps> = ({
+    proxyHost,
+    availableVms,
+    orchestratorHostId,
+    proxyEnabled,
+    canCreate,
+    canUpdate,
+    onSaveRoute,
+    onClearRoute,
+}) => {
+    const { session } = useSession();
+    const { themeColor } = useSystemSettings();
+    const hostname = session?.hostname ?? '';
+    const { containerMessages } = useEventsHub();
+
+    const tcpRoute = proxyHost.tcp_route;
+
+    const [localVmHealth, setLocalVmHealth] = useState<VmHealth>(() =>
+        getVmHealth(tcpRoute?.target_vm_details?.state),
+    );
+    const [actionLoading, setActionLoading] = useState(false);
+
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const pollCountRef = useRef(0);
+    const POLL_INTERVAL_MS = 3000;
+    const MAX_POLLS = 20;
+
+    const stopPolling = useCallback(() => {
+        if (pollRef.current !== null) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+        }
+        pollCountRef.current = 0;
+    }, []);
+
+    useEffect(() => () => stopPolling(), [stopPolling]);
+
+    const lastOrchestratorEventIdRef = useRef<string | null>(null);
+    const lastPdfmEventIdRef = useRef<string | null>(null);
+
+    const vmId = tcpRoute?.target_vm_id;
+
+    useEffect(() => {
+        if (!vmId) return;
+        const msgs = containerMessages.orchestrator;
+        const unseen = drainUnseenMessages(msgs, lastOrchestratorEventIdRef);
+        if (unseen.length === 0) return;
+
+        for (const msg of unseen) {
+            const { raw } = msg;
+            if (raw.message !== 'HOST_VM_STATE_CHANGED') continue;
+
+            const event = parseVmStateChangeBody(raw.body);
+            if (event.vmId !== vmId || !event.currentState) continue;
+
+            setLocalVmHealth(getVmHealth(event.currentState));
+            stopPolling();
+            setActionLoading(false);
+        }
+    }, [containerMessages.orchestrator, vmId, stopPolling]);
+
+    useEffect(() => {
+        if (!vmId) return;
+        const msgs = containerMessages.pdfm;
+        const unseen = drainUnseenMessages(msgs, lastPdfmEventIdRef);
+        if (unseen.length === 0) return;
+
+        for (const msg of unseen) {
+            const { raw } = msg;
+            if (raw.message !== 'VM_STATE_CHANGED') continue;
+
+            const event = parseVmStateChangeBody(raw.body);
+            if (event.vmId !== vmId) continue;
+
+            if (event.currentState) {
+                setLocalVmHealth(getVmHealth(event.currentState));
+                stopPolling();
+                setActionLoading(false);
+                continue;
+            }
+
+            devopsService.machines
+                .getVirtualMachine(hostname, vmId, !!orchestratorHostId)
+                .then((vm) => {
+                    setLocalVmHealth(getVmHealth(vm.State));
+                    stopPolling();
+                    setActionLoading(false);
+                })
+                .catch((err) => console.warn('[TcpRouteView] Failed to refresh VM after state change:', err));
+        }
+    }, [containerMessages.pdfm, hostname, vmId, orchestratorHostId, stopPolling]);
+
+    const [targetType, setTargetType] = useState<TargetType>(() => resolveTargetType(tcpRoute));
+    const [targetHost, setTargetHost] = useState(tcpRoute?.target_host ?? '');
+    const [targetPort, setTargetPort] = useState(tcpRoute?.target_port ?? '');
+    const [targetVmId, setTargetVmId] = useState(tcpRoute?.target_vm_id ?? '');
+    const [routeErrors, setRouteErrors] = useState<Record<string, string>>({});
+    const [routeDirty, setRouteDirty] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        stopPolling();
+        setActionLoading(false);
+        lastOrchestratorEventIdRef.current = null;
+        lastPdfmEventIdRef.current = null;
+
+        const route = proxyHost.tcp_route;
+        setLocalVmHealth(getVmHealth(route?.target_vm_details?.state));
+        setTargetType(resolveTargetType(route));
+        setTargetHost(route?.target_host ?? '');
+        setTargetPort(route?.target_port ?? '');
+        setTargetVmId(route?.target_vm_id ?? '');
+        setRouteErrors({});
+        setRouteDirty(false);
+    }, [proxyHost, stopPolling]);
+
+    const handleVmAction = useCallback(async () => {
+        const routeVmId = tcpRoute?.target_vm_id;
+        if (!routeVmId) return;
+
+        setActionLoading(true);
+        try {
+            if (localVmHealth === 'stopped') {
+                await devopsService.machines.startVirtualMachine(hostname, routeVmId, !!orchestratorHostId);
+            } else {
+                await devopsService.machines.resumeVirtualMachine(hostname, routeVmId, !!orchestratorHostId);
+            }
+        } catch {
+            setActionLoading(false);
+            return;
+        }
+
+        stopPolling();
+        pollCountRef.current = 0;
+        pollRef.current = setInterval(async () => {
+            pollCountRef.current += 1;
+            if (pollCountRef.current >= MAX_POLLS) {
+                stopPolling();
+                setActionLoading(false);
+                return;
+            }
+
+            try {
+                const vm = await devopsService.machines.getVirtualMachine(hostname, routeVmId, !!orchestratorHostId);
+                const health = getVmHealth(vm.State);
+                setLocalVmHealth(health);
+                if (health === 'running') {
+                    stopPolling();
+                    setActionLoading(false);
+                }
+            } catch {
+                // transient error — keep polling
+            }
+        }, POLL_INTERVAL_MS);
+    }, [hostname, tcpRoute, localVmHealth, orchestratorHostId, stopPolling]);
+
+    const validateRoute = () => {
+        const e: Record<string, string> = {};
+        if (targetType === 'static' && !targetHost.trim()) e.targetHost = 'Target host is required';
+        if (targetType === 'vm' && !targetVmId) e.targetVmId = 'Select a virtual machine';
+        if (!targetPort.trim()) e.targetPort = 'Port is required';
+        setRouteErrors(e);
+        return Object.keys(e).length === 0;
+    };
+
+    const handleSave = useCallback(async () => {
+        if (!routeDirty && tcpRoute) return;
+        if (!validateRoute()) return;
+
+        setSaving(true);
+        try {
+            await onSaveRoute({
+                target_host: targetType === 'static' ? targetHost.trim() : undefined,
+                target_port: targetPort.trim(),
+                target_vm_id: targetType === 'vm' ? targetVmId : undefined,
+            });
+            setRouteDirty(false);
+        } finally {
+            setSaving(false);
+        }
+    }, [routeDirty, tcpRoute, targetType, targetHost, targetPort, targetVmId, onSaveRoute]);
+
+    const canEdit = canCreate || canUpdate;
+    const canStartOrResume = canCreate && !!tcpRoute?.target_vm_id && ['stopped', 'paused', 'suspended'].includes(localVmHealth);
+    const showSaveButton = routeDirty || !tcpRoute;
+
+    return (
+        <div className="p-4 overflow-y-auto">
+            <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50">
+                {tcpRoute && (
+                    <div className="p-3">
+                        <TcpFlowHeader
+                            proxyHost={proxyHost}
+                            tcpRoute={tcpRoute}
+                            proxyEnabled={proxyEnabled}
+                            localVmHealth={localVmHealth}
+                            actionLoading={actionLoading}
+                            canStartOrResume={canStartOrResume}
+                            onVmAction={() => void handleVmAction()}
+                        />
+                    </div>
+                )}
+
+                {tcpRoute && <div className="border-t border-neutral-200 dark:border-neutral-800" />}
+
+                <div className="px-4 pt-3 pb-4">
+                    <TcpRouteEditor
+                        targetType={targetType}
+                        targetHost={targetHost}
+                        targetPort={targetPort}
+                        targetVmId={targetVmId}
+                        errors={routeErrors}
+                        availableVms={availableVms}
+                        onTargetTypeChange={(value) => {
+                            setTargetType(value);
+                            setRouteErrors({});
+                            setRouteDirty(true);
+                        }}
+                        onTargetHostChange={(value) => {
+                            setTargetHost(value);
+                            setRouteDirty(true);
+                        }}
+                        onTargetPortChange={(value) => {
+                            setTargetPort(value);
+                            setRouteDirty(true);
+                        }}
+                        onTargetVmIdChange={(value) => {
+                            setTargetVmId(value);
+                            setRouteDirty(true);
+                        }}
+                        onClearError={(key) => setRouteErrors((prev) => ({ ...prev, [key]: '' }))}
+                    />
+                </div>
+
+                {canEdit && (showSaveButton || !!tcpRoute) && (
+                    <div className="flex items-center justify-between px-4 pb-4 pt-3 border-t border-neutral-100 dark:border-neutral-800">
+                        <div>
+                            {canCreate && tcpRoute && (
+                                <Button
+                                    variant="outline"
+                                    color="rose"
+                                    size="sm"
+                                    leadingIcon="Trash"
+                                    onClick={onClearRoute}
+                                >
+                                    Clear TCP Route
+                                </Button>
+                            )}
+                        </div>
+                        {showSaveButton && (
+                            <Button
+                                variant="solid"
+                                color={themeColor}
+                                size="sm"
+                                loading={saving}
+                                onClick={() => void handleSave()}
+                            >
+                                {tcpRoute ? 'Save Changes' : 'Save TCP Route'}
+                            </Button>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};

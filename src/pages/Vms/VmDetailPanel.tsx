@@ -13,6 +13,7 @@ import {
     InfoRow,
 } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { OsIcon } from '@/utils/virtualMachine';
 import { getStateTone } from '@/utils/vmUtils';
@@ -235,6 +236,7 @@ export interface VmDetailContentProps {
 }
 
 export function VmDetailContent({ vm, hostname, isOrchestrator }: VmDetailContentProps) {
+    const { themeColor } = useSystemSettings();
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
     const state = (vm.State ?? '').toLowerCase();
@@ -333,7 +335,7 @@ export function VmDetailContent({ vm, hostname, isOrchestrator }: VmDetailConten
             {/* ── Tabs ──────────────────────────────────────────────── */}
             <Tabs
                 variant="underline"
-                color="parallels"
+                color={themeColor}
                 size="sm"
                 className="flex-1 min-h-0"
                 listClassName="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800"

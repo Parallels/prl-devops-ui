@@ -6,15 +6,29 @@ import type { ConnectionState, ConnectionFlowConnectorConfig } from './types';
 // ── useIsDark ─────────────────────────────────────────────────────────────────
 
 function useIsDark(): boolean {
-    const [isDark, setIsDark] = useState(
-        () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
-    );
+    const detectDark = (): boolean => {
+        if (typeof document === 'undefined') return false;
+        const probe = document.createElement('div');
+        probe.className = 'hidden dark:block';
+        document.body.appendChild(probe);
+        const darkActive = window.getComputedStyle(probe).display === 'block';
+        probe.remove();
+        return darkActive;
+    };
+
+    const [isDark, setIsDark] = useState<boolean>(() => detectDark());
+
     useEffect(() => {
-        const obs = new MutationObserver(() => {
-            setIsDark(document.documentElement.classList.contains('dark'));
-        });
+        const update = () => setIsDark(detectDark());
+        const obs = new MutationObserver(update);
         obs.observe(document.documentElement, { attributeFilter: ['class'] });
-        return () => obs.disconnect();
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        media.addEventListener('change', update);
+        update();
+        return () => {
+            media.removeEventListener('change', update);
+            obs.disconnect();
+        };
     }, []);
     return isDark;
 }
@@ -105,7 +119,8 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
     const dstFill = dstFillOvr ?? (isActive ? dstTokens.connFill[ci] : NEUTRAL_TOKENS.connFill[ci]);
     const dstBorder = dstBorderOvr ?? (isActive ? dstTokens.connBorder[ci] : NEUTRAL_TOKENS.connBorder[ci]);
     const dstDot = dstDotOvr ?? (isActive ? dstTokens.connDot[ci] : NEUTRAL_TOKENS.connDot[ci]);
-    const lineColor = isActive ? dstTokens.trunk[ci] : NEUTRAL_TOKENS.trunk[ci];
+    // Keep connector lines on the same tonal ramp as connector rings/cards.
+    const lineColor = isActive ? dstTokens.connBorder[ci] : NEUTRAL_TOKENS.connBorder[ci];
     const animDotColor = dotColorOvr ?? (isActive ? dstTokens.connDot[ci] : NEUTRAL_TOKENS.connDot[ci]);
 
     // ── Simple vs multi-source mode ───────────────────────────────────────────

@@ -147,6 +147,16 @@ export interface ConnectionFlowProps {
     childIndent?: 'xs' | 'sm' | 'md' | 'lg';
     /** Row gap in px between children. Default: 8 */
     childRowGap?: number;
+    /**
+     * If true, allows the flow to scroll horizontally/vertically if the container is smaller than the flow.
+     * Default: false
+     */
+    allowScroll?: boolean;
+    /**
+     * Set a fixed width for all items in the flow (e.g. 250, '300px').
+     * Primarily useful when `allowScroll` is enabled.
+     */
+    itemWidth?: number | string;
     className?: string;
     /** Extra content to render to the right of the entire flow (e.g. an expand toggle) */
     rightAction?: React.ReactNode;

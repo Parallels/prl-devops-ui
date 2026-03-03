@@ -28,6 +28,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
     const { hasAllClaims, hasAnyClaim, hasRole, session } = useSession();
 
+    // No active session should follow the same flow as token expiry/logout:
+    // send the user back to onboarding (not forbidden).
+    if (!session) {
+        return <Navigate to="/onboarding" replace />;
+    }
+
     useEffect(() => {
         if (requiredClaims.length > 0) {
             console.log('[ProtectedRoute] Checking all claims:', requiredClaims);
@@ -55,7 +61,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
 
     if (!hasPermission) {
-        console.warn('[ProtectedRoute] Access denied. User claims:', session?.tokenPayload?.claims ?? []);
+        console.warn('[ProtectedRoute] Access denied. User claims:', session.tokenPayload?.claims ?? []);
         return <Navigate to="/forbidden" replace />;
     }
 

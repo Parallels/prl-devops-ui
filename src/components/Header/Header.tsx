@@ -10,8 +10,10 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { authService } from '@/services/authService';
 import { HostConfig } from '@/interfaces/Host';
 import { getPasswordKey, getApiKeyKey } from '@/utils/secretKeys';
-import { OnboardingPrefill } from '@/pages/Onboarding/Onboarding';
+import { LoginPrefill } from '@/pages/Login/Login';
+import { decodeToken } from '@/utils/tokenUtils';
 import { HostSwitcher } from './HostSwitcher';
+import { ModuleViewSwitcher } from './ModuleViewSwitcher';
 
 // ─── Menu icons ───────────────────────────────────────────────────────────────
 
@@ -68,7 +70,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = () => {
   const { isModalOpen, openModal, closeModal } = useLayout();
   const config = useConfig();
-  const { session, clearSession } = useSession();
+  const { session, setSession, clearSession, hasModule } = useSession();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -96,39 +98,91 @@ export const Header: React.FC<HeaderProps> = () => {
 
   const handleLogout = async () => {
     setIsUserMenuOpen(false);
-    let prefill: OnboardingPrefill | undefined;
 
     try {
       const hosts = (await config.get<HostConfig[]>('hosts')) ?? [];
-      const defaultHost = hosts.find((h) => h.isDefault);
-      const sorted = [...hosts].sort((a, b) =>
-        (b.lastUsed ?? '').localeCompare(a.lastUsed ?? '')
-      );
-      const prefillHost = defaultHost ?? sorted[0];
+      const currentHostId = session?.hostId;
+      const currentHost = hosts.find((h) => h.id === currentHostId);
 
-      if (prefillHost) {
-        prefill = {
-          serverUrl: prefillHost.baseUrl,
-          authType: prefillHost.authType,
-          username: prefillHost.username,
-          hostId: prefillHost.id,
-        };
+      // For the current host: if keepLoggedIn is false, clear the stored secret
+      // (but keep the username in config). If keepLoggedIn is true, keep the secret
+      // so StartupGuard / auto-connect can use it next time.
+      if (currentHost) {
+        if (!currentHost.keepLoggedIn) {
+          await config.removeSecret(getPasswordKey(currentHost.hostname));
+          await config.removeSecret(getApiKeyKey(currentHost.hostname));
+          await config.flushSecrets();
+        }
+        authService.logout(currentHost.hostname);
       }
 
-      for (const host of hosts) {
-        await config.removeSecret(getPasswordKey(host.hostname));
-        await config.removeSecret(getApiKeyKey(host.hostname));
-        authService.logout(host.hostname);
-      }
-
-      await config.flushSecrets();
       await config.save();
+
+      // Try to auto-connect to another host that has stored credentials,
+      // iterating in the original array index order and skipping the current host.
+      const otherHosts = hosts.filter((h) => h.id !== currentHostId);
+      let nextHost: HostConfig | null = null;
+      let nextSecret = '';
+
+      for (const host of otherHosts) {
+        const secretKey = host.authType === 'credentials'
+          ? getPasswordKey(host.hostname)
+          : getApiKeyKey(host.hostname);
+        const secret = await config.getSecret(secretKey);
+        if (secret) {
+          nextHost = host;
+          nextSecret = secret;
+          break;
+        }
+      }
+
+      clearSession();
+
+      if (nextHost) {
+        // Restore credentials and session for the next host
+        authService.setCredentials(nextHost.hostname, {
+          url: nextHost.baseUrl,
+          username: nextHost.authType === 'credentials' ? nextHost.username : '',
+          password: nextHost.authType === 'credentials' ? nextSecret : '',
+          email: nextHost.authType === 'credentials' ? nextHost.username : '',
+          api_key: nextHost.authType === 'api_key' ? nextSecret : '',
+        });
+
+        authService.currentHostname = nextHost.hostname;
+        const token = authService.getToken(nextHost.hostname);
+        const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
+
+        setSession({
+          serverUrl: nextHost.baseUrl,
+          hostname: nextHost.hostname,
+          username: nextHost.username,
+          authType: nextHost.authType,
+          hostId: nextHost.id,
+          connectedAt: new Date().toISOString(),
+          tokenPayload,
+          hardwareInfo: nextHost.hardwareInfo,
+        });
+
+        navigate('/', { replace: true });
+      } else {
+        // No auto-connectable host — send to the login page with the current
+        // host pre-filled so the user doesn't have to re-type the server URL.
+        const prefill: LoginPrefill | undefined = currentHost
+          ? {
+              serverUrl: currentHost.baseUrl,
+              authType: currentHost.authType,
+              username: currentHost.username,
+              hostId: currentHost.id,
+            }
+          : undefined;
+
+        navigate('/login', { replace: true, state: prefill ? { prefill } : undefined });
+      }
     } catch (error) {
       console.error('Logout failed:', error);
+      clearSession();
+      navigate('/login', { replace: true });
     }
-
-    clearSession();
-    navigate('/onboarding', { replace: true, state: prefill ? { prefill } : undefined });
   };
 
   const handleSettings = () => {
@@ -152,9 +206,12 @@ export const Header: React.FC<HeaderProps> = () => {
   return (
     <header className="flex items-center sticky w-full h-15 top-0 z-50 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700">
       <div className="flex w-full items-center px-4 py-4">
-        {/* Left: host switcher */}
-        <div className="flex items-center">
+        {/* Left: host switcher + module view */}
+        <div className="flex items-center gap-3">
           {session && <HostSwitcher />}
+          {session && hasModule('host') && hasModule('orchestrator') && (
+            <ModuleViewSwitcher />
+          )}
         </div>
 
         <div className="flex flex-grow" />

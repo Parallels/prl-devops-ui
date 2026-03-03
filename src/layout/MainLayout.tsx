@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header/Header';
 import { StatusBar } from '../components/StatusBar/StatusBar';
@@ -13,40 +13,62 @@ import { EventsHubProvider } from '../contexts/EventsHubContext';
 import { useSession } from '@/contexts/SessionContext';
 import { Claims, Roles } from '@/interfaces/tokenTypes';
 import { JobsProvider, useJobs } from '@/contexts/JobsContext';
+import { HostSettingsProvider } from '@/contexts/HostSettingsContext';
+import { SystemSettingsProvider, useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { useModuleView, MODULE_VIEW_NAMES } from '@/components/Header/ModuleViewSwitcher';
+import { SettingsModal } from '@/components/Settings/SettingsModal';
+import { ToastManager } from '@/components/Toast/ToastManager';
 
 export interface MainLayoutProps {
   children?: React.ReactNode;
 }
 
 const LayoutModals: React.FC = () => {
-  // const { isModalOpen, closeModal } = useLayout();
-  // const isSettingsOpen = isModalOpen('settings');
-  // const isFeedbackOpen = isModalOpen('feedback');
+  const { isModalOpen, closeModal } = useLayout();
+  const isSettingsOpen = isModalOpen('settings');
 
   return (
     <>
-      {/* {isSettingsOpen && (
-          <Settings isOpen={isSettingsOpen} onClose={() => closeModal('settings')} />
-        )}
-        {/* Feedback modal can be added here similarly */}
-      {/* {isFeedbackOpen && (
-          <Feedback isOpen={isFeedbackOpen} onClose={() => closeModal('feedback')} />
-        )} */}
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => closeModal('settings')} />
     </>
   );
 };
 
 
 // Small animated badge for active jobs in the sidebar
-const ActiveJobBadge: React.FC<{ count: number }> = ({ count }) => (
-  <span className="inline-flex items-center gap-1">
-    <span className="relative flex h-2 w-2">
-      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+type JobBadgeTone = 'pending' | 'running' | 'error';
+
+const jobBadgeColorMap: Record<JobBadgeTone, { ping: string; dot: string; text: string }> = {
+  pending: {
+    ping: 'bg-amber-400',
+    dot: 'bg-amber-500',
+    text: 'text-amber-600 dark:text-amber-400',
+  },
+  running: {
+    ping: 'bg-blue-400',
+    dot: 'bg-blue-500',
+    text: 'text-blue-600 dark:text-blue-400',
+  },
+  error: {
+    ping: 'bg-red-400',
+    dot: 'bg-red-500',
+    text: 'text-red-600 dark:text-red-400',
+  },
+};
+
+const ActiveJobBadge: React.FC<{ count: number; tone: JobBadgeTone }> = ({ count, tone }) => {
+  const colors = jobBadgeColorMap[tone];
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="relative flex h-2 w-2">
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${colors.ping}`} />
+        <span className={`relative inline-flex rounded-full h-2 w-2 ${colors.dot}`} />
+      </span>
+      <span className={`text-[10px] font-bold tabular-nums ${colors.text}`}>{count}</span>
     </span>
-    <span className="text-[10px] font-bold tabular-nums text-amber-600 dark:text-amber-400">{count}</span>
-  </span>
-);
+  );
+};
 
 // Per-type dot for Catalogs/VMs menu items when a job of that type is active
 const ActiveTypeDot: React.FC = () => (
@@ -56,33 +78,123 @@ const ActiveTypeDot: React.FC = () => (
   </span>
 );
 
+const isActiveState = (state: string): boolean => state === 'pending' || state === 'running';
+const isTerminalState = (state: string): boolean => state === 'completed' || state === 'failed';
+
+const toSideMenuType = (jobType: string): 'catalog' | 'vm' | undefined => {
+  switch (jobType.toLowerCase()) {
+    case 'catalog':
+    case 'packer':
+    case 'packer_template':
+      return 'catalog';
+    case 'vm':
+    case 'machine':
+    case 'machines':
+      return 'vm';
+    default:
+      return undefined;
+  }
+};
+
 const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
   const { isOverlay, setIsOverlay } = useLayout();
+  const { themeColor } = useSystemSettings();
 
   const location = useLocation();
   const navigate = useNavigate();
   const { hasClaim, hasRole, hasAnyClaim, hasAllClaims, hasModule } = useSession();
-  const { activeCount, activeByType } = useJobs();
+  const { jobs, activeCount } = useJobs();
+  const activeModuleView = useModuleView();
   const [currentRoute, setCurrentRoute] = useState<Route>('home');
+  const [unseenByType, setUnseenByType] = useState<Record<string, boolean>>({});
+  const [hasFailedWithMultipleActiveJobs, setHasFailedWithMultipleActiveJobs] = useState(false);
+  const previousStatesRef = useRef<Record<string, string>>({});
+  const previousActiveCountRef = useRef(0);
+
+  // Show "new" dots only after active jobs transition to a terminal state.
+  useEffect(() => {
+    const previousStates = previousStatesRef.current;
+    const completedTypes = new Set<'catalog' | 'vm'>();
+    let shouldFlagErrorBadge = false;
+
+    for (const job of jobs) {
+      const previousState = previousStates[job.id];
+      if (!previousState || previousState === job.state) continue;
+
+      if (job.state === 'failed' && previousActiveCountRef.current > 1) {
+        shouldFlagErrorBadge = true;
+      }
+
+      if (isActiveState(previousState) && isTerminalState(job.state)) {
+        const menuType = toSideMenuType(job.job_type);
+        if (menuType) completedTypes.add(menuType);
+      }
+    }
+
+    if (completedTypes.size > 0) {
+      setUnseenByType((prev) => {
+        let changed = false;
+        const next = { ...prev };
+        completedTypes.forEach((type) => {
+          if (!next[type]) {
+            next[type] = true;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+
+    if (shouldFlagErrorBadge) {
+      setHasFailedWithMultipleActiveJobs(true);
+    }
+    if (activeCount === 0) {
+      setHasFailedWithMultipleActiveJobs(false);
+    }
+
+    previousStatesRef.current = jobs.reduce<Record<string, string>>((acc, job) => {
+      acc[job.id] = job.state;
+      return acc;
+    }, {});
+    previousActiveCountRef.current = activeCount;
+  }, [jobs, activeCount]);
+
+  useEffect(() => {
+    // Clear the indicator when the user visits the corresponding section
+    const path = location.pathname;
+    const visitedType = path.startsWith('/catalogs') ? 'catalog' : path.startsWith('/vms') ? 'vm' : undefined;
+    if (visitedType && unseenByType[visitedType]) {
+      setUnseenByType((prev) => ({ ...prev, [visitedType]: false }));
+    }
+  }, [location.pathname, unseenByType]);
+
+  const isCatalogRoute = location.pathname.startsWith('/catalogs');
+  const isVmRoute = location.pathname.startsWith('/vms');
+  const hasRunningJobs = useMemo(() => jobs.some((job) => job.state === 'running'), [jobs]);
+  const jobsBadgeTone = useMemo<JobBadgeTone>(() => {
+    if (hasFailedWithMultipleActiveJobs && activeCount > 0) return 'error';
+    if (hasRunningJobs) return 'running';
+    return 'pending';
+  }, [activeCount, hasFailedWithMultipleActiveJobs, hasRunningJobs]);
 
   const baseSideMenuItems = useMemo<SideMenuItem[]>(() => [
     { slug: 'general', label: 'General', type: 'group' },
     { groupName: 'general', slug: 'home', label: 'Home', path: '/', icon: 'Dashboard' },
     {
       groupName: 'general', slug: 'catalogs', label: 'Catalogs', path: '/catalogs', icon: 'Library',
-      guards: [{ type: 'claim', claim: Claims.LIST_CATALOG_MANIFEST }, { type: 'module', module: 'catalog' }],
-      badge: activeByType['catalog'] ? <ActiveTypeDot /> : undefined,
+      guards: [{ type: 'claim', claim: Claims.LIST_CATALOG_MANIFEST }],
+      badge: unseenByType['catalog'] && !isCatalogRoute ? <ActiveTypeDot /> : undefined,
     },
 
     { slug: 'computing', label: 'Computing', type: 'group', hasDivider: true },
     {
       groupName: 'computing', slug: 'hosts', label: 'Hosts', path: '/hosts', icon: 'Host',
-      guards: [{ type: 'claim', claim: Claims.LIST_REVERSE_PROXY_HOSTS }]
+      guards: [{ type: 'claim', claim: Claims.LIST_REVERSE_PROXY_HOSTS }, { type: 'module', module: 'orchestrator' }]
     },
     {
       groupName: 'computing', slug: 'vms', label: 'VMs', path: '/vms', icon: 'VirtualMachine',
       guards: [{ type: 'claim', claim: Claims.LIST_VM }],
-      badge: activeByType['vm'] ? <ActiveTypeDot /> : undefined,
+      badge: unseenByType['vm'] && !isVmRoute ? <ActiveTypeDot /> : undefined,
     },
     {
       groupName: 'computing', slug: 'reverse-proxy', label: 'Reverse Proxy', path: '/reverse-proxy', icon: 'ReverseProxy',
@@ -109,7 +221,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
     { groupName: 'management', slug: 'cache', label: 'Cache', path: '/cache', icon: 'Cache', guards: [{ type: 'anyModule', modules: ['api', 'cache'] }] },
     {
       groupName: 'management', slug: 'jobs', label: 'Jobs', path: '/jobs', icon: 'Jobs',
-      badge: activeCount > 0 ? <ActiveJobBadge count={activeCount} /> : undefined,
+      badge: activeCount > 0 ? <ActiveJobBadge count={activeCount} tone={jobsBadgeTone} /> : undefined,
     },
     { groupName: 'admin', slug: 'admin', label: 'Admin', type: 'group', hasDivider: true },
     {
@@ -126,7 +238,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
       guards: [{ type: 'role', role: Roles.SUPER_USER }]
     },
 
-  ], [activeCount, activeByType]);
+  ], [activeCount, jobsBadgeTone, unseenByType, isCatalogRoute, isVmRoute]);
 
   const guardEvaluator = useCallback((guards: SideMenuItemGuard[]): boolean => {
     return guards.every((guard) => {
@@ -205,6 +317,9 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
             title: 'Navigation',
             items: baseSideMenuItems,
             guardEvaluator,
+            activeModuleView,
+            moduleViewOptions: MODULE_VIEW_NAMES,
+            color: themeColor,
           }}
           header={headerElement}
           bodyClassName="bg-white dark:bg-neutral-900"
@@ -244,14 +359,19 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
           <EventsHubProvider>
             <JobsProvider>
               <LayoutProvider>
-                {/* <VMProvider> */}
-                <MainLayoutContent {...props} />
-                {/* </VMProvider> */}
+                <SystemSettingsProvider>
+                  <HostSettingsProvider>
+                    {/* <VMProvider> */}
+                    <MainLayoutContent {...props} />
+                    {/* </VMProvider> */}
+                  </HostSettingsProvider>
+                </SystemSettingsProvider>
               </LayoutProvider>
             </JobsProvider>
           </EventsHubProvider>
         </NotificationProvider>
       </WebSocketProvider>
+      <ToastManager />
     </BottomSheetProvider>
   );
 };

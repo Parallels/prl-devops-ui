@@ -25,7 +25,7 @@ export default defineConfig(async () => ({
   server: {
     port: 1421,
     strictPort: true,
-    host: host || false,
+    host: host || "0.0.0.0",
     hmr: host
       ? {
         protocol: "ws",
@@ -37,6 +37,7 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', 'devops-ui.carloslapao.com'],
     proxy: {
       "/api": {
         target: process.env.VITE_DEVOPS_API_URL || "http://localhost:5680",

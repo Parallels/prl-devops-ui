@@ -22,7 +22,9 @@ import { OsIcon } from '@/utils/virtualMachine';
 import { useLocation } from 'react-router-dom';
 import { useNavigateTo } from '@/hooks/useNavigateTo';
 import type { VmsDeepLinkState } from '@/types/deepLink';
-import { getStateTone } from '@/utils/vmUtils';
+import { getStateTone, parseVmReferenceBody, parseVmStateChangeBody, parseVmUptimeChangeBody, sortVirtualMachines, upsertVirtualMachine } from '@/utils/vmUtils';
+import { drainUnseenMessages } from '@/utils/messageQueue';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 
 // ── Table columns ──────────────────────────────────────────────────────────
@@ -247,6 +249,7 @@ interface PendingVmAction {
 // ── Page component ─────────────────────────────────────────────────────────
 
 export const Vms: React.FC = () => {
+    const { themeColor } = useSystemSettings();
     const [orchestratorVms, setOrchestratorVms] = useState<VirtualMachine[]>([]);
     const [localVms, setLocalVms] = useState<VirtualMachine[]>([]);
     const [loading, setLoading] = useState(true);
@@ -272,8 +275,8 @@ export const Vms: React.FC = () => {
                 hasModule('orchestrator') ? devopsService.machines.getVirtualMachines(session?.hostname ?? '', true).catch(() => [] as VirtualMachine[]) : [],
                 hasModule('host') ? devopsService.machines.getVirtualMachines(session?.hostname ?? '', false).catch(() => [] as VirtualMachine[]) : [],
             ]);
-            setOrchestratorVms(orchestrator);
-            setLocalVms(local);
+            setOrchestratorVms(sortVirtualMachines(orchestrator));
+            setLocalVms(sortVirtualMachines(local));
         } catch (err: any) {
             setError(err?.message ?? 'Failed to load virtual machines');
         } finally {
@@ -286,8 +289,8 @@ export const Vms: React.FC = () => {
     // Auto-select the first available group after loading (skip when deep-linking)
     useEffect(() => {
         if (loading || selectedGroupId || deepLink?.selectVmId) return;
-        if (orchestratorVms.length > 0) setSelectedGroupId('orchestrator');
-        else if (localVms.length > 0) setSelectedGroupId('local');
+        if (localVms.length > 0) setSelectedGroupId('local');
+        else if (orchestratorVms.length > 0) setSelectedGroupId('orchestrator');
     }, [loading, orchestratorVms.length, localVms.length, selectedGroupId, deepLink?.selectVmId]);
 
     // Consume deep-link state once VMs have loaded
@@ -313,54 +316,122 @@ export const Vms: React.FC = () => {
     // HOST_VM_STATE_CHANGED carries the new state directly — patch in-place, no API call.
     useEffect(() => {
         const msgs = containerMessages['orchestrator'];
-        if (!msgs || msgs.length === 0) return;
-        const latest = msgs[0];
-        if (latest.id === lastOrchestratorEventIdRef.current) return;
-        lastOrchestratorEventIdRef.current = latest.id;
+        const unseen = drainUnseenMessages(msgs, lastOrchestratorEventIdRef);
+        if (unseen.length === 0) return;
 
-        const { raw } = latest;
-        if (raw.message !== 'HOST_VM_STATE_CHANGED') return;
+        for (const msg of unseen) {
+            const { raw } = msg;
+            if (raw.message === 'HOST_VM_ADDED') {
+                const { vmId } = parseVmReferenceBody(raw.body);
+                if (!vmId || !session?.hostname) continue;
 
-        const event = raw.body?.event as { vm_id?: string; current_state?: string } | undefined;
-        const vmId = event?.vm_id;
-        const currentState = event?.current_state;
-        if (!vmId || !currentState) return;
+                devopsService.machines
+                    .getVirtualMachine(session.hostname, vmId, true)
+                    .then((added) => {
+                        setOrchestratorVms((prev) => upsertVirtualMachine(prev, added));
+                        setSelectedVm((prev) => prev?.vm.ID === vmId
+                            ? { vm: added, isOrchestrator: true }
+                            : prev);
+                    })
+                    .catch((err) => console.warn('[Vms] Failed to fetch added orchestrator VM:', err));
+                continue;
+            }
 
-        setOrchestratorVms((prev) => prev.map((vm) => vm.ID === vmId ? { ...vm, State: currentState } : vm));
-        setSelectedVm((prev) => prev?.vm.ID === vmId ? { ...prev, vm: { ...prev.vm, State: currentState } } : prev);
+            if (raw.message === 'HOST_VM_REMOVED') {
+                const { vmId } = parseVmReferenceBody(raw.body);
+                if (!vmId) continue;
+
+                setOrchestratorVms((prev) => prev.filter((vm) => vm.ID !== vmId));
+                setSelectedVm((prev) => prev?.vm.ID === vmId ? null : prev);
+                continue;
+            }
+
+            if (raw.message !== 'HOST_VM_STATE_CHANGED') continue;
+
+            const { vmId, currentState } = parseVmStateChangeBody(raw.body);
+            if (!vmId || !currentState) continue;
+
+            setOrchestratorVms((prev) => prev.map((vm) => vm.ID === vmId ? { ...vm, State: currentState } : vm));
+            setSelectedVm((prev) => prev?.vm.ID === vmId ? { ...prev, vm: { ...prev.vm, State: currentState } } : prev);
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [containerMessages['orchestrator']]);
 
-    // ── Real-time VM state updates (local / pdfm) ───────────────────────────
-    // VM_STATE_CHANGED doesn't carry the new state, so we re-fetch the VM.
+    // ── Real-time VM updates (local / pdfm) ─────────────────────────────────
+    // Handle both VM_STATE_CHANGED and VM_UPTIME_CHANGED in-place; fall back to
+    // a VM fetch only when state payload is incomplete.
     useEffect(() => {
         const msgs = containerMessages['pdfm'];
-        if (!msgs || msgs.length === 0) return;
-        const latest = msgs[0];
-        if (latest.id === lastPdfmEventIdRef.current) return;
-        lastPdfmEventIdRef.current = latest.id;
+        const unseen = drainUnseenMessages(msgs, lastPdfmEventIdRef);
+        if (unseen.length === 0) return;
 
-        const { raw } = latest;
-        if (raw.message !== 'VM_STATE_CHANGED') return;
+        for (const msg of unseen) {
+            const { raw } = msg;
+            if (raw.message === 'VM_ADDED') {
+                const { vmId } = parseVmReferenceBody(raw.body);
+                if (!vmId || !session?.hostname) continue;
 
-        const vmId = raw.body?.vm_id as string | undefined;
-        if (!vmId || !session?.hostname) return;
+                devopsService.machines
+                    .getVirtualMachine(session.hostname, vmId, false)
+                    .then((added) => {
+                        setLocalVms((prev) => upsertVirtualMachine(prev, added));
+                        setSelectedVm((prev) => prev?.vm.ID === vmId
+                            ? { vm: added, isOrchestrator: false }
+                            : prev);
+                    })
+                    .catch((err) => console.warn('[Vms] Failed to fetch added local VM:', err));
+                continue;
+            }
 
-        const inOrchestrator = orchestratorVms.some((vm) => vm.ID === vmId);
-        const inLocal = localVms.some((vm) => vm.ID === vmId);
-        if (!inOrchestrator && !inLocal) return;
+            if (raw.message === 'VM_REMOVED') {
+                const { vmId } = parseVmReferenceBody(raw.body);
+                if (!vmId) continue;
 
-        devopsService.machines
-            .getVirtualMachine(session.hostname, vmId, inOrchestrator)
-            .then((updated) => {
-                if (inOrchestrator) {
-                    setOrchestratorVms((prev) => prev.map((vm) => vm.ID === vmId ? updated : vm));
-                } else {
-                    setLocalVms((prev) => prev.map((vm) => vm.ID === vmId ? updated : vm));
-                }
-                setSelectedVm((prev) => prev?.vm.ID === vmId ? { ...prev, vm: updated } : prev);
-            })
-            .catch((err) => console.warn('[Vms] Failed to refresh VM after state change:', err));
+                setLocalVms((prev) => prev.filter((vm) => vm.ID !== vmId));
+                setSelectedVm((prev) => prev?.vm.ID === vmId ? null : prev);
+                continue;
+            }
+
+            if (raw.message === 'VM_UPTIME_CHANGED') {
+                const { vmId, uptime } = parseVmUptimeChangeBody(raw.body);
+                if (!vmId || !uptime) continue;
+
+                setOrchestratorVms((prev) => prev.map((vm) => vm.ID === vmId ? { ...vm, Uptime: uptime } : vm));
+                setLocalVms((prev) => prev.map((vm) => vm.ID === vmId ? { ...vm, Uptime: uptime } : vm));
+                setSelectedVm((prev) => prev?.vm.ID === vmId ? { ...prev, vm: { ...prev.vm, Uptime: uptime } } : prev);
+                continue;
+            }
+
+            if (raw.message !== 'VM_STATE_CHANGED') continue;
+
+            const { vmId, currentState } = parseVmStateChangeBody(raw.body);
+            if (!vmId) continue;
+
+            if (currentState) {
+                setOrchestratorVms((prev) => prev.map((vm) => vm.ID === vmId ? { ...vm, State: currentState } : vm));
+                setLocalVms((prev) => prev.map((vm) => vm.ID === vmId ? { ...vm, State: currentState } : vm));
+                setSelectedVm((prev) => prev?.vm.ID === vmId ? { ...prev, vm: { ...prev.vm, State: currentState } } : prev);
+                continue;
+            }
+
+            if (!session?.hostname) continue;
+
+            const inOrchestrator = orchestratorVms.some((vm) => vm.ID === vmId);
+            const inLocal = localVms.some((vm) => vm.ID === vmId);
+            if (!inOrchestrator && !inLocal) continue;
+
+            devopsService.machines
+                .getVirtualMachine(session.hostname, vmId, inOrchestrator)
+                .then((updated) => {
+                    if (inOrchestrator) {
+                        setOrchestratorVms((prev) => prev.map((vm) => vm.ID === vmId ? updated : vm));
+                    } else {
+                        setLocalVms((prev) => prev.map((vm) => vm.ID === vmId ? updated : vm));
+                    }
+                    setSelectedVm((prev) => prev?.vm.ID === vmId ? { ...prev, vm: updated } : prev);
+                })
+                .catch((err) => console.warn('[Vms] Failed to refresh VM after state change:', err));
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [containerMessages['pdfm']]);
 
@@ -414,7 +485,25 @@ export const Vms: React.FC = () => {
 
     const items = useMemo<SplitViewItem[]>(() => {
         const result: SplitViewItem[] = [];
-
+        if (localVms.length > 0) {
+            result.push({
+                id: 'local',
+                label: 'Local VMs',
+                subtitle: `${localVms.length} machine${localVms.length !== 1 ? 's' : ''}`,
+                icon: 'VirtualMachine',
+                panel: (
+                    <VmTablePanel
+                        title="Local VMs"
+                        columns={localColumns}
+                        data={localVms}
+                        defaultSort={{ columnId: 'name', direction: 'asc' }}
+                        emptyTitle="No local VMs"
+                        emptySubtitle="No virtual machines found on the local host."
+                        onRowClick={(vm) => setSelectedVm({ vm, isOrchestrator: false })}
+                    />
+                ),
+            });
+        }
         if (orchestratorVms.length > 0) {
             result.push({
                 id: 'orchestrator',
@@ -430,25 +519,6 @@ export const Vms: React.FC = () => {
                         emptyTitle="No orchestrator VMs"
                         emptySubtitle="No virtual machines found on the orchestrator."
                         onRowClick={(vm) => setSelectedVm({ vm, isOrchestrator: true })}
-                    />
-                ),
-            });
-        }
-
-        if (localVms.length > 0) {
-            result.push({
-                id: 'local',
-                label: 'Local VMs',
-                subtitle: `${localVms.length} machine${localVms.length !== 1 ? 's' : ''}`,
-                icon: 'VirtualMachine',
-                panel: (
-                    <VmTablePanel
-                        title="Local VMs"
-                        columns={localColumns}
-                        data={localVms}
-                        emptyTitle="No local VMs"
-                        emptySubtitle="No virtual machines found on the local host."
-                        onRowClick={(vm) => setSelectedVm({ vm, isOrchestrator: false })}
                     />
                 ),
             });
@@ -471,7 +541,7 @@ export const Vms: React.FC = () => {
                 listTitle="Virtual Machines"
                 autoHideList={false}
                 borderLeft
-                color="parallels"
+                color={themeColor}
                 collapsible
                 resizable
                 panelScrollable={false}
@@ -481,7 +551,7 @@ export const Vms: React.FC = () => {
                         subtitle="No virtual machines were found on the connected host." />
                 }
                 listActions={
-                    <IconButton variant="ghost" size="xs" color="parallels"
+                    <IconButton variant="ghost" size="xs" color={themeColor}
                         aria-label="Refresh"
                         icon="Restart" onClick={() => void fetchVms()} />
                 }

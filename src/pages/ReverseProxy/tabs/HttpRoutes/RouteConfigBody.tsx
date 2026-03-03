@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button, FormField, Input, MultiToggle, Select, Tabs } from '@prl/ui-kit';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import type { ReverseProxyHostHttpRoute } from '@/interfaces/ReverseProxy';
 import type { VirtualMachine } from '@/interfaces/VirtualMachine';
 import type { HttpRouteFormData } from '../../ReverseProxyModals';
@@ -20,6 +21,7 @@ interface RouteConfigBodyProps {
 const RouteConfigBody: React.FC<RouteConfigBodyProps> = ({
     route, canUpdate, availableVms, onSave,
 }) => {
+    const { themeColor } = useSystemSettings();
     const [saving, setSaving] = useState(false);
     const [formPath, setFormPath] = useState(route.path ?? '/');
     const [formSchema, setFormSchema] = useState<'http' | 'https'>((route.schema ?? 'http') as 'http' | 'https');
@@ -93,7 +95,7 @@ const RouteConfigBody: React.FC<RouteConfigBodyProps> = ({
         <>
             <Tabs
                 variant="underline"
-                color="parallels"
+                color={themeColor}
                 size="sm"
                 listClassName="bg-transparent px-1"
                 panelIdPrefix={`http-route-${route.id}`}
@@ -207,7 +209,7 @@ const RouteConfigBody: React.FC<RouteConfigBodyProps> = ({
                                 </div>
                                 {canUpdate && (
                                     <div className="flex items-center justify-end px-4 pb-4 pt-1 border-t border-neutral-200 dark:border-neutral-700">
-                                        <Button variant="solid" color="parallels" size="sm" loading={saving}
+                                        <Button variant="solid" color={themeColor} size="sm" loading={saving}
                                             disabled={!formDirty}
                                             onClick={() => void handleSave()}>
                                             Save Changes

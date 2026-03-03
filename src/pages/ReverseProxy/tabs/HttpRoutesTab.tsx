@@ -4,6 +4,7 @@ import {
     ReverseProxyFrom, ReverseProxyTo, VirtualMachine as VirtualMachineIcon,
     TreeView, type TreeItemData,
 } from '@prl/ui-kit';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import type { ReverseProxyHost, ReverseProxyHostHttpRoute } from '@/interfaces/ReverseProxy';
 import type { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { HttpRouteModal, type HttpRouteFormData } from '../ReverseProxyModals';
@@ -13,7 +14,7 @@ import { healthToTone, type VmHealth } from './HttpRoutes/routeTypes';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
-interface RoutesTabProps {
+interface HttpRoutesTabProps {
     proxyHost: ReverseProxyHost;
     proxyEnabled: boolean;
     routes: ReverseProxyHostHttpRoute[];
@@ -26,16 +27,18 @@ interface RoutesTabProps {
     onAddRoute: (data: HttpRouteFormData) => Promise<void>;
     onUpdateRoute: (routeId: string, data: HttpRouteFormData) => Promise<void>;
     onDeleteRoute: (routeId: string) => Promise<void>;
+    onReorderRoute?: (routeId: string, oldOrder: number, newOrder: number) => Promise<void> | void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export const RoutesTab: React.FC<RoutesTabProps> = ({
+export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
     proxyHost, proxyEnabled, routes, hasTcpRoute,
     availableVms, orchestratorHostId,
     canCreate, canUpdate, canDelete,
-    onAddRoute, onUpdateRoute, onDeleteRoute,
+    onAddRoute, onUpdateRoute, onDeleteRoute, onReorderRoute,
 }) => {
+    const { themeColor } = useSystemSettings();
     const [showAddModal, setShowAddModal] = useState(false);
     const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -86,7 +89,6 @@ export const RoutesTab: React.FC<RoutesTabProps> = ({
             id: route.id ?? String(i),
             tone,
             active: health === 'running' && proxyEnabled,
-
             icon: hasVmTarget
                 ? <VirtualMachineIcon className="w-10 h-10" />
                 : <ReverseProxyTo className="w-10 h-10" />,
@@ -173,11 +175,11 @@ export const RoutesTab: React.FC<RoutesTabProps> = ({
                 </span>
                 {canCreate && (
                     <Button
-                        variant="solid" color="parallels" size="sm" leadingIcon="Add"
+                        variant="solid" color={themeColor} size="sm" leadingIcon="Add"
                         disabled={hasTcpRoute}
                         onClick={() => setShowAddModal(true)}
                     >
-                        Add HTTP Route
+                        Add HTTP Route1
                     </Button>
                 )}
             </div>
@@ -217,6 +219,11 @@ export const RoutesTab: React.FC<RoutesTabProps> = ({
                     connectorBorderSize="fit"
                     dotSpacing={30}
                     indent="md"
+                    reorderable
+                    onReorder={({ id, oldOrder, newOrder }) => {
+                        if (!onReorderRoute || oldOrder === newOrder) return;
+                        void onReorderRoute(id, oldOrder, newOrder);
+                    }}
                     emptyState={
                         <EmptyState
                             icon="Script"

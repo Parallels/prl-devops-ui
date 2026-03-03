@@ -188,7 +188,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       )}
       <div className="space-y-1">
         <p className={classNames(textSizes[textSize], "font-semibold", palette.text)}>{title}</p>
-        {subtitle && <p className={classNames(textSizes[subtitleTextSize], "leading-relaxed", palette.text)}>{subtitle}</p>}
+        {subtitle && <p className={classNames(textSizes[subtitleTextSize], "leading-relaxed break-all", palette.text)}>{subtitle}</p>}
       </div>
       {actionLabel && onAction && (
         <div className="mt-4">

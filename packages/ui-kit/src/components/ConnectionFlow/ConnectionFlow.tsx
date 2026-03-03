@@ -18,6 +18,8 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
     showLine = true,
     childIndent = 'xs',
     childRowGap = 8,
+    allowScroll = false,
+    itemWidth,
     className,
     rightAction,
 }) => {
@@ -40,7 +42,7 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
     if (items.length === 0) return null;
 
     return (
-        <div className={classNames('flex items-start', className)}>
+        <div className={classNames('flex items-start', allowScroll && 'overflow-auto max-w-full', className)}>
             {items.map((item, i) => {
                 const prevItem = items[i - 1];
                 const isFirst = i === 0;
@@ -109,6 +111,7 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
                             dotSpacing={dotSpacing}
                             flowActive={state === 'flowing'}
                             onGeometryChange={(geo) => handleGeo(i, geo)}
+                            itemWidth={itemWidth}
                         />
                     </React.Fragment>
                 );

@@ -32,6 +32,7 @@
 
 import { apiKeysService } from './apiKeysService';
 import { cacheService } from './cacheService';
+import { catalogManagerService } from './catalogManagerService';
 import { catalogService } from './catalogService';
 import { claimsService } from './claimsService';
 import { configService } from './configService';
@@ -54,6 +55,9 @@ export const devopsService = {
   
   /** Catalog management operations */
   catalog: catalogService,
+
+  /** External catalog manager operations */
+  catalogManagers: catalogManagerService,
   
   /** Claim management operations */
   claims: claimsService,
@@ -83,6 +87,7 @@ export const devopsService = {
 export {
   apiKeysService,
   cacheService,
+  catalogManagerService,
   catalogService,
   claimsService,
   configService,

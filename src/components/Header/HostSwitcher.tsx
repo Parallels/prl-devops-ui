@@ -7,6 +7,7 @@ import { getPasswordKey, getApiKeyKey } from '@/utils/secretKeys';
 import { decodeToken } from '@/utils/tokenUtils';
 import { devopsService } from '@/services/devops';
 import { AddHostModal } from './AddHostModal';
+import { HostLoginModal } from './HostLoginModal';
 
 // ─── Inline icons ────────────────────────────────────────────────────────────
 
@@ -41,6 +42,15 @@ const SpinnerIcon = () => (
   </svg>
 );
 
+const TrashIcon = () => (
+  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+    <path d="M10 11v6M14 11v6" />
+    <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+  </svg>
+);
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const HostSwitcher: React.FC = () => {
@@ -50,6 +60,7 @@ export const HostSwitcher: React.FC = () => {
   const [hosts, setHosts] = useState<HostConfig[]>([]);
   const [switchingHostId, setSwitchingHostId] = useState<string | null>(null);
   const [switchError, setSwitchError] = useState<string | null>(null);
+  const [loginHost, setLoginHost] = useState<HostConfig | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -103,6 +114,97 @@ export const HostSwitcher: React.FC = () => {
     setHosts(updated);
   };
 
+  const handleRemoveHost = async (e: React.MouseEvent, hostId: string) => {
+    e.stopPropagation();
+    const hostToRemove = hosts.find((h) => h.id === hostId);
+    if (!hostToRemove) return;
+
+    // Clear stored secrets for this host
+    await config.removeSecret(getPasswordKey(hostToRemove.hostname));
+    await config.removeSecret(getApiKeyKey(hostToRemove.hostname));
+    await config.flushSecrets();
+
+    // Remove from the list; if it was the default, promote the first remaining host
+    const updated = hosts.filter((h) => h.id !== hostId);
+    if (hostToRemove.isDefault && updated.length > 0) {
+      updated[0] = { ...updated[0], isDefault: true };
+    }
+
+    await config.set('hosts', updated);
+    await config.save();
+    setHosts(updated);
+  };
+
+  const connectToHost = async (
+    host: HostConfig,
+    credentials: { username: string; password: string; apiKey: string },
+    keepLoggedInOverride?: boolean,
+  ) => {
+    authService.setCredentials(host.hostname, {
+      url: host.baseUrl,
+      username: host.authType === 'credentials' ? credentials.username : '',
+      password: host.authType === 'credentials' ? credentials.password : '',
+      email: host.authType === 'credentials' ? credentials.username : '',
+      api_key: host.authType === 'api_key' ? credentials.apiKey : '',
+    });
+
+    await authService.forceReauth(host.hostname);
+
+    // Persist manually-entered credentials only when user explicitly chooses.
+    if (keepLoggedInOverride !== undefined) {
+      if (keepLoggedInOverride) {
+        if (host.authType === 'credentials') {
+          await config.setSecret(getPasswordKey(host.hostname), credentials.password);
+          await config.removeSecret(getApiKeyKey(host.hostname));
+        } else {
+          await config.setSecret(getApiKeyKey(host.hostname), credentials.apiKey);
+          await config.removeSecret(getPasswordKey(host.hostname));
+        }
+      } else {
+        await config.removeSecret(getPasswordKey(host.hostname));
+        await config.removeSecret(getApiKeyKey(host.hostname));
+      }
+      await config.flushSecrets();
+    }
+
+    // Update host metadata and mark this as recently used
+    const nowIso = new Date().toISOString();
+    const updatedHosts = hosts.map((h) =>
+      h.id === host.id
+        ? {
+          ...h,
+          username: h.authType === 'credentials' ? credentials.username : h.username,
+          keepLoggedIn: keepLoggedInOverride ?? h.keepLoggedIn,
+          lastUsed: nowIso,
+        }
+        : h
+    );
+    await config.set('hosts', updatedHosts);
+    await config.save();
+    setHosts(updatedHosts);
+
+    // Fetch fresh hardware info, fall back to cached
+    let hardwareInfo = host.hardwareInfo;
+    try {
+      hardwareInfo = await devopsService.config.getHardwareInfo(host.hostname);
+    } catch { /* use cached */ }
+
+    authService.currentHostname = host.hostname;
+    const token = authService.getToken(host.hostname);
+    const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
+
+    setSession({
+      serverUrl: host.baseUrl,
+      hostname: host.hostname,
+      username: host.authType === 'credentials' ? credentials.username : '',
+      authType: host.authType,
+      hostId: host.id,
+      connectedAt: new Date().toISOString(),
+      tokenPayload,
+      hardwareInfo,
+    });
+  };
+
   const handleSwitchHost = async (host: HostConfig) => {
     if (host.id === session?.hostId || switchingHostId) return;
 
@@ -119,43 +221,19 @@ export const HostSwitcher: React.FC = () => {
         storedApiKey = (await config.getSecret(getApiKeyKey(host.hostname))) ?? '';
       }
 
-      authService.setCredentials(host.hostname, {
-        url: host.baseUrl,
+      const hasStoredSecret = host.authType === 'credentials'
+        ? Boolean(storedPassword)
+        : Boolean(storedApiKey);
+
+      if (!hasStoredSecret) {
+        setLoginHost(host);
+        return;
+      }
+
+      await connectToHost(host, {
         username: host.username,
         password: storedPassword,
-        email: host.username,
-        api_key: storedApiKey,
-      });
-
-      await authService.forceReauth(host.hostname);
-
-      // Update lastUsed
-      const updatedHosts = hosts.map((h) =>
-        h.id === host.id ? { ...h, lastUsed: new Date().toISOString() } : h
-      );
-      await config.set('hosts', updatedHosts);
-      await config.save();
-      setHosts(updatedHosts);
-
-      // Fetch fresh hardware info, fall back to cached
-      let hardwareInfo = host.hardwareInfo;
-      try {
-        hardwareInfo = await devopsService.config.getHardwareInfo(host.hostname);
-      } catch { /* use cached */ }
-
-      authService.currentHostname = host.hostname;
-      const token = authService.getToken(host.hostname);
-      const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
-
-      setSession({
-        serverUrl: host.baseUrl,
-        hostname: host.hostname,
-        username: host.authType === 'credentials' ? host.username : '',
-        authType: host.authType,
-        hostId: host.id,
-        connectedAt: new Date().toISOString(),
-        tokenPayload,
-        hardwareInfo,
+        apiKey: storedApiKey,
       });
 
       setIsOpen(false);
@@ -164,6 +242,17 @@ export const HostSwitcher: React.FC = () => {
     } finally {
       setSwitchingHostId(null);
     }
+  };
+
+  const handleLoginSubmit = async (
+    credentials: { username: string; password: string; apiKey: string },
+    keepLoggedIn: boolean,
+  ) => {
+    if (!loginHost) return;
+    // throws on error — HostLoginModal catches and displays it
+    await connectToHost(loginHost, credentials, keepLoggedIn);
+    setLoginHost(null);
+    setIsOpen(false);
   };
 
   const handleAddSuccess = () => {
@@ -224,21 +313,21 @@ export const HostSwitcher: React.FC = () => {
                 const hostLabel = host.name || host.hostname;
 
                 return (
-                  <li
-                    key={host.id}
-                    role="option"
-                    aria-selected={isCurrent}
-                    onClick={() => !isCurrent && !isSwitching && void handleSwitchHost(host)}
-                    className={[
-                      'flex cursor-pointer select-none items-center gap-3 px-4 py-3 transition-colors',
-                      isCurrent
-                        ? 'bg-blue-50 dark:bg-blue-900/20'
-                        : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/60',
-                      isSwitching && 'pointer-events-none opacity-60',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
+                  <React.Fragment key={host.id}>
+                    <li
+                      role="option"
+                      aria-selected={isCurrent}
+                      onClick={() => !isCurrent && !isSwitching && void handleSwitchHost(host)}
+                      className={[
+                        'group flex cursor-pointer select-none items-center gap-3 px-4 py-3 transition-colors',
+                        isCurrent
+                          ? 'bg-blue-50 dark:bg-blue-900/20'
+                          : 'hover:bg-neutral-50 dark:hover:bg-neutral-700/60',
+                        isSwitching && 'pointer-events-none opacity-60',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                    >
                     {/* Connection status dot */}
                     <span
                       className={`mt-0.5 h-2 w-2 flex-shrink-0 rounded-full ${
@@ -289,8 +378,21 @@ export const HostSwitcher: React.FC = () => {
                       >
                         {host.isDefault ? <StarFilledIcon /> : <StarOutlineIcon />}
                       </button>
+
+                      {/* Remove host — hidden until row hover, disabled for active host */}
+                      {!isCurrent && (
+                        <button
+                          onClick={(e) => void handleRemoveHost(e, host.id)}
+                          title="Remove host"
+                          aria-label="Remove host"
+                          className="rounded p-1 text-neutral-300 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100 dark:text-neutral-600 dark:hover:text-red-400"
+                        >
+                          <TrashIcon />
+                        </button>
+                      )}
                     </div>
-                  </li>
+                    </li>
+                  </React.Fragment>
                 );
               })}
             </ul>
@@ -317,6 +419,14 @@ export const HostSwitcher: React.FC = () => {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={handleAddSuccess}
+      />
+
+      {/* Login modal — shown when stored credentials are missing */}
+      <HostLoginModal
+        isOpen={loginHost !== null}
+        onClose={() => setLoginHost(null)}
+        host={loginHost}
+        onLogin={handleLoginSubmit}
       />
     </>
   );

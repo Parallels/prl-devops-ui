@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Button, FormField, FormLayout, Input, Toggle } from '../../controls';
+import { Alert, Button, Checkbox, FormField, FormLayout, Input, Toggle } from '../../controls';
 import { Modal } from '../../controls';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSession } from '@/contexts/SessionContext';
@@ -39,6 +39,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [keepLoggedIn, setKeepLoggedIn] = useState(true);
   const [formTouched, setFormTouched] = useState<TouchedFields>({
     serverUrl: false,
     username: false,
@@ -57,6 +58,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
       setUsername('');
       setPassword('');
       setApiKey('');
+      setKeepLoggedIn(true);
       setFormTouched({ serverUrl: false, username: false, password: false, apiKey: false });
       setErrors({});
       setConnectError(null);
@@ -123,13 +125,18 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
 
       await authService.forceReauth(hostname);
 
-      // Save secrets
-      if (authType === 'credentials') {
-        await config.setSecret(getPasswordKey(hostname), password);
-        await config.removeSecret(getApiKeyKey(hostname));
+      // Save or clear secrets based on keepLoggedIn
+      if (keepLoggedIn) {
+        if (authType === 'credentials') {
+          await config.setSecret(getPasswordKey(hostname), password);
+          await config.removeSecret(getApiKeyKey(hostname));
+        } else {
+          await config.setSecret(getApiKeyKey(hostname), apiKey);
+          await config.removeSecret(getPasswordKey(hostname));
+        }
       } else {
-        await config.setSecret(getApiKeyKey(hostname), apiKey);
         await config.removeSecret(getPasswordKey(hostname));
+        await config.removeSecret(getApiKeyKey(hostname));
       }
       await config.flushSecrets();
 
@@ -153,7 +160,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
         baseUrl: normalizedUrl,
         authType,
         username: authType === 'credentials' ? username : '',
-        keepLoggedIn: true,
+        keepLoggedIn,
         lastUsed: new Date().toISOString(),
         isDefault: willBeOnlyHost
           ? true
@@ -204,6 +211,8 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
       isOpen={isOpen}
       onClose={onClose}
       size="sm"
+      closeOnBackdropClick={!isConnecting}
+      closeOnEsc={!isConnecting}
       actions={
         <>
           <Button variant="soft" color="slate" onClick={onClose} disabled={isConnecting}>
@@ -229,110 +238,138 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
         />
       )}
 
-      <FormLayout columns={1} gap="sm">
-        <FormField label="Display Name" width="full">
-          <Input
-            type="text"
-            tone="blue"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Production Server (optional)"
-          />
-        </FormField>
+      {/* ── Server ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+          Server
+        </p>
+        <FormLayout columns={1} gap="sm">
+          <FormField label="Display Name" width="full">
+            <Input
+              type="text"
+              tone="blue"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Production (optional)"
+            />
+          </FormField>
 
-        <FormField
-          label="Server URL"
-          required
-          width="full"
-          error={hasError('serverUrl') ? errors.serverUrl : undefined}
-        >
-          <Input
-            type="url"
-            tone="blue"
-            value={serverUrl}
-            onChange={(e) => setServerUrl(e.target.value)}
-            onBlur={() => {
-              if (serverUrl && !/^https?:\/\//i.test(serverUrl)) {
-                setServerUrl('https://' + serverUrl);
-              }
-              handleBlur('serverUrl');
-            }}
+          <FormField
+            label="Server URL"
             required
-            placeholder="https://your-server.example.com"
-          />
-        </FormField>
-
-        <div className="py-1">
-          <Toggle
-            label="Use API Key"
-            description={
-              authType === 'api_key'
-                ? 'Authenticate with an API key'
-                : 'Authenticate with username and password'
-            }
-            checked={authType === 'api_key'}
-            onChange={(e) => setAuthType(e.target.checked ? 'api_key' : 'credentials')}
-            size="sm"
-            color="blue"
-          />
-        </div>
-
-        {authType === 'credentials' && (
-          <>
-            <FormField
-              label="Username"
+            width="full"
+            error={hasError('serverUrl') ? errors.serverUrl : undefined}
+          >
+            <Input
+              type="url"
+              tone="blue"
+              value={serverUrl}
+              onChange={(e) => setServerUrl(e.target.value)}
+              onBlur={() => {
+                if (serverUrl && !/^https?:\/\//i.test(serverUrl)) {
+                  setServerUrl('https://' + serverUrl);
+                }
+                handleBlur('serverUrl');
+              }}
               required
-              width="full"
-              error={hasError('username') ? errors.username : undefined}
-            >
-              <Input
-                type="text"
-                tone="blue"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                onBlur={() => handleBlur('username')}
+              placeholder="https://your-server.example.com"
+            />
+          </FormField>
+        </FormLayout>
+      </div>
+
+      {/* ── Authentication ─────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+          Authentication
+        </p>
+
+        <Toggle
+          label="Use API Key"
+          description={
+            authType === 'api_key'
+              ? 'Authenticate with an API key'
+              : 'Authenticate with username and password'
+          }
+          checked={authType === 'api_key'}
+          onChange={(e) => setAuthType(e.target.checked ? 'api_key' : 'credentials')}
+          size="sm"
+          color="blue"
+        />
+
+        <FormLayout columns={1} gap="sm">
+          {authType === 'credentials' ? (
+            <>
+              <FormField
+                label="Username"
                 required
-                placeholder="Enter your username"
-              />
-            </FormField>
+                width="full"
+                error={hasError('username') ? errors.username : undefined}
+              >
+                <Input
+                  type="text"
+                  tone="blue"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  onBlur={() => handleBlur('username')}
+                  required
+                  placeholder="Enter your username"
+                  autoComplete="username"
+                />
+              </FormField>
+              <FormField
+                label="Password"
+                required
+                width="full"
+                error={hasError('password') ? errors.password : undefined}
+              >
+                <Input
+                  type="password"
+                  tone="blue"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => handleBlur('password')}
+                  required
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                />
+              </FormField>
+            </>
+          ) : (
             <FormField
-              label="Password"
+              label="API Key"
               required
               width="full"
-              error={hasError('password') ? errors.password : undefined}
+              error={hasError('apiKey') ? errors.apiKey : undefined}
             >
               <Input
                 type="password"
                 tone="blue"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onBlur={() => handleBlur('password')}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                onBlur={() => handleBlur('apiKey')}
                 required
-                placeholder="Enter your password"
+                placeholder="Enter your API key"
               />
             </FormField>
-          </>
-        )}
+          )}
+        </FormLayout>
+      </div>
 
-        {authType === 'api_key' && (
-          <FormField
-            label="API Key"
-            required
-            width="full"
-            error={hasError('apiKey') ? errors.apiKey : undefined}
-          >
-            <Input
-              type="password"
-              tone="blue"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              onBlur={() => handleBlur('apiKey')}
-              required
-              placeholder="Enter your API key"
-            />
-          </FormField>
-        )}
-      </FormLayout>
+      {/* ── Session ────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+          Session
+        </p>
+        <Checkbox
+          label="Keep me logged in"
+          description="Save credentials securely for future sessions"
+          checked={keepLoggedIn}
+          onChange={(e) => setKeepLoggedIn(e.target.checked)}
+          color="blue"
+          size="sm"
+        />
+      </div>
     </Modal>
   );
 };
