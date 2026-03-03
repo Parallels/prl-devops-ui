@@ -3,9 +3,9 @@ import { CustomIcon, DeleteConfirmModal, MultiProgressBar, type MultiProgressBar
 import { devopsService } from '@/services/devops';
 import type { CatalogCacheResponse, CatalogCacheManifestItem, CacheConfig } from '@/interfaces/Cache';
 import { formatCacheSize } from '@/utils/cacheUtils';
-import { MANIFEST_COLORS } from './cacheConstants';
-import { DiskStorageWidget } from './DiskStorageWidget';
-import { CacheManifestCard } from './CacheManifestCard';
+import { MANIFEST_COLORS } from '@/components/Cache/cacheConstants';
+import { DiskStorageWidget } from '@/components/Cache/DiskStorageWidget';
+import { CacheManifestCard } from '@/components/Cache/CacheManifestCard';
 import { PageHeaderIcon } from '@/components/PageHeader';
 
 export interface CachePanelProps {

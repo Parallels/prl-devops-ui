@@ -5,18 +5,18 @@ import { type IconName } from "../icons/registry";
 
 export type SideMenuItemType = "link" | "group" | "divider";
 
-export interface SideMenuGuardClaim     { type: 'claim';     claim: string }
-export interface SideMenuGuardAnyClaim  { type: 'anyClaim';  claims: string[] }
+export interface SideMenuGuardClaim { type: 'claim'; claim: string }
+export interface SideMenuGuardAnyClaim { type: 'anyClaim'; claims: string[] }
 export interface SideMenuGuardAllClaims { type: 'allClaims'; claims: string[] }
-export interface SideMenuGuardRole      { type: 'role';      role: string }
-export interface SideMenuGuardAnyRole   { type: 'anyRole';   roles: string[] }
-export interface SideMenuGuardModule    { type: 'module';    module: string }
+export interface SideMenuGuardRole { type: 'role'; role: string }
+export interface SideMenuGuardAnyRole { type: 'anyRole'; roles: string[] }
+export interface SideMenuGuardModule { type: 'module'; module: string }
 export interface SideMenuGuardAnyModule { type: 'anyModule'; modules: string[] }
-export interface SideMenuGuardCustom    { type: 'custom';    fn: () => boolean }
+export interface SideMenuGuardCustom { type: 'custom'; fn: () => boolean }
 
 export type SideMenuItemGuard =
   | SideMenuGuardClaim | SideMenuGuardAnyClaim | SideMenuGuardAllClaims
-  | SideMenuGuardRole  | SideMenuGuardAnyRole
+  | SideMenuGuardRole | SideMenuGuardAnyRole
   | SideMenuGuardModule | SideMenuGuardAnyModule
   | SideMenuGuardCustom;
 
@@ -34,6 +34,8 @@ export interface SideMenuItemLink extends SideMenuItemBase {
   path: string;
   icon?: IconName;
   groupName?: string;
+  /** Optional badge rendered to the right of the label (e.g. active job count). */
+  badge?: React.ReactNode;
 }
 
 export interface SideMenuItemGroup extends SideMenuItemBase {
@@ -112,7 +114,7 @@ export const SideMenu = ({
 
     return items.filter((item) => {
       if (!passesGuard(item)) return false;
-      if (item.type === 'group')   return groupsWithVisibleLinks.has(item.slug);
+      if (item.type === 'group') return groupsWithVisibleLinks.has(item.slug);
       // Standalone dividers: hide if groupName set but that group has no visible links
       if (item.type === 'divider') return !item.groupName || groupsWithVisibleLinks.has(item.groupName);
       return true;
@@ -221,24 +223,32 @@ export const SideMenu = ({
                   to={linkItem.path}
                   onClick={() => mobileOpen && onCloseMobile?.()}
                   title={isCollapsed && !isMobile ? linkItem.label : undefined}
-                  className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${active
+                  className={`relative group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${active
                     ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 shadow-sm"
                     : "text-gray-600 dark:text-neutral-300 hover:bg-gray-100 dark:hover:bg-neutral-700/50 hover:text-gray-900 dark:hover:text-neutral-100"
                     } ${isCollapsed && !isMobile ? "justify-center" : ""}`}
                 >
                   {linkItem.icon && (
-                    <CustomIcon
-                      icon={linkItem.icon}
-                      className={`h-5 w-5 flex-shrink-0 transition-colors duration-150 ${isCollapsed && !isMobile ? "" : "mr-3"
-                        } ${active ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-neutral-500 group-hover:text-gray-600 dark:group-hover:text-neutral-300"}`}
-                    />
+                    <div className={`flex items-center justify-center relative flex-shrink-0 ${isCollapsed && !isMobile ? "" : "mr-3"}`}>
+                      <CustomIcon
+                        icon={linkItem.icon}
+                        className={`h-5 w-5 transition-colors duration-150 ${active ? "text-red-500 dark:text-red-400" : "text-gray-400 dark:text-neutral-500 group-hover:text-gray-600 dark:group-hover:text-neutral-300"}`}
+                      />
+                      {/* Badge in collapsed mode: small dot over the icon */}
+                      {isCollapsed && !isMobile && linkItem.badge && (
+                        <span className="absolute -top-1 -right-1">{linkItem.badge}</span>
+                      )}
+                    </div>
                   )}
                   {!(isCollapsed && !isMobile) && (
-                    <span className="whitespace-nowrap overflow-hidden text-ellipsis">
+                    <span className="whitespace-nowrap overflow-hidden text-ellipsis flex-1">
                       {linkItem.label}
                     </span>
                   )}
-
+                  {/* Badge in expanded mode: right-aligned next to label */}
+                  {!(isCollapsed && !isMobile) && linkItem.badge && (
+                    <span className="ml-auto flex-shrink-0 pl-2">{linkItem.badge}</span>
+                  )}
                 </Link>
               );
             })}

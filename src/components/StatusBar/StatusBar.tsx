@@ -7,6 +7,7 @@ import type { AppBehaviorConfig, DebugConfig } from '@/interfaces/AppConfig';
 import { StatusBarDivider, StatusBarSection } from './StatusBarSection';
 import { WebSocketState } from '@/types/WebSocket';
 import { useConfig } from '@/contexts/ConfigContext';
+import { useSession } from '@/contexts/SessionContext';
 
 
 const formatTimestamp = (timestamp?: number): string => {
@@ -30,24 +31,26 @@ export const StatusBar: React.FC = () => {
 
   const connectionStatus = isConnected ? 'connected' : 'disconnected';
 
-  //   const { backendHealth } = useAppStartup();
-  const backendHealth = { healthy: true, version: '1.0.0', lastUpdated: Date.now() }; // Stub
-
   const [isDevelopmentEnv, setIsDevelopmentEnv] = useState(false);
   const [environment, setEnvironment] = useState<string>('unknown');
   const [appVersion, setAppVersion] = useState<string>('1.0.0');
   const [channel, setChannel] = useState<ReleaseChannel>('stable');
   const [isDebugEnabled, setIsDebugEnabled] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { session } = useSession();
 
   const backendChecking = false; // backendHealth.lastUpdated === 0;
-  const backendHealthy = backendHealth.healthy;
-  const backendVersion = backendHealth.version ? `v${backendHealth.version}` : 'Unknown';
+  const backendHealthy = connectionState === WebSocketState.OPEN;
+  const backendVersion = session?.hardwareInfo?.devops_version ?? 'unknown';
   const backendStatusText = backendChecking
-    ? 'Checking agent...'
+    ? 'Checking devops version...'
     : backendHealthy
       ? `${backendVersion}`
-      : 'Agent offline';
+      : 'Devops version offline';
+
+  const backendHealth = {
+    lastUpdated: 0,
+  }
 
   const sseStatusText = connectionStatus;
   const channelBadge = channel === 'stable' ? undefined : channel;
@@ -122,13 +125,13 @@ export const StatusBar: React.FC = () => {
       <div className="flex flex-col gap-1.5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusBarSection
-            label="Something"
+            label="Host Version"
             size="sm"
             variant="minimal"
             value={backendStatusText}
             intent={backendChecking ? 'warning' : backendHealthy ? 'success' : 'danger'}
             loading={backendChecking}
-            popoverTitle="Something"
+            popoverTitle="Host Version"
             popoverContent={buildDetailsList(agentDetails)}
             rounded={false}
           />
@@ -139,8 +142,8 @@ export const StatusBar: React.FC = () => {
             value={sseStatusText}
             intent={
               connectionState === WebSocketState.OPEN ? 'success'
-              : connectionState === WebSocketState.CONNECTING ? 'warning'
-              : 'danger'
+                : connectionState === WebSocketState.CONNECTING ? 'warning'
+                  : 'danger'
             }
             loading={connectionState === WebSocketState.CONNECTING}
             popoverTitle="Events Hub"

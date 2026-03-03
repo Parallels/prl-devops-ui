@@ -12,6 +12,7 @@ import { NotificationProvider } from '../contexts/NotificationContext';
 import { EventsHubProvider } from '../contexts/EventsHubContext';
 import { useSession } from '@/contexts/SessionContext';
 import { Claims, Roles } from '@/interfaces/tokenTypes';
+import { JobsProvider, useJobs } from '@/contexts/JobsContext';
 
 export interface MainLayoutProps {
   children?: React.ReactNode;
@@ -36,12 +37,32 @@ const LayoutModals: React.FC = () => {
 };
 
 
+// Small animated badge for active jobs in the sidebar
+const ActiveJobBadge: React.FC<{ count: number }> = ({ count }) => (
+  <span className="inline-flex items-center gap-1">
+    <span className="relative flex h-2 w-2">
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+    </span>
+    <span className="text-[10px] font-bold tabular-nums text-amber-600 dark:text-amber-400">{count}</span>
+  </span>
+);
+
+// Per-type dot for Catalogs/VMs menu items when a job of that type is active
+const ActiveTypeDot: React.FC = () => (
+  <span className="relative flex h-2 w-2">
+    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+  </span>
+);
+
 const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
   const { isOverlay, setIsOverlay } = useLayout();
 
   const location = useLocation();
   const navigate = useNavigate();
   const { hasClaim, hasRole, hasAnyClaim, hasAllClaims, hasModule } = useSession();
+  const { activeCount, activeByType } = useJobs();
   const [currentRoute, setCurrentRoute] = useState<Route>('home');
 
   const baseSideMenuItems = useMemo<SideMenuItem[]>(() => [
@@ -49,7 +70,8 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
     { groupName: 'general', slug: 'home', label: 'Home', path: '/', icon: 'Dashboard' },
     {
       groupName: 'general', slug: 'catalogs', label: 'Catalogs', path: '/catalogs', icon: 'Library',
-      guards: [{ type: 'claim', claim: Claims.LIST_CATALOG_MANIFEST }, { type: 'module', module: 'catalog' }]
+      guards: [{ type: 'claim', claim: Claims.LIST_CATALOG_MANIFEST }, { type: 'module', module: 'catalog' }],
+      badge: activeByType['catalog'] ? <ActiveTypeDot /> : undefined,
     },
 
     { slug: 'computing', label: 'Computing', type: 'group', hasDivider: true },
@@ -59,7 +81,8 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
     },
     {
       groupName: 'computing', slug: 'vms', label: 'VMs', path: '/vms', icon: 'VirtualMachine',
-      guards: [{ type: 'claim', claim: Claims.LIST_VM }]
+      guards: [{ type: 'claim', claim: Claims.LIST_VM }],
+      badge: activeByType['vm'] ? <ActiveTypeDot /> : undefined,
     },
     {
       groupName: 'computing', slug: 'reverse-proxy', label: 'Reverse Proxy', path: '/reverse-proxy', icon: 'ReverseProxy',
@@ -84,6 +107,10 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
       guards: [{ type: 'claim', claim: Claims.LIST_API_KEY }, { type: 'module', module: 'api' }]
     },
     { groupName: 'management', slug: 'cache', label: 'Cache', path: '/cache', icon: 'Cache', guards: [{ type: 'anyModule', modules: ['api', 'cache'] }] },
+    {
+      groupName: 'management', slug: 'jobs', label: 'Jobs', path: '/jobs', icon: 'Jobs',
+      badge: activeCount > 0 ? <ActiveJobBadge count={activeCount} /> : undefined,
+    },
     { groupName: 'admin', slug: 'admin', label: 'Admin', type: 'group', hasDivider: true },
     {
       groupName: 'admin', slug: 'logs', label: 'Log Viewer', path: '/logs', icon: 'Log',
@@ -99,7 +126,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
       guards: [{ type: 'role', role: Roles.SUPER_USER }]
     },
 
-  ], []);
+  ], [activeCount, activeByType]);
 
   const guardEvaluator = useCallback((guards: SideMenuItemGuard[]): boolean => {
     return guards.every((guard) => {
@@ -215,11 +242,13 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
       <WebSocketProvider>
         <NotificationProvider>
           <EventsHubProvider>
-            <LayoutProvider>
-              {/* <VMProvider> */}
-              <MainLayoutContent {...props} />
-              {/* </VMProvider> */}
-            </LayoutProvider>
+            <JobsProvider>
+              <LayoutProvider>
+                {/* <VMProvider> */}
+                <MainLayoutContent {...props} />
+                {/* </VMProvider> */}
+              </LayoutProvider>
+            </JobsProvider>
           </EventsHubProvider>
         </NotificationProvider>
       </WebSocketProvider>

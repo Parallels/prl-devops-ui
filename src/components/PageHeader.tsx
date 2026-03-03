@@ -1,4 +1,5 @@
 import React from 'react';
+import { HelpButton, HelpButtonProps } from '@prl/ui-kit';
 
 // ── Icon color tokens ────────────────────────────────────────────────────────
 
@@ -41,6 +42,8 @@ export interface PageHeaderProps {
     /** Bottom separator — default true */
     border?: boolean;
     className?: string;
+    /** Optional help button inserted between identity and actions */
+    helper?: HelpButtonProps;
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({
@@ -53,6 +56,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     searchWidth,
     border = true,
     className = '',
+    helper,
 }) => {
     const borderClass = border
         ? 'border-b border-neutral-200 dark:border-neutral-700'
@@ -64,8 +68,9 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             <div className="flex items-center gap-3 px-4 py-3">
                 {icon && <div className="flex-shrink-0">{icon}</div>}
                 <div className="flex-1 min-w-0">
-                    <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate">
-                        {title}
+                    <h2 className="flex items-center text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+                        <span>{title}</span>
+                        {helper && <HelpButton {...helper} />}
                     </h2>
                     {subtitle && (
                         <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400 truncate">

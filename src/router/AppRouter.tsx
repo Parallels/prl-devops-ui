@@ -21,6 +21,7 @@ import { Claims } from '@/pages/Claims/Claims';
 import { ApiKeys } from '@/pages/ApiKeys/ApiKeys';
 import { Cache } from '@/pages/Cache/Cache';
 import { ReverseProxy } from '@/pages/ReverseProxy/ReverseProxy';
+import { Jobs } from '@/pages/Jobs/Jobs';
 
 const OnboardingRoute: React.FC = () => {
     const location = useLocation();
@@ -121,6 +122,10 @@ export const router = createBrowserRouter([
             {
                 path: '/cache',
                 element: <Cache />,
+            },
+            {
+                path: '/jobs',
+                element: <Jobs />,
             },
             {
                 path: '/events',

@@ -110,6 +110,7 @@ import { ReverseProxyTCP } from './components/ReverseProxyTCP';
 import { Refresh } from './components/Refresh';
 import { Calendar } from './components/Calendar';
 import { Folder } from './components/Folder';
+import { Jobs } from './components/Jobs';
 
 export type IconName =
     | "Add"
@@ -222,7 +223,8 @@ export type IconName =
     | "ReverseProxyTCP"
     | "Refresh"
     | "Calendar"
-    | "Folder";
+    | "Folder"
+    | "Jobs";
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
     "Add": Add,
@@ -336,4 +338,5 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
     "Refresh": Refresh,
     "Calendar": Calendar,
     "Folder": Folder,
+    "Jobs": Jobs,
 };

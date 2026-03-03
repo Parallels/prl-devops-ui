@@ -13,4 +13,3 @@ export const MANIFEST_COLORS = [
     'bg-pink-400',
     'bg-rose-400',
 ];
-

@@ -5,7 +5,7 @@ import { WebSocketState, type WebSocketMessage } from '../types/WebSocket';
 import { authService } from '../services/authService';
 
 export const EVENTS_HUB_SERVER_ID = 'events-hub';
-const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy';
+const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy,job_manager';
 const DEFAULT_LIMIT = 500;
 const HOST_STATS_LIMIT = 60; // ~1 min of data at 1-second intervals
 const HOST_LOGS_LIMIT = 100;

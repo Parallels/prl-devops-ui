@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { Button, FormField, IconButton, Input, MultiToggle, ReverseProxyFrom, ReverseProxyTo, Select, VirtualMachine as VirtualMachineIcon } from '@prl/ui-kit';
+import { Button, FormField, IconButton, Input, MultiToggle, ReverseProxyFrom, ReverseProxyTo, Select, VirtualMachine as VirtualMachineIcon, ConnectionFlow, type TreeTone } from '@prl/ui-kit';
 import { ReverseProxyHost, ReverseProxyHostTcpRoute } from '@/interfaces/ReverseProxy';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { devopsService } from '@/services/devops';
@@ -37,196 +37,18 @@ export interface TcpRouteViewProps {
     onSaveSettings: (patch: Partial<ReverseProxyHost>) => Promise<void>;
 }
 
-// ── Card palette helper ────────────────────────────────────────────────────────
+// ── Tone helpers ──────────────────────────────────────────────────────────────
 
-const cardBg: Record<VmHealth, string> = {
-    running: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800',
-    stopped: 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800',
-    paused: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
-    suspended: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800',
-    unknown: 'bg-neutral-50 dark:bg-neutral-800/50 border-neutral-200 dark:border-neutral-700',
-};
-
-const cardLabel: Record<VmHealth, string> = {
-    running: 'text-emerald-600 dark:text-emerald-400',
-    stopped: 'text-rose-600 dark:text-rose-400',
-    paused: 'text-amber-600 dark:text-amber-400',
-    suspended: 'text-amber-600 dark:text-amber-400',
-    unknown: 'text-neutral-500 dark:text-neutral-400',
-};
-
-const cardText: Record<VmHealth, string> = {
-    running: 'text-emerald-800 dark:text-emerald-200',
-    stopped: 'text-rose-800 dark:text-rose-200',
-    paused: 'text-amber-800 dark:text-amber-200',
-    suspended: 'text-amber-800 dark:text-amber-200',
-    unknown: 'text-neutral-600 dark:text-neutral-400',
-};
-
-// ── Traffic Flow Widget (inner row — outer card owned by TcpRouteView) ─────────
-
-interface TrafficFlowWidgetProps {
-    proxyHost: ReverseProxyHost;
-    vmHealth: VmHealth;
-    proxyEnabled: boolean;
-    onVmAction: () => void;
-    actionLoading: boolean;
-    canCreate: boolean;
-    hasVmTarget: boolean;
-    onToggleExpand?: () => void;
-    expanded?: boolean;
+function healthToTone(health: VmHealth, proxyEnabled: boolean): TreeTone {
+    if (!proxyEnabled) return 'neutral';
+    switch (health) {
+        case 'running': return 'emerald';
+        case 'stopped': return 'rose';
+        case 'paused':
+        case 'suspended': return 'amber';
+        default: return 'neutral';
+    }
 }
-
-const TrafficFlowWidget: React.FC<TrafficFlowWidgetProps> = ({
-    proxyHost,
-    vmHealth,
-    proxyEnabled,
-    onVmAction,
-    actionLoading,
-    canCreate,
-    hasVmTarget,
-    onToggleExpand,
-    expanded,
-}) => {
-    const tcpRoute = proxyHost.tcp_route;
-
-    // For a static host target we have no health signal — treat it as always reachable.
-    const effectiveHealth: VmHealth = hasVmTarget ? vmHealth : 'running';
-
-    // Traffic flows when the proxy engine is up AND the target side is considered reachable.
-    const isFlowing = proxyEnabled && effectiveHealth === 'running';
-    // Proxy is the bottleneck even if the target side is healthy.
-    const isProxyDown = !proxyEnabled;
-
-    // ── Left card (listening endpoint) ──────────────────────────────────────────
-    // Grey when proxy is down — it's not actually listening.
-    // Green when flowing, sky-blue when proxy is up but target isn't ready yet.
-    const leftBg = isProxyDown
-        ? 'bg-neutral-100 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600'
-        : isFlowing
-            ? cardBg.running
-            : 'bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800';
-    const leftLbl = isProxyDown
-        ? 'text-neutral-400 dark:text-neutral-500'
-        : isFlowing
-            ? cardLabel.running
-            : 'text-sky-500 dark:text-sky-400';
-    const leftTxt = isProxyDown
-        ? 'text-neutral-500 dark:text-neutral-400'
-        : isFlowing
-            ? cardText.running
-            : 'text-sky-800 dark:text-sky-200';
-
-    // ── Connector ───────────────────────────────────────────────────────────────
-
-    const dotCls = 'bg-emerald-500 dark:bg-emerald-400'; // only rendered when isFlowing
-
-    const staticSepCls = isProxyDown
-        ? 'text-neutral-300 dark:text-neutral-600'
-        : effectiveHealth === 'stopped'
-            ? 'text-rose-400 dark:text-rose-500'
-            : 'text-amber-400 dark:text-amber-500';
-
-    const targetLabel = tcpRoute
-        ? (tcpRoute.target_vm_id
-            ? (tcpRoute.target_vm_details?.name ?? tcpRoute.target_vm_id)
-            : (tcpRoute.target_host ?? '—'))
-        : '—';
-
-    const targetPort = tcpRoute?.target_port ?? '—';
-    const showVmAction = canCreate && hasVmTarget
-        && (vmHealth === 'stopped' || vmHealth === 'paused' || vmHealth === 'suspended');
-
-    return (
-        <div className="flex items-stretch gap-3">
-            {/* Left card: listening */}
-            <div className={`flex flex-row items-center flex-1 min-w-0 rounded-lg border px-3 py-2.5 ${leftBg}`}>
-                <ReverseProxyFrom className={`w-10 h-10 pr-2 animate-icon-rock ${leftLbl} animate-pulse`} />
-                <div className='flex flex-col flex-1'>
-                    <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${leftLbl}`}>
-                        Listening
-                    </p>
-
-                    <p className={`text-sm font-mono font-medium truncate ${leftTxt}`}>
-                        {proxyHost.host || '0.0.0.0'}:{proxyHost.port}
-                    </p>
-                    {isProxyDown && (
-                        <p className="text-[10px] mt-0.5 text-neutral-400 dark:text-neutral-500">
-                            Proxy disabled
-                        </p>
-                    )}
-                </div>
-            </div>
-
-            {/* Connector band */}
-            <div className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg shrink-0`}>
-                {isFlowing ? (
-                    <>
-                        <span className={`inline-block rounded-full ${dotCls}`} style={{ width: 6, height: 6, animation: 'tcpFlowDot 1.4s ease-in-out infinite', animationDelay: '0s' }} />
-                        <span className={`inline-block rounded-full ${dotCls}`} style={{ width: 6, height: 6, animation: 'tcpFlowDot 1.4s ease-in-out infinite', animationDelay: '0.47s' }} />
-                        <span className={`inline-block rounded-full ${dotCls}`} style={{ width: 6, height: 6, animation: 'tcpFlowDot 1.4s ease-in-out infinite', animationDelay: '0.93s' }} />
-                    </>
-                ) : isProxyDown ? (
-                    <span className={`text-base leading-none ${staticSepCls}`} title="Proxy engine is disabled">⊘</span>
-                ) : (
-                    <span className={`text-xs font-medium tracking-widest ${staticSepCls}`}>— —</span>
-                )}
-            </div>
-
-            {/* Right card: target */}
-            <div className={`flex flex-row items-center flex-1 min-w-0 rounded-lg border px-3 py-2.5 ${cardBg[effectiveHealth]}`}>
-                {tcpRoute?.target_vm_id && (
-                    <VirtualMachineIcon className={`w-10 h-10 pr-2 ${cardLabel[effectiveHealth]} animate-pulse`} />
-                )}
-                {!tcpRoute?.target_vm_id && (
-                    <ReverseProxyTo className={`w-10 h-10 pr-2 ${cardLabel[effectiveHealth]} animate-pulse`} />
-                )}
-                <div className='flex flex-col flex-1'>
-                    <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1 ${cardLabel[effectiveHealth]}`}>
-                        {tcpRoute?.target_vm_id ? 'Target VM' : 'Target'}
-                    </p>
-                    <p className={`text-sm font-mono font-medium truncate ${cardText[effectiveHealth]}`}>
-                        {targetLabel}:{targetPort}
-                    </p>
-                    {hasVmTarget && (
-                        <p className={`text-[10px] mt-0.5 opacity-70 ${cardText[effectiveHealth]}`}>
-                            {vmHealth}
-                        </p>
-                    )}
-                    {showVmAction && (
-                        <div className="mt-2 flex items-center gap-2 justify-end">
-                            <Button
-                                variant="solid"
-                                color={vmHealth === 'stopped' ? 'success' : 'warning'}
-                                size="xs"
-                                loading={actionLoading}
-                                leadingIcon={vmHealth === 'stopped' ? 'Run' : 'Resume'}
-                                onClick={onVmAction}
-                            >
-                                {vmHealth === 'stopped' ? 'Start VM' : 'Resume VM'}
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Expand / collapse toggle */}
-            {onToggleExpand && (
-                <div className="flex items-center">
-                    <IconButton
-                        icon={expanded ? 'ArrowUp' : 'ArrowDown'}
-                        size="xs"
-                        variant="ghost"
-                        color="slate"
-                        onClick={onToggleExpand}
-                        aria-label={expanded ? 'Collapse configuration' : 'Configure route'}
-                        aria-expanded={expanded}
-                    />
-                </div>
-            )}
-        </div>
-    );
-};
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
@@ -455,36 +277,124 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({
     ];
 
     const hasVmTarget = !!(tcpRoute?.target_vm_id);
+    const effectiveHealth: VmHealth = hasVmTarget ? localVmHealth : 'running';
+
+    const targetLabel = tcpRoute?.target_vm_id
+        ? (tcpRoute.target_vm_details?.name ?? tcpRoute.target_vm_id)
+        : (tcpRoute?.target_host ?? '—');
+    const resolvedTargetPort = tcpRoute?.target_port ?? '—';
+
     const showSaveButton = isDirty || !tcpRoute;
     const canEdit = canCreate || canUpdate;
 
     return (
         <div className="p-4 overflow-y-auto">
-            <style>{`
-                @keyframes tcpFlowDot {
-                    0%   { opacity: 0; transform: translateX(-6px); }
-                    25%  { opacity: 1; transform: translateX(0); }
-                    75%  { opacity: 1; transform: translateX(0); }
-                    100% { opacity: 0; transform: translateX(6px); }
-                }
-            `}</style>
-
             {/* Single outer card — traffic flow header + collapsible config inside one border */}
             <div className="rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/50">
 
                 {/* Traffic flow row — only when a route is configured */}
                 {tcpRoute && (
                     <div className="p-3">
-                        <TrafficFlowWidget
-                            proxyHost={proxyHost}
-                            vmHealth={localVmHealth}
-                            proxyEnabled={proxyEnabled}
-                            onVmAction={() => void handleVmAction()}
-                            actionLoading={actionLoading}
-                            canCreate={canCreate}
-                            hasVmTarget={hasVmTarget}
-                            onToggleExpand={canEdit ? () => setConfigOpen((v) => !v) : undefined}
-                            expanded={configOpen}
+                        <ConnectionFlow
+                            dotSpacing={30}
+                            items={[
+                                {
+                                    id: 'listener',
+                                    tone: !proxyEnabled ? 'neutral' : (proxyEnabled && effectiveHealth === 'running' ? 'emerald' : 'sky'),
+                                    icon: <ReverseProxyFrom className={classNames('w-10 h-10', proxyEnabled && 'animate-pulse animate-icon-rock')} />,
+                                    title: 'Listening',
+                                    titleClassName: 'uppercase tracking-wider text-[10px]',
+                                    subtitle: `${proxyHost.host || '0.0.0.0'}:${proxyHost.port}`,
+                                    description: !proxyEnabled ? 'Proxy disabled' : "Allowing Traffic",
+                                },
+                                {
+                                    id: 'target',
+                                    tone: healthToTone(effectiveHealth, proxyEnabled),
+                                    icon: hasVmTarget
+                                        ? <VirtualMachineIcon className={classNames('w-10 h-10', proxyEnabled && effectiveHealth === 'running' && 'animate-pulse')} />
+                                        : <ReverseProxyTo className={classNames('w-10 h-10', proxyEnabled && 'animate-pulse')} />,
+                                    title: hasVmTarget ? 'Target VM' : 'Target',
+                                    titleClassName: 'uppercase tracking-wider text-[10px]',
+                                    subtitle: `${targetLabel}:${resolvedTargetPort}`,
+                                    description: hasVmTarget ? localVmHealth : undefined,
+                                    actions: (canCreate && hasVmTarget && ['stopped', 'paused', 'suspended'].includes(localVmHealth)) ? (
+                                        <div className="mt-2 flex items-center justify-end w-full">
+                                            <Button
+                                                variant="solid"
+                                                color={localVmHealth === 'stopped' ? 'success' : 'warning'}
+                                                size="xs"
+                                                loading={actionLoading}
+                                                onClick={() => void handleVmAction()}
+                                            >
+                                                {localVmHealth === 'stopped' ? 'Start VM' : 'Resume VM'}
+                                            </Button>
+                                        </div>
+                                    ) : undefined,
+                                    children: [
+                                        {
+                                            id: 'target',
+                                            tone: healthToTone(effectiveHealth, proxyEnabled),
+                                            icon: hasVmTarget
+                                                ? <VirtualMachineIcon className={classNames('w-10 h-10', proxyEnabled && effectiveHealth === 'running' && 'animate-pulse')} />
+                                                : <ReverseProxyTo className={classNames('w-10 h-10', proxyEnabled && 'animate-pulse')} />,
+                                            title: hasVmTarget ? 'Target VM' : 'Target',
+                                            titleClassName: 'uppercase tracking-wider text-[10px]',
+                                            subtitle: `${targetLabel}:${resolvedTargetPort}`,
+                                            description: hasVmTarget ? localVmHealth : undefined,
+                                            actions: (canCreate && hasVmTarget && ['stopped', 'paused', 'suspended'].includes(localVmHealth)) ? (
+                                                <div className="mt-2 flex items-center justify-end w-full">
+                                                    <Button
+                                                        variant="solid"
+                                                        color={localVmHealth === 'stopped' ? 'success' : 'warning'}
+                                                        size="xs"
+                                                        loading={actionLoading}
+                                                        onClick={() => void handleVmAction()}
+                                                    >
+                                                        {localVmHealth === 'stopped' ? 'Start VM' : 'Resume VM'}
+                                                    </Button>
+                                                </div>
+                                            ) : undefined,
+                                        }
+                                    ]
+                                },
+                                {
+                                    id: 'target1',
+                                    tone: healthToTone(effectiveHealth, proxyEnabled),
+                                    icon: hasVmTarget
+                                        ? <VirtualMachineIcon className={classNames('w-10 h-10', proxyEnabled && effectiveHealth === 'running' && 'animate-pulse')} />
+                                        : <ReverseProxyTo className={classNames('w-10 h-10', proxyEnabled && 'animate-pulse')} />,
+                                    title: hasVmTarget ? 'Target VM' : 'Target',
+                                    titleClassName: 'uppercase tracking-wider text-[10px]',
+                                    subtitle: `${targetLabel}:${resolvedTargetPort}`,
+                                    description: hasVmTarget ? localVmHealth : undefined,
+                                    actions: (canCreate && hasVmTarget && ['stopped', 'paused', 'suspended'].includes(localVmHealth)) ? (
+                                        <div className="mt-2 flex items-center justify-end w-full">
+                                            <Button
+                                                variant="solid"
+                                                color={localVmHealth === 'stopped' ? 'success' : 'warning'}
+                                                size="xs"
+                                                loading={actionLoading}
+                                                onClick={() => void handleVmAction()}
+                                            >
+                                                {localVmHealth === 'stopped' ? 'Start VM' : 'Resume VM'}
+                                            </Button>
+                                        </div>
+                                    ) : undefined,
+                                }
+                            ]}
+                            flowState={!proxyEnabled ? 'disabled' : (effectiveHealth === 'running' ? 'flowing' : 'stopped')}
+                            flowIcon={!proxyEnabled ? <span className="text-base leading-none text-neutral-300 dark:text-neutral-600" title="Proxy engine is disabled" style={{ lineHeight: 1 }}>⊘</span> : undefined}
+                            rightAction={canEdit && (
+                                <IconButton
+                                    icon={configOpen ? 'ArrowUp' : 'ArrowDown'}
+                                    size="xs"
+                                    variant="ghost"
+                                    color="slate"
+                                    onClick={() => setConfigOpen(v => !v)}
+                                    aria-label={configOpen ? 'Collapse configuration' : 'Configure route'}
+                                    aria-expanded={configOpen}
+                                />
+                            )}
                         />
                     </div>
                 )}
