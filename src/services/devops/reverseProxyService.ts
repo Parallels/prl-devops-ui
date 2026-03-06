@@ -337,6 +337,37 @@ class ReverseProxyService {
   }
 
   /**
+   * Reorder HTTP route from reverse proxy host
+   * 
+   * @param hostname - The hostname identifier for the target server
+   * @param reverseProxyHostId - The reverse proxy host ID
+   * @param routeId - The HTTP route ID
+   * @param hostId - Optional orchestrator host ID (for orchestrator endpoints)
+   * @returns Success status
+   * @throws ApiError
+   */
+  async reorderHttpRoute(hostname: string, reverseProxyHostId: string, routeId: string, order: number, hostId?: string): Promise<boolean> {
+    try {
+      const endpoint = hostId
+        ? `/api/v1/orchestrator/hosts/${hostId}/reverse-proxy/hosts/${reverseProxyHostId}/http_routes/order`
+        : `/api/v1/reverse-proxy/hosts/${reverseProxyHostId}/http_routes/order`;
+
+      await apiService.put(
+        hostname,
+        endpoint,
+        { id: routeId, order: order },
+        { errorPrefix: 'Failed to reorder HTTP route' }
+      );
+
+      return true;
+    } catch (error) {
+      console.error('Failed to reorder HTTP route:', error);
+      throw error;
+    }
+  }
+
+
+  /**
    * Create or update TCP route for reverse proxy host
    * 
    * @param hostname - The hostname identifier for the target server

@@ -10,7 +10,18 @@ import tailwindcss from "@tailwindcss/vite";
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), tsconfigPaths(), tailwindcss()],
+  plugins: [
+    react(),
+    tsconfigPaths(),
+    tailwindcss(),
+    // Prevent macOS .DS_Store files from being processed as JS modules
+    {
+      name: 'ignore-ds-store',
+      load(id: string) {
+        if (id.endsWith('.DS_Store')) return '';
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@prl/ui-kit": path.resolve(__dirname, "packages/ui-kit/src"),
@@ -34,13 +45,13 @@ export default defineConfig(async () => ({
       }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell Vite to ignore watching `src-tauri` and macOS metadata files
+      ignored: ["**/src-tauri/**", /\.DS_Store$/],
     },
-    allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', 'devops-ui.carloslapao.com'],
+    allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', 'devops-ui.carloslapao.com', 'devops-ui.local-build.co'],
     proxy: {
       "/api": {
-        target: process.env.VITE_DEVOPS_API_URL || "http://localhost:5680",
+        target: process.env.VITE_DEVOPS_API_URL || "http://localhost:5680" || "http://devops-local.local-build.co:5475",
         changeOrigin: true,
         secure: false,
         ws: true,

@@ -107,12 +107,14 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   validationStatus?: InputValidationStatus;
   leadingIcon?: IconRenderer;
   trailingIcon?: IconRenderer;
+  /** When provided, the trailing icon renders as an interactive button instead of a static decoration. */
+  onTrailingIconClick?: React.MouseEventHandler<HTMLButtonElement>;
   wrapperClassName?: string;
   unstyled?: boolean;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { size = "md", tone = "blue", validationStatus = "none", leadingIcon, trailingIcon, className, wrapperClassName, disabled, unstyled = false, ...rest },
+  { size = "md", tone = "blue", validationStatus = "none", leadingIcon, trailingIcon, onTrailingIconClick, className, wrapperClassName, disabled, unstyled = false, ...rest },
   ref: ForwardedRef<HTMLInputElement>,
 ) {
   const renderIcon = useIconRenderer();
@@ -160,18 +162,38 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 
   const mergedInputClasses = classNames(isUnstyled ? unstyledClasses : baseInputClasses, !isUnstyled && tokens.focusRing);
 
-  const renderIconWrapper = (visual: IconRenderer, position: "left" | "right", isInteractive = false) => {
+  const renderIconWrapper = (visual: IconRenderer, position: "left" | "right", onClick?: React.MouseEventHandler<HTMLButtonElement>) => {
     if (!visual) {
       return null;
     }
+    const positionClass = position === "left" ? sizeToken.iconLeft : sizeToken.iconRight;
+    if (onClick) {
+      return (
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={onClick}
+          className={classNames(
+            "absolute flex items-center justify-center rounded",
+            positionClass,
+            sizeToken.iconSize,
+            tokens.icon,
+            validationStatus === "error" && "text-rose-500 dark:text-rose-400",
+            validationStatus === "success" && "text-emerald-500 dark:text-emerald-400",
+            "cursor-pointer p-0.5 transition-colors duration-150 hover:text-neutral-700 dark:hover:text-neutral-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-current",
+          )}
+        >
+          {renderVisual(visual, sizeToken.iconSize)}
+        </button>
+      );
+    }
     const iconClassName = classNames(
       "pointer-events-none absolute flex items-center justify-center text-neutral-400 dark:text-neutral-500",
-      position === "left" ? sizeToken.iconLeft : sizeToken.iconRight,
+      positionClass,
       sizeToken.iconSize,
       tokens.icon,
       validationStatus === "error" && "text-rose-500 dark:text-rose-400",
       validationStatus === "success" && "text-emerald-500 dark:text-emerald-400",
-      isInteractive && "pointer-events-auto",
     );
     return <span className={iconClassName}>{renderVisual(visual, sizeToken.iconSize)}</span>;
   };
@@ -180,7 +202,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <span className={classNames("relative flex w-full items-center", disabled && "opacity-70", wrapperClassName)}>
       {leadingIcon && renderIconWrapper(leadingIcon, "left")}
       <input ref={ref} className={classNames(mergedInputClasses, statusClass)} disabled={disabled} aria-invalid={validationStatus === "error" ? "true" : rest["aria-invalid"]} {...rest} />
-      {trailingIcon && renderIconWrapper(trailingIcon, "right")}
+      {trailingIcon && renderIconWrapper(trailingIcon, "right", onTrailingIconClick)}
     </span>
   );
 });

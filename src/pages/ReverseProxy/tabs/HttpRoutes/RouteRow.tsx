@@ -55,6 +55,17 @@ const RouteRow: React.FC<RouteRowProps> = ({
         setVmHealth(hasVmTarget ? getVmHealth(route.target_vm_details?.state) : 'running');
     }, [route.target_vm_details?.state, hasVmTarget, stopPolling]);
 
+    // Fallback: if API didn't return target_vm_details.state, fetch VM directly once
+    useEffect(() => {
+        const vmId = route.target_vm_id;
+        if (!vmId || route.target_vm_details?.state) return;
+        devopsService.machines
+            .getVirtualMachine(hostname, vmId, !!orchestratorHostId)
+            .then(vm => { if (vm.State) setVmHealth(getVmHealth(vm.State)); })
+            .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [route.target_vm_id, route.target_vm_details?.state]);
+
     // ── Event subscriptions ──────────────────────────────────────────────────
 
     const lastOrchestratorIdRef = useRef<string | null>(null);

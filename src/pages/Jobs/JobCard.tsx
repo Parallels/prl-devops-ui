@@ -4,6 +4,7 @@ import {
     ArrowRight,
     Calendar,
     CheckCircle,
+    ConnectionFlow,
     Panel,
     Pill,
     Progress,
@@ -11,21 +12,81 @@ import {
     User,
     formatProgressBytes,
     normalizeDataSizeUnit,
+    type ConnectionFlowItem,
 } from '@prl/ui-kit';
-import type { Job } from '@/interfaces/Jobs';
-import { stateToTone, jobTypeIcon, formatTimestamp, titleCase, formatEta, parseEtaToSeconds, TONE_ICON_BG } from './jobsUtils';
+import type { Job, JobStep } from '@/interfaces/Jobs';
+import { stateToTone, jobTypeIcon, formatTimestamp, titleCase, stepName, joinNames, formatEta, parseEtaToSeconds, TONE_ICON_BG } from './jobsUtils';
 
 interface JobCardProps {
     job: Job;
     highlighted?: boolean;
 }
 
+// ── Step pipeline (ConnectionFlow) ────────────────────────────────────────────
+
+const StepFlow: React.FC<{ steps: JobStep[]; jobActive: boolean }> = ({ steps, jobActive }) => {
+    if (!steps || steps.length === 0) return null;
+
+    const runningIdx = steps.findIndex(s => s.state === 'running');
+
+    const items: ConnectionFlowItem[] = steps.map((step, i) => {
+        return {
+            id: `step-${i}-${step.name}`,
+            title: stepName(step, `Step ${i + 1}`),
+            titleWrap: true,
+            tone: stateToTone(step.state),
+            active: step.state === 'running',
+            activePulse: step.state === 'running',
+            parallel: step.parallel ?? false,
+            skipped: step.state === 'skipped',
+            // Animate only the connector leading into the currently running step
+            connector: i > 0 ? { width: 24, animateCompleted: i === runningIdx } : undefined,
+        };
+    });
+
+    return (
+        <div className="px-4 pb-1 pt-1">
+            <ConnectionFlow
+                items={items}
+                autoScale
+                minScale={0.5}
+                connectorWidth={24}
+                animated={jobActive}
+                dotSpacing={20}
+                connectorBorderSize="xs"
+                connectorHalf
+                autoConnectorState
+            />
+        </div>
+    );
+};
+
+// ── Step color palette (cycles when there are multiple running steps) ─────────
+
+const STEP_COLORS = ['blue', 'violet', 'teal', 'amber', 'rose', 'cyan', 'orange', 'emerald'] as const;
+
+// ── Progress block ────────────────────────────────────────────────────────────
+
 const JobProgress: React.FC<{ job: Job }> = ({ job }) => {
     const tone = stateToTone(job.state);
-    const hasSubStep = (job.action_value != null && job.action_total != null) || job.action_percentage != null;
+    const runningSteps = (job.steps ?? []).filter(s => s.state === 'running');
+
+    // Label above the overall bar: job message → sentence from all running step names → nothing
+    const mainLabel = job.message || (
+        runningSteps.length > 0
+            ? joinNames(runningSteps.map(s => stepName(s)).filter(Boolean))
+            : null
+    );
 
     return (
         <div className="px-4 pb-3 flex flex-col gap-2">
+            {/* Label for the overall bar */}
+            {mainLabel && (
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-snug truncate">
+                    {mainLabel}
+                </p>
+            )}
+
             {/* Overall job progress */}
             <Progress
                 size="sm"
@@ -36,48 +97,58 @@ const JobProgress: React.FC<{ job: Job }> = ({ job }) => {
                 motionDirection="forward"
             />
 
-            {/* Current action message */}
-            {job.action_message && (
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-snug truncate">
-                    {job.action_message}
-                </p>
-            )}
+            {/* One block per running step: message → bar → size/ETA */}
+            <div className="flex flex-col gap-1.5 mt-2">
+            {runningSteps.map((step, i) => {
+                const hasValueData = step.value > 0 && step.total > 0;
+                if (!hasValueData && !step.hasPercentage) return null;
 
-            {/* Sub-step progress — value+total takes priority; falls back to raw percentage */}
-            {hasSubStep && (() => {
-                const useValueTotal = job.action_value != null && job.action_total != null;
-                const barValue = useValueTotal
-                    ? Math.min(100, Math.round((job.action_value! / job.action_total!) * 100))
-                    : Math.min(100, job.action_percentage!);
+                const barValue = hasValueData
+                    ? Math.min(100, Math.round((step.value / step.total) * 100))
+                    : 0;
 
-                let valueLabel: string;
-                if (useValueTotal) {
-                    const inputUnit = normalizeDataSizeUnit(job.action_value_unit);
-                    const fmt = formatProgressBytes(job.action_value!, job.action_total!, inputUnit);
+                let valueLabel = '';
+                if (hasValueData) {
+                    const inputUnit = normalizeDataSizeUnit(step.unit);
+                    const fmt = formatProgressBytes(step.value, step.total, inputUnit);
                     valueLabel = `${fmt.valueLabel} / ${fmt.totalLabel} ${fmt.unit}`;
-                } else {
-                    valueLabel = `${job.action_percentage}%`;
                 }
 
+                const stepMessage = step.message || step.filename || null;
+                const stepColor = STEP_COLORS[i % STEP_COLORS.length];
+
                 return (
-                    <div className="flex flex-col gap-1">
-                        <Progress size="sm" color={tone} value={barValue} />
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500">
-                                {valueLabel}
-                            </span>
-                            {parseEtaToSeconds(job.action_eta) > 0 && (
-                                <span className="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500 shrink-0">
-                                    ETA {formatEta(job.action_eta!)}
+                    <div key={`${step.name}-${i}`} className="flex flex-col gap-1">
+                        {stepMessage && (
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-snug truncate">
+                                {step.parallel && (
+                                    <span className="text-[10px] font-semibold text-blue-400 dark:text-blue-500 mr-1.5 font-mono">∥</span>
+                                )}
+                                {stepMessage}
+                            </p>
+                        )}
+                        <Progress size="sm" color={stepColor} value={barValue} motion="stripes" motionSpeed="fast" motionDirection="forward" />
+                        {(valueLabel || parseEtaToSeconds(step.eta) > 0) && (
+                            <div className="flex items-center justify-between gap-2">
+                                <span className="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500">
+                                    {valueLabel}
                                 </span>
-                            )}
-                        </div>
+                                {parseEtaToSeconds(step.eta) > 0 && (
+                                    <span className="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500 shrink-0">
+                                        ETA {formatEta(step.eta)}
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
                 );
-            })()}
+            })}
+            </div>
         </div>
     );
 };
+
+// ── JobCard ───────────────────────────────────────────────────────────────────
 
 export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) => {
     const cardRef = useRef<HTMLDivElement>(null);
@@ -92,8 +163,16 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
     }, [highlighted]);
 
     const tone = stateToTone(job.state);
-    const isActive = job.state === 'running' || job.state === 'pending';
+    const isInit = job.state === 'init';
+    const isActive = job.state === 'running' || job.state === 'pending' || isInit;
     const isFailed = job.state === 'failed';
+    const hasSteps = !isInit && (job.steps?.length ?? 0) > 0;
+
+    // Use the first running step's message (or name) as the active subtitle
+    const runningStep = job.steps?.find(s => s.state === 'running');
+    const activeMessage = runningStep
+        ? (runningStep.message || (runningStep.name ? titleCase(runningStep.name) : null))
+        : null;
 
     return (
         <div
@@ -114,7 +193,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
                         {jobTypeIcon(job.job_type)}
                     </div>
 
-                    {/* Title + action */}
+                    {/* Title + active step */}
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                             {job.job_type && (
@@ -131,14 +210,19 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
                                 </span>
                             )}
                             <Pill size="sm" tone={tone} variant="soft">
-                                {job.state}
+                                {job.state === 'init' ? 'Preparing' : job.state}
                             </Pill>
                         </div>
-                        {job.action && (
+                        {job.message && (
                             <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
-                                {job.action}
+                                {job.message}
                             </p>
                         )}
+                        {/* {!job.message && activeMessage && isActive && (
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
+                                {activeMessage}
+                            </p>
+                        )} */}
                     </div>
 
                     {/* Overall % badge (active only) */}
@@ -149,8 +233,15 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
                     )}
                 </div>
 
-                {/* Progress block */}
-                {isActive && <JobProgress job={job} />}
+                {/* Step pipeline — shown when steps are present */}
+                {hasSteps && (
+                    <div className="mt-3">
+                        <StepFlow steps={job.steps} jobActive={isActive} />
+                    </div>
+                )}
+
+                {/* Progress block — active jobs only (hidden during init since steps aren't known yet) */}
+                {isActive && !isInit && <JobProgress job={job} />}
 
                 {/* Result */}
                 {job.result && (

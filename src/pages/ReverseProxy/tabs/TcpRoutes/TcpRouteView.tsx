@@ -123,6 +123,17 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({
     const [routeDirty, setRouteDirty] = useState(false);
     const [saving, setSaving] = useState(false);
 
+    // Fallback: if API didn't return target_vm_details.state, fetch VM directly once
+    useEffect(() => {
+        const vmId = proxyHost.tcp_route?.target_vm_id;
+        if (!vmId || proxyHost.tcp_route?.target_vm_details?.state) return;
+        devopsService.machines
+            .getVirtualMachine(hostname, vmId, !!orchestratorHostId)
+            .then(vm => { if (vm.State) setLocalVmHealth(getVmHealth(vm.State)); })
+            .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [proxyHost.tcp_route?.target_vm_id, proxyHost.tcp_route?.target_vm_details?.state]);
+
     useEffect(() => {
         stopPolling();
         setActionLoading(false);
@@ -221,6 +232,7 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({
                             localVmHealth={localVmHealth}
                             actionLoading={actionLoading}
                             canStartOrResume={canStartOrResume}
+                            availableVms={availableVms}
                             onVmAction={() => void handleVmAction()}
                         />
                     </div>

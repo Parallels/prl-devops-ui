@@ -18,6 +18,7 @@ export {
   DropdownButton,
   // Form Controls
   Input,
+  PasswordInput,
   Textarea,
   Select,
   Combobox,

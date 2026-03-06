@@ -1,8 +1,18 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+    useCallback, useDeferredValue, useEffect, useLayoutEffect,
+    useMemo, useRef, useState, useTransition,
+} from 'react';
 import classNames from 'classnames';
 import { useEventsHub, type EventsHubMessage } from '@/contexts/EventsHubContext';
 import { WebSocketState } from '@/types/WebSocket';
 import { CustomIcon } from '@/controls';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+/** Maximum number of rows rendered at once. Older events beyond this cap are
+ *  still counted / searchable — just not rendered as DOM nodes. */
+const MAX_DISPLAY = 500;
 
 // ---------------------------------------------------------------------------
 // JSON syntax highlighter (no external deps)
@@ -67,8 +77,16 @@ const TYPE_LABELS: Record<string, string> = {
     _other: 'Other',
 };
 
-// Ordered list of filter types
 const FILTER_TYPES = ['', 'pdfm', 'orchestrator', 'health', 'stats', 'system_logs', 'reverse_proxy', '_other'];
+const KNOWN_TYPES = new Set(['pdfm', 'orchestrator', 'health', 'stats', 'system_logs', 'reverse_proxy']);
+
+// ---------------------------------------------------------------------------
+// Enriched message — pre-computed search haystack so filtering is O(1) per msg
+// ---------------------------------------------------------------------------
+interface RichMessage {
+    msg: EventsHubMessage;
+    haystack: string; // lowercased, pre-serialised once
+}
 
 // ---------------------------------------------------------------------------
 // Single event row
@@ -185,60 +203,73 @@ export const Events: React.FC = () => {
     const prevCountRef = useRef(0);
     const isProgrammaticRef = useRef(false);
 
-    // Base pool: all messages oldest-first
-    const allSorted = useMemo(() => {
-        return [...allMessages].sort((a, b) => a.receivedAt - b.receivedAt);
+    // Defer search so the input stays responsive while the filter runs in the background
+    const deferredSearch = useDeferredValue(search);
+
+    // Transition for filter type changes — keeps the UI interactive while re-filtering
+    const [filterPending, startFilterTransition] = useTransition();
+
+    // ── Build sorted + enriched list ────────────────────────────────────────
+    // Pre-compute each message's search haystack once so filter is O(n) string
+    // comparison instead of O(n × JSON.stringify) per keystroke.
+    const richSorted = useMemo<RichMessage[]>(() => {
+        const arr = Array.from(allMessages).sort((a, b) => a.receivedAt - b.receivedAt);
+        return arr.map((msg) => ({
+            msg,
+            haystack: `${msg.raw.event_type} ${msg.raw.message} ${JSON.stringify(msg.raw.body)}`.toLowerCase(),
+        }));
     }, [allMessages]);
 
-    // Filter by event_type. '_other' = anything not in our known list.
-    const KNOWN_TYPES = new Set(['pdfm', 'orchestrator', 'health', 'stats', 'system_logs', 'reverse_proxy']);
+    // ── Type filter ─────────────────────────────────────────────────────────
+    const typeFiltered = useMemo<RichMessage[]>(() => {
+        if (!filterType) return richSorted;
+        if (filterType === '_other') return richSorted.filter((r) => !KNOWN_TYPES.has(r.msg.raw.event_type));
+        return richSorted.filter((r) => r.msg.raw.event_type === filterType);
+    }, [richSorted, filterType]);
 
-    const typeFiltered = useMemo(() => {
-        if (!filterType) return allSorted;
-        if (filterType === '_other') {
-            return allSorted.filter((m) => !KNOWN_TYPES.has(m.raw.event_type));
-        }
-        return allSorted.filter((m) => m.raw.event_type === filterType);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allSorted, filterType]);
-
-    // Apply search across event_type + message + raw body
-    const filtered = useMemo(() => {
-        if (!search.trim()) return typeFiltered;
+    // ── Search filter (uses deferred value) ─────────────────────────────────
+    const filtered = useMemo<RichMessage[]>(() => {
+        const q = deferredSearch.trim();
+        if (!q) return typeFiltered;
         let rx: RegExp | null = null;
-        try { rx = new RegExp(search.trim(), 'i'); } catch { /* fall back to literal */ }
-        const needle = search.trim().toLowerCase();
-        return typeFiltered.filter((m) => {
-            const hay = `${m.raw.event_type} ${m.raw.message} ${JSON.stringify(m.raw.body)}`;
-            return rx ? rx.test(hay) : hay.toLowerCase().includes(needle);
-        });
-    }, [typeFiltered, search]);
+        try { rx = new RegExp(q, 'i'); } catch { /* fall back to literal */ }
+        const needle = q.toLowerCase();
+        return typeFiltered.filter((r) =>
+            rx ? rx.test(r.haystack) : r.haystack.includes(needle)
+        );
+    }, [typeFiltered, deferredSearch]);
 
-    // Counts for filter dropdown
+    // ── Cap rendered rows ───────────────────────────────────────────────────
+    // Never mount more than MAX_DISPLAY DOM nodes — show the most recent slice.
+    const visibleRows = useMemo(
+        () => filtered.length > MAX_DISPLAY ? filtered.slice(-MAX_DISPLAY) : filtered,
+        [filtered]
+    );
+    const hiddenCount = filtered.length - visibleRows.length;
+
+    // ── Type counts for the dropdown ────────────────────────────────────────
     const typeCounts = useMemo(() => {
         const counts: Record<string, number> = {};
-        for (const m of allMessages) {
-            const k = KNOWN_TYPES.has(m.raw.event_type) ? m.raw.event_type : '_other';
+        for (const r of richSorted) {
+            const k = KNOWN_TYPES.has(r.msg.raw.event_type) ? r.msg.raw.event_type : '_other';
             counts[k] = (counts[k] ?? 0) + 1;
         }
         return counts;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [allMessages]);
+    }, [richSorted]);
 
-    // Reset on filter/search change
+    // ── Reset on filter/search change ───────────────────────────────────────
     useLayoutEffect(() => {
         setNewIds(new Set());
         prevCountRef.current = 0;
         setAutoScroll(true);
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-    }, [filterType, search]);
+    }, [filterType, deferredSearch]);
 
-    // Track new IDs (flash 2 s)
+    // ── Track new IDs (flash 2 s) ───────────────────────────────────────────
     useEffect(() => {
-        if (allSorted.length > prevCountRef.current) {
-            const added = allSorted
-                .slice(prevCountRef.current)
-                .map((m) => m.id);
+        const total = richSorted.length;
+        if (total > prevCountRef.current) {
+            const added = richSorted.slice(prevCountRef.current).map((r) => r.msg.id);
             setNewIds((prev) => new Set([...prev, ...added]));
             const timer = setTimeout(() => {
                 setNewIds((prev) => {
@@ -247,22 +278,22 @@ export const Events: React.FC = () => {
                     return next;
                 });
             }, 2000);
-            prevCountRef.current = allSorted.length;
+            prevCountRef.current = total;
             return () => clearTimeout(timer);
         }
-        prevCountRef.current = allSorted.length;
-    }, [allSorted.length]);
+        prevCountRef.current = total;
+    }, [richSorted.length]);
 
-    // Auto-scroll to bottom (newest at bottom, like logs)
+    // ── Auto-scroll to bottom ───────────────────────────────────────────────
     useEffect(() => {
         if (autoScroll && listRef.current) {
             isProgrammaticRef.current = true;
             listRef.current.scrollTop = listRef.current.scrollHeight;
             requestAnimationFrame(() => { isProgrammaticRef.current = false; });
         }
-    }, [filtered, autoScroll]);
+    }, [visibleRows, autoScroll]);
 
-    // Expanding a card freezes auto-scroll; collapsing re-enables
+    // ── Handlers ────────────────────────────────────────────────────────────
     const handleCardToggle = useCallback((expanding: boolean) => {
         setAutoScroll(!expanding);
     }, []);
@@ -274,7 +305,12 @@ export const Events: React.FC = () => {
         prevCountRef.current = 0;
     }, [filterType, clearContainer, clearAllContainers]);
 
-    const contentKey = `${filterType}:${search}:${filtered.length === 0 ? 'empty' : 'has'}`;
+    const handleFilterChange = useCallback((value: string) => {
+        startFilterTransition(() => setFilterType(value));
+    }, [startFilterTransition]);
+
+    const contentKey = `${filterType}:${deferredSearch}:${visibleRows.length === 0 ? 'empty' : 'has'}`;
+    const isStale = search !== deferredSearch || filterPending;
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-neutral-950">
@@ -291,7 +327,12 @@ export const Events: React.FC = () => {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search / regexp…"
-                        className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded pl-7 pr-7 py-1 text-xs font-mono text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50"
+                        className={classNames(
+                            'w-full bg-neutral-50 dark:bg-neutral-900 border rounded pl-7 pr-7 py-1 text-xs font-mono text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50 transition-colors',
+                            isStale
+                                ? 'border-amber-300 dark:border-amber-500/40'
+                                : 'border-neutral-300 dark:border-neutral-700',
+                        )}
                     />
                     {search && (
                         <button type="button" onClick={() => setSearch('')}
@@ -304,8 +345,13 @@ export const Events: React.FC = () => {
                 {/* Event type filter */}
                 <select
                     value={filterType}
-                    onChange={(e) => setFilterType(e.target.value)}
-                    className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded px-2 py-1 text-xs font-mono text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50"
+                    onChange={(e) => handleFilterChange(e.target.value)}
+                    className={classNames(
+                        'border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50 transition-colors',
+                        filterPending
+                            ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300'
+                            : 'bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300',
+                    )}
                 >
                     {FILTER_TYPES.map((t) => {
                         const count = t === '' ? allMessages.length : (typeCounts[t] ?? 0);
@@ -352,21 +398,31 @@ export const Events: React.FC = () => {
                             {allMessages.length === 0 ? 'Waiting for events…' : 'No matches.'}
                         </p>
                     ) : (
-                        filtered.map((msg) => (
-                            <EventRow
-                                key={msg.id}
-                                msg={msg}
-                                isNew={newIds.has(msg.id)}
-                                onToggle={handleCardToggle}
-                            />
-                        ))
+                        <>
+                            {hiddenCount > 0 && (
+                                <p className="text-center text-[10px] font-mono text-neutral-400 dark:text-neutral-600 py-1 mb-1 border-b border-dashed border-neutral-200 dark:border-neutral-800">
+                                    {hiddenCount.toLocaleString()} older events hidden — clear or narrow your filter to see them
+                                </p>
+                            )}
+                            {visibleRows.map(({ msg }) => (
+                                <EventRow
+                                    key={msg.id}
+                                    msg={msg}
+                                    isNew={newIds.has(msg.id)}
+                                    onToggle={handleCardToggle}
+                                />
+                            ))}
+                        </>
                     )}
                 </div>
             </div>
 
             {/* ── Footer ──────────────────────────────────────────────── */}
             <div className="flex items-center justify-between px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 flex-shrink-0">
-                <span>{filtered.length} / {allMessages.length} events</span>
+                <span>
+                    {filtered.length.toLocaleString()} / {allMessages.length.toLocaleString()} events
+                    {hiddenCount > 0 && <span className="ml-1 text-amber-500 dark:text-amber-400">(showing last {MAX_DISPLAY.toLocaleString()})</span>}
+                </span>
                 <ConnectionBadge state={connectionState} />
             </div>
         </div>

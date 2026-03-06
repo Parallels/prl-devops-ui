@@ -49,6 +49,12 @@ export interface ConnectionFlowConnectorConfig {
 
     /** Animated dot color (overrides what is derived from targetTone) */
     dotColor?: string;
+    /**
+     * When true, flowing dots are shown even when this connector's state is `'stopped'`
+     * (i.e. already-traversed / completed edges also animate).
+     * Default: false
+     */
+    animateCompleted?: boolean;
 }
 
 // ── ConnectionFlowItem ────────────────────────────────────────────────────────
@@ -62,10 +68,16 @@ export interface ConnectionFlowItem {
     // Text content
     title?: React.ReactNode;
     titleClassName?: string;
+    /** When true, the card title wraps on word boundaries up to 10 lines instead of truncating. Default: false */
+    titleWrap?: boolean;
+    /** When true, the card title stays on one line and scrolls horizontally. Default: false */
+    titleScroll?: boolean;
     subtitle?: React.ReactNode;
     subtitleClassName?: string;
     description?: React.ReactNode;
     descriptionClassName?: string;
+    /** Optional badge/status slot rendered below description, without tone-derived text styling. */
+    badge?: React.ReactNode;
     // Appearance
     tone?: TreeTone;
     // Expandable body
@@ -97,6 +109,31 @@ export interface ConnectionFlowItem {
      * Default: false
      */
     active?: boolean;
+    /**
+     * When true, this item is part of a parallel group. Consecutive items with
+     * parallel=true are rendered as a single vertical column instead of separate
+     * horizontal nodes. Fan-out (1→N) and fan-in (N→1) connectors are added automatically.
+     * Default: false
+     */
+    parallel?: boolean;
+    /**
+     * When true, the card shows a subtle hover lift effect (shadow + translate-y).
+     * Default: false
+     */
+    hoverable?: boolean;
+    /**
+     * When true, overlays a pulsing background animation on the card (uses the item's tone).
+     * Typically combined with `active: true` to indicate in-progress steps.
+     * Default: false
+     */
+    activePulse?: boolean;
+    /**
+     * When true, this step was skipped — the execution flow bypassed it.
+     * A visual bypass arc is drawn from the last non-skipped predecessor to the
+     * first non-skipped successor, arching over all consecutive skipped items.
+     * Default: false
+     */
+    skipped?: boolean;
 }
 
 // ── ConnectionFlowProps ───────────────────────────────────────────────────────
@@ -157,7 +194,46 @@ export interface ConnectionFlowProps {
      * Primarily useful when `allowScroll` is enabled.
      */
     itemWidth?: number | string;
+    /**
+     * When true, automatically scales the entire flow down to fit the container width.
+     * Once the scale would go below `minScale`, the flow is clamped and allowed to scroll.
+     * Default: false
+     */
+    autoScale?: boolean;
+    /**
+     * Minimum CSS scale factor applied when `autoScale` is true.
+     * Below this value the flow falls back to horizontal scroll instead of shrinking further.
+     * Default: 0.55
+     */
+    minScale?: number;
     className?: string;
     /** Extra content to render to the right of the entire flow (e.g. an expand toggle) */
     rightAction?: React.ReactNode;
+    /**
+     * When true, all cards in the flow show a hover lift effect.
+     * Default: false
+     */
+    hoverable?: boolean;
+    /**
+     * When true, flowing dots are rendered on `'stopped'` (completed / already-traversed)
+     * connectors in addition to `'flowing'` ones. Bypass arcs over skipped steps always
+     * animate when `animated` is true, regardless of this flag.
+     * Default: false
+     */
+    animateCompleted?: boolean;
+    /**
+     * When true, the engine automatically manages connector states and skipped detection
+     * based purely on each item's `tone`:
+     *
+     * - **Connector state** (when no explicit `connector.state` is set):
+     *   - Non-neutral source tone → `'stopped'` (solid toned line — step was traversed)
+     *   - Neutral source tone     → `'disabled'` (dashed gray  — step not yet reached)
+     *
+     * - **Skipped detection**: a neutral-tone item that has at least one non-neutral
+     *   successor is automatically treated as skipped — a bypass arc is drawn over it.
+     *
+     * Explicit per-item `connector.state` or `item.skipped` values always take precedence.
+     * Default: false
+     */
+    autoConnectorState?: boolean;
 }

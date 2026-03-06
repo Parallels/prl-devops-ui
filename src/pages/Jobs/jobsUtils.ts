@@ -5,7 +5,9 @@ import type { TreeTone } from '@prl/ui-kit';
 export function stateToTone(state: string): TreeTone {
     switch (state) {
         case 'running':   return 'blue';
-        case 'pending':   return 'cyan';
+        case 'pending':   return 'neutral';
+        case 'init':      return 'sky';
+        case 'skipped':   return 'cyan';
         case 'completed': return 'emerald';
         case 'failed':    return 'rose';
         default:          return 'neutral';
@@ -39,6 +41,26 @@ export function formatTimestamp(iso: string): string {
 
 export function titleCase(s: string): string {
     return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Returns the best display name for a step: display_name → titleCase(name) → fallback */
+export function stepName(step: { name?: string; display_name?: string }, fallback = ''): string {
+    if (step.display_name) return step.display_name;
+    if (step.name) return titleCase(step.name);
+    return fallback;
+}
+
+/**
+ * Builds a natural-language list sentence from an array of names.
+ * 1 item  → "A"
+ * 2 items → "A and B"
+ * 3+      → "A, B, and C"
+ */
+export function joinNames(names: string[]): string {
+    if (names.length === 0) return '';
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} and ${names[1]}`;
+    return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
 }
 
 /**

@@ -71,6 +71,7 @@ export interface ModalProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "
   size?: ModalSize;
   maxWidth?: number | string;
   minWidth?: number | string;
+  minHeight?: number | string;
   backgroundClassName?: string;
   background_color?: string;
   darkOverlay?: boolean;
@@ -107,6 +108,7 @@ const Modal: React.FC<ModalProps> = ({
   size = "md",
   maxWidth,
   minWidth,
+  minHeight,
   backgroundClassName,
   background_color,
   darkOverlay,
@@ -185,6 +187,7 @@ const Modal: React.FC<ModalProps> = ({
     ...(resolvedWidth ? { width: resolvedWidth } : undefined),
     ...(resolvedMaxWidth ? { maxWidth: resolvedMaxWidth } : undefined),
     ...(minWidth !== undefined ? { minWidth: toCssDimension(minWidth) } : undefined),
+    ...(minHeight !== undefined ? { minHeight: toCssDimension(minHeight) } : undefined),
     ...style,
   };
 

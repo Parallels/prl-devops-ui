@@ -12,9 +12,11 @@ export interface ColumnGeometry {
     totalHeight: number;
     /**
      * Y offsets (from the TOP of the column) to the centre of each source card.
-     * anchors[0] = parent card, anchors[1..] = child cards.
+     * anchors[0] = parent card, anchors[1..] = child cards (or parallel items).
      */
     anchors: number[];
+    /** True when this geometry represents a parallel group (not a single-item column). */
+    isParallelGroup?: boolean;
 }
 
 // ── useElementHeight ──────────────────────────────────────────────────────────
@@ -42,6 +44,7 @@ interface ChildRowProps {
     item: ConnectionFlowItem;
     index: number;
     globalTone?: TreeTone;
+    hoverable?: boolean;
     onHeightChange: (h: number) => void;
     onAnchorChange: (a: number) => void;
     onToneChange: (t: TreeTone) => void;
@@ -49,7 +52,7 @@ interface ChildRowProps {
 }
 
 const ChildRow: React.FC<ChildRowProps> = ({
-    item, index, globalTone,
+    item, index, globalTone, hoverable = false,
     onHeightChange, onAnchorChange, onToneChange, onActiveChange,
 }) => {
     const rowRef = useRef<HTMLDivElement>(null);
@@ -77,11 +80,16 @@ const ChildRow: React.FC<ChildRowProps> = ({
             <TreeItemCard
                 icon={item.icon} iconClassName={item.iconClassName}
                 title={item.title} titleClassName={item.titleClassName}
+                titleWrap={item.titleWrap}
+                titleScroll={item.titleScroll}
                 subtitle={item.subtitle} subtitleClassName={item.subtitleClassName}
                 description={item.description} descriptionClassName={item.descriptionClassName}
+                badge={item.badge}
                 tone={resolvedTone}
                 body={item.body} defaultExpanded={item.defaultExpanded}
                 actions={item.actions} hoverActions={item.hoverActions}
+                hoverable={hoverable}
+                activePulse={item.activePulse}
                 index={index}
             />
         </div>
@@ -105,6 +113,8 @@ export interface ConnectionFlowColumnProps {
     onGeometryChange?: (geo: ColumnGeometry) => void;
     /** When true, forces all child branches to animate (mirrors parent connection state). */
     flowActive?: boolean;
+    /** When true, cards show a hover lift effect. */
+    hoverable?: boolean;
 }
 
 // Gap between parent card bottom and first child card top (mt-2)
@@ -118,7 +128,7 @@ const ConnectionFlowColumn: React.FC<ConnectionFlowColumnProps> = ({
     animated = true, showLine = true,
     connectorHalf = true, connectorBorderSize = 'xs', dotSpacing = 50,
     itemWidth,
-    onGeometryChange, flowActive = false,
+    onGeometryChange, flowActive = false, hoverable = false,
 }) => {
     const hasChildren = !!(item.children && item.children.length > 0);
     const resolvedTone: TreeTone = item.tone ?? globalTone ?? 'neutral';
@@ -187,11 +197,16 @@ const ConnectionFlowColumn: React.FC<ConnectionFlowColumnProps> = ({
                 <TreeItemCard
                     icon={item.icon} iconClassName={item.iconClassName}
                     title={item.title} titleClassName={item.titleClassName}
+                    titleWrap={item.titleWrap}
+                    titleScroll={item.titleScroll}
                     subtitle={item.subtitle} subtitleClassName={item.subtitleClassName}
                     description={item.description} descriptionClassName={item.descriptionClassName}
+                    badge={item.badge}
                     tone={resolvedTone}
                     body={item.body} defaultExpanded={item.defaultExpanded}
                     actions={item.actions} hoverActions={item.hoverActions}
+                    hoverable={hoverable}
+                    activePulse={item.activePulse}
                 />
             </div>
 
@@ -204,6 +219,7 @@ const ConnectionFlowColumn: React.FC<ConnectionFlowColumnProps> = ({
                             item={child}
                             index={i}
                             globalTone={globalTone}
+                            hoverable={hoverable}
                             onHeightChange={(h) => updH(i, h)}
                             onAnchorChange={(a) => updA(i, a)}
                             onToneChange={(t) => updT(i, t)}

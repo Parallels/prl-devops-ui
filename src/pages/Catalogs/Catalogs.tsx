@@ -15,11 +15,13 @@ import {
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { CatalogManager } from '@/interfaces/CatalogManager';
-import { Claims } from '@/interfaces/tokenTypes';
+import { CatalogPushRequest } from '@/interfaces/devops';
+import { Claims, Modules } from '@/interfaces/tokenTypes';
 import { devopsService } from '@/services/devops';
 import { PageHeaderIcon } from '@/components/PageHeader';
 import { CatalogDetailContent, CatalogVersionsContent } from './CatalogDetailPanel';
 import { CatalogManagerEditorModal, DeleteCatalogManagerModal } from './CatalogManagerModals';
+import { UploadCatalogModal } from './CatalogUploadModal';
 import { DownloadCatalogVmModal, DownloadVmFormData } from './CatalogVmModals';
 import { CatalogManagersPanel, CatalogSourcePanel, type CatalogSourceStats } from './CatalogPanels';
 import {
@@ -55,6 +57,7 @@ const defaultDownloadVmForm: DownloadVmFormData = {
   path: '',
   cpu: '',
   memory: '',
+  target: 'host',
 };
 
 const formatCount = (value: number, singular: string, plural: string): string =>
@@ -96,6 +99,13 @@ export const Catalogs: React.FC = () => {
   const [downloadVmForm, setDownloadVmForm] = useState<DownloadVmFormData>(defaultDownloadVmForm);
   const [downloadVmError, setDownloadVmError] = useState<string | null>(null);
   const [downloadVmLoading, setDownloadVmLoading] = useState(false);
+
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+
+  const hasHostModule = hasModule(Modules.HOST);
+  const hasOrchestratorModule = hasModule(Modules.ORCHESTRATOR);
 
   const hasCreateManager = hasClaim(Claims.CATALOG_MANAGER_CREATE);
   const hasCreateManagerOwn = hasClaim(Claims.CATALOG_MANAGER_CREATE_OWN);
@@ -319,6 +329,7 @@ export const Catalogs: React.FC = () => {
       path: '',
       cpu: item.row.specs.cpu ?? '',
       memory: item.row.specs.memory ?? '',
+      target: 'host',
     });
   }, [session?.tokenPayload?.username]);
 
@@ -367,13 +378,17 @@ export const Catalogs: React.FC = () => {
         ...(Object.keys(specs).length > 0 ? { specs } : {}),
       };
 
-      await devopsService.machines.createVirtualMachineFromCatalogAsync(hostname, {
-        name: trimmedName,
-        startOnCreate: downloadVmForm.startOnCreate,
-        architecture,
-        owner: trimmedOwner,
-        catalog_manifest: catalogManifestPayload,
-      });
+      await devopsService.machines.createVirtualMachineFromCatalogAsync(
+        hostname,
+        {
+          name: trimmedName,
+          startOnCreate: downloadVmForm.startOnCreate,
+          architecture,
+          owner: trimmedOwner,
+          catalog_manifest: catalogManifestPayload,
+        },
+        downloadVmForm.target === 'orchestrator',
+      );
       closeDownloadVmModal();
     } catch (err: any) {
       setDownloadVmError(err?.message ?? 'Failed to start VM download.');
@@ -381,6 +396,20 @@ export const Catalogs: React.FC = () => {
       setDownloadVmLoading(false);
     }
   }, [closeDownloadVmModal, downloadVmForm, downloadVmModalItem, hostname]);
+
+  const handleUploadCatalog = useCallback(async (data: CatalogPushRequest) => {
+    setUploadLoading(true);
+    setUploadError(null);
+    try {
+      await devopsService.catalog.pushCatalog(hostname, data);
+      setIsUploadModalOpen(false);
+      setCatalogReloadToken((prev) => prev + 1);
+    } catch (err: any) {
+      setUploadError(err?.message ?? 'Failed to upload catalog.');
+    } finally {
+      setUploadLoading(false);
+    }
+  }, [hostname]);
 
   const items = useMemo<SplitViewItem[]>(
     () =>
@@ -442,13 +471,6 @@ export const Catalogs: React.FC = () => {
                 setActiveDetailTab(tab ?? 'details');
               }}
               onDownloadRow={(row) => openDownloadVmModal({ source, row })}
-              onDeleteRow={(row) => {
-                setCatalogToDelete({
-                  source,
-                  manifestId: row.manifestId,
-                  version: row.version !== '-' ? row.version : undefined,
-                });
-              }}
               onStatsChange={(stats) => {
                 setSourceStats((prev) => ({ ...prev, [source.id]: stats }));
               }}
@@ -529,6 +551,7 @@ export const Catalogs: React.FC = () => {
         panelHeaderProps={(activeItem) => {
           const stats = sourceStats[activeItem.id] ?? { manifests: 0, versions: 0, images: 0 };
           const hasDetails = stats.manifests > 0 || stats.versions > 0 || stats.images > 0;
+          const hasItems = stats.manifests > 0;
           return {
             title: <span className="text-neutral-700 dark:text-neutral-300">{activeItem.label}</span>,
             icon: (
@@ -537,7 +560,8 @@ export const Catalogs: React.FC = () => {
               </PageHeaderIcon>
             ),
             subtitle: activeItem.subtitle,
-            search: (
+            search: hasItems ? (
+
               <SearchBar
                 leadingIcon="Search"
                 variant="gradient"
@@ -545,16 +569,25 @@ export const Catalogs: React.FC = () => {
                 placeholder="Search catalogs, versions, tags"
                 onSearch={setQuery}
                 className="w-52"
+                color={themeColor}
               />
-            ),
+            ) : undefined,
             helper: {
               title: 'Upload Catalog',
               color: themeColor,
               content: "Catalogs are used to store and manage catalog metadata for download of virtual machines golden images for each user. [See documentation](https://parallels.github.io/prl-devops-service/docs/devops/catalog/overview/)"
             },
-            actions: (
-              <Button variant="soft" color={themeColor} size="sm" leadingIcon="Add">Upload Catalog</Button>
-            ),
+            actions: hasHostModule ? (
+              <Button
+                variant="soft"
+                color={themeColor}
+                size="sm"
+                leadingIcon="Add"
+                onClick={() => { setIsUploadModalOpen(true); setUploadError(null); }}
+              >
+                Upload Catalog
+              </Button>
+            ) : undefined,
             headerDetails: hasDetails
               ? {
                 title: 'Catalog Overview',
@@ -677,6 +710,15 @@ export const Catalogs: React.FC = () => {
         </p>
       </DeleteConfirmModal>
 
+      <UploadCatalogModal
+        isOpen={isUploadModalOpen}
+        hostname={hostname}
+        loading={uploadLoading}
+        error={uploadError}
+        onClose={() => { setIsUploadModalOpen(false); setUploadError(null); }}
+        onSubmit={(data) => void handleUploadCatalog(data)}
+      />
+
       <DownloadCatalogVmModal
         isOpen={!!downloadVmModalItem}
         loading={downloadVmLoading}
@@ -686,6 +728,8 @@ export const Catalogs: React.FC = () => {
         version={downloadVmModalItem?.row.version !== '-' ? downloadVmModalItem?.row.version : undefined}
         architecture={downloadVmModalItem?.row.architecture !== '-' ? downloadVmModalItem?.row.architecture : undefined}
         managerId={downloadVmModalItem?.source.managerId}
+        hasHostModule={hasHostModule}
+        hasOrchestratorModule={hasOrchestratorModule}
         onClose={closeDownloadVmModal}
         onSubmit={() => void handleDownloadVm()}
         onFormChange={setDownloadVmForm}

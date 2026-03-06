@@ -3,11 +3,13 @@ import classNames from 'classnames';
 import {
     Button,
     ConnectionFlow,
+    Pill,
     ReverseProxyFrom,
     ReverseProxyTo,
     VirtualMachine as VirtualMachineIcon,
 } from '@prl/ui-kit';
 import type { ReverseProxyHost, ReverseProxyHostTcpRoute } from '@/interfaces/ReverseProxy';
+import type { VirtualMachine } from '@/interfaces/VirtualMachine';
 import type { VmHealth } from './types';
 import { healthToTone } from './types';
 
@@ -18,7 +20,25 @@ interface TcpFlowHeaderProps {
     localVmHealth: VmHealth;
     actionLoading: boolean;
     canStartOrResume: boolean;
+    availableVms: VirtualMachine[];
     onVmAction: () => void;
+}
+
+function proxyStatusBadge(proxyEnabled: boolean, health: VmHealth) {
+    if (!proxyEnabled) return <Pill size="sm" tone="neutral" variant="soft">Disabled</Pill>;
+    if (health === 'running') return <Pill size="sm" tone="emerald" variant="soft">Running</Pill>;
+    return <Pill size="sm" tone="sky" variant="soft">Waiting</Pill>;
+}
+
+function vmHealthBadge(health: VmHealth, proxyEnabled: boolean) {
+    if (!proxyEnabled) return null;
+    switch (health) {
+        case 'running':   return <Pill size="sm" tone="emerald" variant="soft">Running</Pill>;
+        case 'stopped':   return <Pill size="sm" tone="rose" variant="soft">Stopped</Pill>;
+        case 'paused':    return <Pill size="sm" tone="amber" variant="soft">Paused</Pill>;
+        case 'suspended': return <Pill size="sm" tone="amber" variant="soft">Suspended</Pill>;
+        default:          return <Pill size="sm" tone="neutral" variant="soft">Unknown</Pill>;
+    }
 }
 
 const TcpFlowHeader: React.FC<TcpFlowHeaderProps> = ({
@@ -28,13 +48,14 @@ const TcpFlowHeader: React.FC<TcpFlowHeaderProps> = ({
     localVmHealth,
     actionLoading,
     canStartOrResume,
+    availableVms,
     onVmAction,
 }) => {
     const hasVmTarget = !!tcpRoute.target_vm_id;
     const effectiveHealth: VmHealth = hasVmTarget ? localVmHealth : 'running';
 
     const targetLabel = tcpRoute.target_vm_id
-        ? (tcpRoute.target_vm_details?.name ?? tcpRoute.target_vm_id)
+        ? (tcpRoute.target_vm_details?.name ?? availableVms.find(v => v.ID === tcpRoute.target_vm_id)?.Name ?? tcpRoute.target_vm_id)
         : (tcpRoute.target_host ?? '—');
     const resolvedTargetPort = tcpRoute.target_port ?? '—';
 
@@ -64,7 +85,7 @@ const TcpFlowHeader: React.FC<TcpFlowHeaderProps> = ({
                     title: 'Listening',
                     titleClassName: 'uppercase tracking-wider text-[10px]',
                     subtitle: `${proxyHost.host || '0.0.0.0'}:${proxyHost.port}`,
-                    description: !proxyEnabled ? 'Proxy disabled' : 'Allowing Traffic',
+                    badge: proxyStatusBadge(proxyEnabled, effectiveHealth),
                 },
                 {
                     id: 'target-parent',
@@ -75,7 +96,7 @@ const TcpFlowHeader: React.FC<TcpFlowHeaderProps> = ({
                     title: hasVmTarget ? 'Target VM' : 'Target',
                     titleClassName: 'uppercase tracking-wider text-[10px]',
                     subtitle: `${targetLabel}:${resolvedTargetPort}`,
-                    description: hasVmTarget ? localVmHealth : undefined,
+                    badge: hasVmTarget ? vmHealthBadge(effectiveHealth, proxyEnabled) : undefined,
                     actions: targetActions,
                 }
             ]}

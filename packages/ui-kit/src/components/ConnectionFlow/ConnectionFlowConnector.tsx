@@ -69,15 +69,45 @@ export interface ConnectionFlowConnectorProps {
      */
     leftAnchors?: number[];
     /**
-     * Total height the connector should occupy (= source column height).
-     * Required when leftAnchors is set to more than one entry.
+     * Total height the connector should occupy.
+     * Defaults to the source column height; pass max(source, target) when heights differ.
      */
     connectorHeight?: number;
+    /**
+     * Y offset of the TARGET card's centre from the top of the connector space.
+     * When different from the source anchor, a bezier curve is drawn between the
+     * two ring positions instead of a straight horizontal line.
+     * Defaults to the source anchor (straight line).
+     */
+    rightAnchorY?: number;
     /**
      * Tones for extra source rings (index 0 = parent, already set via sourceTone).
      * Used to colour child source rings independently.
      */
     extraSourceTones?: TreeTone[];
+    /**
+     * Fan-out mode: Y offsets from the TOP of the connector space for each TARGET card's centre.
+     * When provided and length > 1, a vertical trunk is drawn on the RIGHT side
+     * connecting all target rings, and each target gets its own dotted line from the LEFT entry ring.
+     */
+    rightAnchors?: number[];
+    /**
+     * Tones for each right-side ring in fan-out mode.
+     * Index i corresponds to rightAnchors[i]. Falls back to targetTone.
+     */
+    rightAnchorTones?: TreeTone[];
+    /**
+     * Per-lane active state for fan-out mode.
+     * Index i corresponds to rightAnchors[i]. When provided, each lane's animation is
+     * controlled independently. Falls back to the overall `state`.
+     */
+    rightAnchorStates?: ConnectionState[];
+    /**
+     * When true, flowing dots are shown even when `state` is `'stopped'`
+     * (already-traversed / completed connectors also animate).
+     * Default: false
+     */
+    animateCompleted?: boolean;
 }
 
 const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
@@ -100,14 +130,23 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
     dotColor: dotColorOvr,
     leftAnchors,
     connectorHeight,
+    rightAnchorY,
     extraSourceTones = [],
+    rightAnchors,
+    rightAnchorTones = [],
+    rightAnchorStates = [],
+    animateCompleted = false,
 }) => {
     const isDark = useIsDark();
     const ci = isDark ? 1 : 0;
     const bw = BORDER_WIDTH[borderSize];
     const ringR = 5.5;
+    const STRAIGHT = 8; // tangent length so bezier curves arrive/depart horizontally at rings
 
-    const isActive = state === 'flowing';
+    // isActive gates animated-dot rendering; extended to 'stopped' when animateCompleted is on
+    const isActive = state === 'flowing' || (animateCompleted && state === 'stopped');
+    // Show tone colors for both 'flowing' and 'stopped' — only 'disabled' uses neutral gray
+    const showTone = state !== 'disabled';
 
     // Resolved color tokens for sourceTone (parent)
     const srcTokens = getTreeColorTokens(sourceTone);
@@ -116,19 +155,27 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
     const srcFill = srcFillOvr ?? srcTokens.connFill[ci];
     const srcBorder = srcBorderOvr ?? srcTokens.connBorder[ci];
     const srcDot = srcDotOvr ?? srcTokens.connDot[ci];
-    const dstFill = dstFillOvr ?? (isActive ? dstTokens.connFill[ci] : NEUTRAL_TOKENS.connFill[ci]);
-    const dstBorder = dstBorderOvr ?? (isActive ? dstTokens.connBorder[ci] : NEUTRAL_TOKENS.connBorder[ci]);
-    const dstDot = dstDotOvr ?? (isActive ? dstTokens.connDot[ci] : NEUTRAL_TOKENS.connDot[ci]);
+    const dstFill = dstFillOvr ?? (showTone ? dstTokens.connFill[ci] : NEUTRAL_TOKENS.connFill[ci]);
+    const dstBorder = dstBorderOvr ?? (showTone ? dstTokens.connBorder[ci] : NEUTRAL_TOKENS.connBorder[ci]);
+    const dstDot = dstDotOvr ?? (showTone ? dstTokens.connDot[ci] : NEUTRAL_TOKENS.connDot[ci]);
     // Keep connector lines on the same tonal ramp as connector rings/cards.
-    const lineColor = isActive ? dstTokens.connBorder[ci] : NEUTRAL_TOKENS.connBorder[ci];
+    const lineColor = showTone ? dstTokens.connBorder[ci] : NEUTRAL_TOKENS.connBorder[ci];
     const animDotColor = dotColorOvr ?? (isActive ? dstTokens.connDot[ci] : NEUTRAL_TOKENS.connDot[ci]);
 
-    // ── Simple vs multi-source mode ───────────────────────────────────────────
+    // ── Simple vs multi-source / fan-out mode ─────────────────────────────────
     const isMultiSource = !!(leftAnchors && leftAnchors.length > 1);
+    const isMultiTarget = !!(rightAnchors && rightAnchors.length > 1);
     // Connector SVG spans the full column height when geometry is known
     const svgH = connectorHeight ?? (ringR * 2 + 4);
-    // Parent card anchor Y — positions the main ring + right-side ring
-    const my = leftAnchors?.[0] ?? (svgH / 2);
+    // Source anchor Y (left ring) — first left anchor or vertical centre of SVG
+    const sy = leftAnchors?.[0] ?? (svgH / 2);
+    // Target anchor Y (right ring) — when provided and different, draw a bezier curve
+    const ty = rightAnchorY ?? sy;
+    // Keep legacy name for multi-source code that uses `my` throughout
+    const my = sy;
+
+    // Fan-out: control-point X for bezier curves from source to each target lane
+    const fanOutCx = width / 2;
 
     // Global dot animation timing (px/s)
     const DOT_VELOCITY = 35;
@@ -138,15 +185,12 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
     // Source right-facing: opens rightward (sweep=1)
     const srcArc = (y: number) =>
         `M 0 ${y - ringR} A ${ringR} ${ringR} 0 0 1 0 ${y + ringR}`;
-    // Target left-facing: opens leftward (sweep=0)
-    const dstArc = `M ${width} ${my - ringR} A ${ringR} ${ringR} 0 0 0 ${width} ${my + ringR}`;
+    // Target left-facing: opens leftward (sweep=0) — uses target anchor Y
+    const dstArc = `M ${width} ${ty - ringR} A ${ringR} ${ringR} 0 0 0 ${width} ${ty + ringR}`;
 
     // Trunk X — middle of the connector gap
     const trunkX = width / 2;
     // In multi-source, the vertical trunk on the left spans from first to last anchor
-    const firstAnchor = leftAnchors?.[0] ?? my;
-    const lastAnchor = leftAnchors?.[leftAnchors.length - 1] ?? my;
-
     return (
         <div
             className="relative z-10 flex items-start justify-center shrink-0 -mx-[1px]"
@@ -159,47 +203,65 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                 overflow="visible"
                 style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
             >
-                {/* ── Vertical trunk (multi-source only) — drawn BEFORE rings ── */}
-                {isMultiSource && showLine && (
-                    <path
-                        d={`M ${trunkX} ${firstAnchor} L ${trunkX} ${lastAnchor}`}
-                        stroke={lineColor}
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        fill="none"
-                    />
-                )}
 
-                {/* ── Horizontal line(s) ────────────────────────────────── */}
+{/* ── Horizontal line(s) ────────────────────────────────── */}
                 {showLine && (
                     isMultiSource ? (
                         <>
-                            {/* Parent line goes all the way across */}
+                            {/* Bezier curves per source lane converging to the feed entry point (trunkX, sy) */}
+                            {leftAnchors!.map((ay, idx) => (
+                                <path
+                                    key={`hline-src-${idx}`}
+                                    d={ay === sy
+                                        ? `M 0 ${ay} L ${trunkX} ${sy}`
+                                        : `M 0 ${ay} L ${STRAIGHT} ${ay} C ${trunkX / 2} ${ay}, ${trunkX - STRAIGHT} ${sy}, ${trunkX} ${sy}`
+                                    }
+                                    stroke={lineColor}
+                                    strokeWidth={idx === 0 ? 2 : 1.5}
+                                    strokeLinecap="round"
+                                    strokeDasharray={state === 'disabled' ? '4 4' : undefined}
+                                    strokeOpacity={idx === 0 ? 1 : 0.75}
+                                    fill="none"
+                                />
+                            ))}
+                            {/* Feed line from trunk to right ring — straight or bezier */}
                             <path
-                                d={`M 0 ${firstAnchor} L ${width - ringR} ${firstAnchor}`}
+                                d={sy === ty
+                                    ? `M ${trunkX} ${sy} L ${width - ringR} ${ty}`
+                                    : `M ${trunkX} ${sy} C ${(trunkX + width) / 2} ${sy}, ${(trunkX + width) / 2} ${ty}, ${width - ringR} ${ty}`
+                                }
                                 stroke={lineColor}
                                 strokeWidth={2}
                                 strokeLinecap="round"
                                 strokeDasharray={state === 'disabled' ? '4 4' : undefined}
                                 fill="none"
                             />
-                            {/* Children branches go from source to trunk */}
-                            {leftAnchors!.slice(1).map((ay, idx) => (
+                        </>
+                    ) : isMultiTarget ? (
+                        <>
+                            {/* One smooth bezier curve per target lane — departs and arrives horizontally */}
+                            {rightAnchors!.map((ry, idx) => (
                                 <path
-                                    key={`hline-child-${idx}`}
-                                    d={`M 0 ${ay} L ${trunkX} ${ay}`}
+                                    key={`hline-target-${idx}`}
+                                    d={ry === sy
+                                        ? `M ${ringR} ${sy} L ${width - ringR} ${ry}`
+                                        : `M ${ringR} ${sy} L ${ringR + STRAIGHT} ${sy} C ${fanOutCx} ${sy}, ${width - ringR - STRAIGHT} ${ry}, ${width - ringR} ${ry}`
+                                    }
                                     stroke={lineColor}
-                                    strokeWidth={1.5}
+                                    strokeWidth={idx === 0 ? 2 : 1.5}
                                     strokeLinecap="round"
                                     strokeDasharray={state === 'disabled' ? '4 4' : undefined}
-                                    strokeOpacity={0.75}
+                                    strokeOpacity={idx === 0 ? 1 : 0.75}
                                     fill="none"
                                 />
                             ))}
                         </>
                     ) : (
                         <path
-                            d={`M ${ringR} ${my} L ${width - ringR} ${my}`}
+                            d={sy === ty
+                                ? `M ${ringR} ${sy} L ${width - ringR} ${ty}`
+                                : `M ${ringR} ${sy} C ${width / 2} ${sy}, ${width / 2} ${ty}, ${width - ringR} ${ty}`
+                            }
                             stroke={lineColor}
                             strokeWidth={2}
                             strokeLinecap="round"
@@ -251,80 +313,137 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                     </g>
                 )}
 
-                {/* ── Target entry ring (always one, at parent anchor Y) ── */}
-                <g>
-                    {halfRing ? (
-                        <>
-                            <path d={dstArc} fill={dstFill} />
-                            <path d={dstArc} stroke={dstBorder} strokeWidth={bw} fill="none" strokeLinecap="round" />
-                        </>
-                    ) : (
-                        <>
-                            <circle cx={width} cy={my} r={ringR} fill={dstFill} />
-                            <circle cx={width} cy={my} r={ringR} stroke={dstBorder} strokeWidth={bw} fill="none" />
-                        </>
-                    )}
-                    <circle cx={width} cy={my} r="2" fill={dstDot} />
-                </g>
+                {/* ── Target entry ring(s) ── */}
+                {isMultiTarget ? (
+                    rightAnchors!.map((ry, idx) => {
+                        const tone = rightAnchorTones[idx] ?? targetTone;
+                        const tok = getTreeColorTokens(tone);
+                        const laneState = rightAnchorStates[idx] ?? state;
+                        const laneTone = laneState !== 'disabled';
+                        const fill = laneTone ? tok.connFill[ci] : NEUTRAL_TOKENS.connFill[ci];
+                        const border = laneTone ? tok.connBorder[ci] : NEUTRAL_TOKENS.connBorder[ci];
+                        const dot = laneTone ? tok.connDot[ci] : NEUTRAL_TOKENS.connDot[ci];
+                        const arc = `M ${width} ${ry - ringR} A ${ringR} ${ringR} 0 0 0 ${width} ${ry + ringR}`;
+                        return (
+                            <g key={`dst-${idx}`}>
+                                {halfRing ? (
+                                    <>
+                                        <path d={arc} fill={fill} />
+                                        <path d={arc} stroke={border} strokeWidth={bw} fill="none" strokeLinecap="round" />
+                                    </>
+                                ) : (
+                                    <>
+                                        <circle cx={width} cy={ry} r={ringR} fill={fill} />
+                                        <circle cx={width} cy={ry} r={ringR} stroke={border} strokeWidth={bw} fill="none" />
+                                    </>
+                                )}
+                                <circle cx={width} cy={ry} r="2" fill={dot} />
+                            </g>
+                        );
+                    })
+                ) : (
+                    <g>
+                        {halfRing ? (
+                            <>
+                                <path d={dstArc} fill={dstFill} />
+                                <path d={dstArc} stroke={dstBorder} strokeWidth={bw} fill="none" strokeLinecap="round" />
+                            </>
+                        ) : (
+                            <>
+                                <circle cx={width} cy={ty} r={ringR} fill={dstFill} />
+                                <circle cx={width} cy={ty} r={ringR} stroke={dstBorder} strokeWidth={bw} fill="none" />
+                            </>
+                        )}
+                        <circle cx={width} cy={ty} r="2" fill={dstDot} />
+                    </g>
+                )}
 
                 {/* ── Animated dots ────────────────────────────────────── */}
-                {isActive && animated && (
-                    isMultiSource ? (
-                        // One set of dots per horizontal lane
-                        leftAnchors!.map((ay, idx) => {
-                            const isParent = idx === 0;
+                {animated && (
+                    isMultiTarget ? (() => {
+                        // Fan-out: one bezier-path dot set per ACTIVE target lane
+                        return rightAnchors!.map((ry, idx) => {
+                            const laneState = rightAnchorStates[idx] ?? state;
+                            const laneActive = laneState === 'flowing';
+                            if (!laneActive) return null;
 
-                            const l1_raw = isParent ? (width - ringR) : trunkX;
-                            const l2_raw = isParent ? 0 : Math.abs(ay - firstAnchor);
-                            const l3_raw = isParent ? 0 : (width - trunkX - ringR);
-                            const actualLen = l1_raw + l2_raw + l3_raw;
-
-                            // To maintain exact DOT_VELOCITY, path duration MUST be an integer multiple of DOT_GAP.
-                            // We achieve this by artificially extending the path past the target, letting dots travel invisibly.
-                            const childNumDots = Math.max(1, Math.ceil(actualLen / dotSpacing));
-                            const virtualLen = childNumDots * dotSpacing;
-                            const pathDur = childNumDots * DOT_GAP;
-
-                            // How much extra distance to add to the final segment
+                            // Approximate arc length: horizontal span + half the vertical delta (bezier correction)
+                            const actualLen = (width - 2 * ringR) + Math.abs(ry - sy) * 0.5;
+                            const numDots = Math.max(1, Math.ceil(actualLen / dotSpacing));
+                            const virtualLen = numDots * dotSpacing;
+                            const pathDur = numDots * DOT_GAP;
                             const overflow = Math.max(0, virtualLen - actualLen);
 
-                            // Build extended path
-                            let pathData = "";
-                            let l1 = l1_raw, l2 = l2_raw, l3 = l3_raw;
+                            // Same bezier as the visual line; append a short L for overflow fade-out
+                            const pathData = ry === sy
+                                ? `M ${ringR} ${sy} L ${width - ringR + overflow} ${sy}`
+                                : `M ${ringR} ${sy} L ${ringR + STRAIGHT} ${sy} C ${fanOutCx} ${sy}, ${width - ringR - STRAIGHT} ${ry}, ${width - ringR} ${ry} L ${width - ringR + overflow} ${ry}`;
 
-                            if (isParent) {
-                                l1 += overflow;
-                                pathData = `M 0 ${ay} L ${l1} ${ay}`;
-                            } else {
-                                l3 += overflow;
-                                pathData = `M 0 ${ay} L ${trunkX} ${ay} L ${trunkX} ${firstAnchor} L ${trunkX + l3} ${firstAnchor}`;
-                            }
-
-                            // Linear pacing to bypass WebKit bugs
-                            const p1 = virtualLen > 0 ? (l1 / virtualLen).toFixed(4) : "0.5";
-                            const p2 = virtualLen > 0 ? ((l1 + l2) / virtualLen).toFixed(4) : "0.5";
-                            const motionProps = isParent ? {} : {
-                                calcMode: "linear",
-                                keyPoints: `0;${p1};${p2};1`,
-                                keyTimes: `0;${p1};${p2};1`
-                            };
-
-                            // Opacity fades out smoothly precisely before hitting `actualLen`
-                            // So it remains totally invisible in the `overflow` area
-                            const fadeOutEnd = (actualLen / virtualLen);
-                            const fadeOutStart = Math.max(0, fadeOutEnd - (10 / virtualLen)); // fade over last 10px
-                            const fadeInEnd = Math.min(fadeOutStart, (4 / virtualLen)); // fade in over first 4px
-
+                            const fadeOutEnd = actualLen / virtualLen;
+                            const fadeOutStart = Math.max(0, fadeOutEnd - 10 / virtualLen);
+                            const fadeInEnd = Math.min(fadeOutStart, 4 / virtualLen);
                             const opTimes = `0;${fadeInEnd.toFixed(4)};${fadeOutStart.toFixed(4)};${fadeOutEnd.toFixed(4)};1`;
 
-                            return Array.from({ length: childNumDots }, (_, di) => (
+                            const tone = rightAnchorTones[idx] ?? targetTone;
+                            const tok = getTreeColorTokens(tone);
+                            const dotFill = tok.connDot[ci];
+
+                            return Array.from({ length: numDots }, (_, di) => (
+                                <circle key={`dot-fan-${idx}-${di}`} r="3" fill={dotFill} opacity="0">
+                                    <animateMotion
+                                        path={pathData}
+                                        dur={`${pathDur}s`}
+                                        begin={`${(-di * DOT_GAP).toFixed(3)}s`}
+                                        repeatCount="indefinite"
+                                    />
+                                    <animate
+                                        attributeName="opacity"
+                                        values="0;0.9;0.9;0;0"
+                                        keyTimes={opTimes}
+                                        dur={`${pathDur}s`}
+                                        begin={`${(-di * DOT_GAP).toFixed(3)}s`}
+                                        repeatCount="indefinite"
+                                    />
+                                </circle>
+                            ));
+                        });
+                    })() : !isActive ? null : isMultiSource ? (
+                        // One bezier path per source lane: branch bezier → feed bezier → target
+                        leftAnchors!.map((ay, idx) => {
+                            // Approximate length: branch segment + feed segment
+                            const branchLen = trunkX + Math.abs(ay - sy) * 0.5;
+                            const feedH = width - trunkX - ringR;
+                            const feedV = sy !== ty ? Math.abs(ty - sy) * 0.5 : 0;
+                            const actualLen = branchLen + feedH + feedV;
+
+                            const numDots = Math.max(1, Math.ceil(actualLen / dotSpacing));
+                            const virtualLen = numDots * dotSpacing;
+                            const pathDur = numDots * DOT_GAP;
+                            const overflow = Math.max(0, virtualLen - actualLen);
+
+                            // Branch bezier mirrors visual path; feed bezier matches feed line
+                            const cx = (trunkX + width) / 2;
+                            const feedEndX = width - ringR + overflow;
+                            const branchSeg = ay === sy
+                                ? `M 0 ${ay} L ${trunkX} ${sy}`
+                                : `M 0 ${ay} L ${STRAIGHT} ${ay} C ${trunkX / 2} ${ay}, ${trunkX - STRAIGHT} ${sy}, ${trunkX} ${sy}`;
+                            const feedSeg = sy === ty
+                                ? ` L ${feedEndX} ${ty}`
+                                : ` C ${cx} ${sy}, ${cx} ${ty}, ${feedEndX} ${ty}`;
+                            const pathData = `${branchSeg}${feedSeg}`;
+
+                            const fadeOutEnd = actualLen / virtualLen;
+                            const fadeOutStart = Math.max(0, fadeOutEnd - 10 / virtualLen);
+                            const fadeInEnd = Math.min(fadeOutStart, 4 / virtualLen);
+                            const opTimes = `0;${fadeInEnd.toFixed(4)};${fadeOutStart.toFixed(4)};${fadeOutEnd.toFixed(4)};1`;
+
+                            return Array.from({ length: numDots }, (_, di) => (
                                 <circle key={`dot-${idx}-${di}`} r="3" fill={animDotColor} opacity="0">
                                     <animateMotion
                                         path={pathData}
                                         dur={`${pathDur}s`}
                                         begin={`${(-di * DOT_GAP).toFixed(3)}s`}
                                         repeatCount="indefinite"
-                                        {...motionProps}
                                     />
                                     <animate attributeName="opacity"
                                         values="0;0.9;0.9;0;0" keyTimes={opTimes}
@@ -345,12 +464,30 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                         const fadeInEnd = Math.min(fadeOutStart, (4 / virtualLen));
                         const opTimes = `0;${fadeInEnd.toFixed(4)};${fadeOutStart.toFixed(4)};${fadeOutEnd.toFixed(4)};1`;
 
+                        // When source and target are at different Y positions use animateMotion
+                        // along the same bezier path as the visible line so dots track it exactly.
+                        const isAngled = Math.abs(ty - sy) > 1;
+                        const motionPath = isAngled
+                            ? `M ${ringR} ${sy} C ${width / 2} ${sy}, ${width / 2} ${ty}, ${width - ringR + overflow} ${ty}`
+                            : undefined;
+
                         return Array.from({ length: simpleNumDots }, (_, i) => (
-                            <circle key={`dot-${i}`} cy={my} r="3" fill={animDotColor} opacity="0">
-                                <animate attributeName="cx"
-                                    values={`${ringR};${width - ringR + overflow}`} keyTimes="0;1"
-                                    dur={`${simpleDur}s`} begin={`${(-i * DOT_GAP).toFixed(3)}s`}
-                                    repeatCount="indefinite" />
+                            <circle key={`dot-${i}`} r="3" fill={animDotColor} opacity="0"
+                                {...(!isAngled && { cy: sy })}
+                            >
+                                {isAngled ? (
+                                    <animateMotion
+                                        path={motionPath}
+                                        dur={`${simpleDur}s`}
+                                        begin={`${(-i * DOT_GAP).toFixed(3)}s`}
+                                        repeatCount="indefinite"
+                                    />
+                                ) : (
+                                    <animate attributeName="cx"
+                                        values={`${ringR};${width - ringR + overflow}`} keyTimes="0;1"
+                                        dur={`${simpleDur}s`} begin={`${(-i * DOT_GAP).toFixed(3)}s`}
+                                        repeatCount="indefinite" />
+                                )}
                                 <animate attributeName="opacity"
                                     values="0;0.9;0.9;0;0" keyTimes={opTimes}
                                     dur={`${simpleDur}s`} begin={`${(-i * DOT_GAP).toFixed(3)}s`}

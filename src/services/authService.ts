@@ -90,11 +90,14 @@ class AuthService {
       }
     }
 
-    // Load from environment variables
-    // In development mode (browser), use empty string to leverage Vite proxy
-    // In production (Tauri app), use absolute URL from env
-    const isDev = window.location.hostname === 'localhost' && window.location.port === (import.meta.env.VITE_DEV_PORT || '1421');
-    const url = isDev ? '' : (import.meta.env.VITE_DEVOPS_API_URL || 'http://localhost:5680');
+    // Use Vite's built-in DEV flag — true for any client connecting to the dev
+    // server regardless of the hostname they used (localhost, IP, remote domain).
+    // When DEV, use an empty base URL so every request goes through the Vite
+    // proxy (/api → VITE_DEVOPS_API_URL).  Using window.location.hostname here
+    // was wrong: it would be false when connecting remotely, causing the browser
+    // to send requests directly to the backend and bypassing the proxy (no CORS
+    // handling, no WS Origin rewrite, and "localhost" resolving on the client).
+    const url = import.meta.env.DEV ? '' : (import.meta.env.VITE_DEVOPS_API_URL || 'http://localhost:5680');
     const username = import.meta.env.VITE_DEVOPS_USERNAME || 'root';
     const password = import.meta.env.VITE_DEVOPS_PASSWORD || 'VeryStr0ngPassw0rd';
     const api_key = import.meta.env.VITE_DEVOPS_API_KEY || 'VeryStr0ngPassw0rd';

@@ -53,7 +53,7 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
     useEffect(() => { setLocalHost(proxyHost); }, [proxyHost]);
 
     const hasTcpRoute = !!(localHost.tcp_route);
-    const httpRoutes = localHost.http_routes ?? [];
+    const httpRoutes = (localHost.http_routes ?? []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
     const routeType = hasTcpRoute ? 'TCP' : httpRoutes.length > 0 ? 'HTTP' : null;
 
     const handleRestart = useCallback(async () => {
@@ -101,6 +101,13 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
 
     const handleDeleteHttpRoute = useCallback(async (routeId: string) => {
         await devopsService.reverseProxy.deleteHttpRoute(hostname, localHost.id!, routeId, orchestratorHostId);
+        const freshHost = await devopsService.reverseProxy.getReverseProxyHost(hostname, localHost.id!, orchestratorHostId);
+        setLocalHost(freshHost);
+        onUpdate(freshHost);
+    }, [hostname, localHost, orchestratorHostId, onUpdate]);
+
+    const handleReorderHttpRoute = useCallback(async (routeId: string, _oldOrder: number, newOrder: number) => {
+        await devopsService.reverseProxy.reorderHttpRoute(hostname, localHost.id!, routeId, newOrder + 1, orchestratorHostId);
         const freshHost = await devopsService.reverseProxy.getReverseProxyHost(hostname, localHost.id!, orchestratorHostId);
         setLocalHost(freshHost);
         onUpdate(freshHost);
@@ -239,6 +246,7 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
                                     onAddRoute={handleAddHttpRoute}
                                     onUpdateRoute={handleUpdateHttpRoute}
                                     onDeleteRoute={handleDeleteHttpRoute}
+                                    onReorderRoute={handleReorderHttpRoute}
                                 />
                             ),
                         },

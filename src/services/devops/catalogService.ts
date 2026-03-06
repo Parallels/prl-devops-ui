@@ -1,11 +1,30 @@
 import { apiService } from '../api';
-import { CatalogManifestItem } from '../../interfaces/devops';
+import { CatalogManifestItem, CatalogPushRequest } from '../../interfaces/devops';
 
 /**
  * Catalog Service - Handles catalog-related operations for Parallels DevOps API
  * Manages catalog manifests, versioning, permissions, and metadata
  */
 class CatalogService {
+  /**
+   * Push (upload) a local VM to the catalog.
+   *
+   * Endpoint: POST /api/v1/catalog/push
+   */
+  async pushCatalog(hostname: string, request: CatalogPushRequest): Promise<void> {
+    try {
+      await apiService.post<void>(
+        hostname,
+        '/api/v1/catalog/push',
+        request,
+        { errorPrefix: 'Failed to push catalog', expectNoContent: true }
+      );
+    } catch (error) {
+      console.error('Failed to push catalog:', error);
+      throw error;
+    }
+  }
+
   /**
    * Get all catalog manifests from DevOps API
    * 

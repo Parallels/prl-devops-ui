@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, ConfirmModal, CustomIcon, HealthCheck, Live, Tabs, Pause, Run, Trash } from '@prl/ui-kit';
+import { Button, ConfirmModal, CustomIcon, HealthCheck, Live, Tabs, Pause, Run, Trash, TooltipWrapper } from '@prl/ui-kit';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { PageHeader, PageHeaderIcon } from '@/components/PageHeader';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
@@ -8,6 +8,7 @@ import { PerformanceTab } from './tabs/PerformanceTab';
 import { CacheTab } from './tabs/CacheTab';
 import { LogsTab } from './tabs/LogsTab';
 import { SettingsTab } from './tabs/SettingsTab';
+import { ReverseProxy } from '@/pages/ReverseProxy/ReverseProxy';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,8 +36,12 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host, onPause,
                 title={host.description || host.host}
                 subtitle={host.id}
                 actions={<>
-                    <HealthCheck className={`w-6 h-6 ${host.state === 'healthy' ? 'text-emerald-600' : 'text-rose-600'}`} aria-label={host.state === 'healthy' ? 'Healthy' : 'Unhealthy'} />
-                    <Live className={`w-6 h-6 ${host.has_websocket_events ? 'text-emerald-600' : 'text-rose-600'}`} aria-label={host.has_websocket_events ? 'Live' : 'Offline'} />
+                    <TooltipWrapper text={host.state === 'healthy' ? 'Healthy' : 'Unhealthy'}>
+                        <HealthCheck className={`w-6 h-6 ${host.state === 'healthy' ? 'text-emerald-600' : 'text-rose-600'}`} aria-label={host.state === 'healthy' ? 'Healthy' : 'Unhealthy'} />
+                    </TooltipWrapper>
+                    <TooltipWrapper text={host.has_websocket_events ? 'Real-time events are live' : 'Real-time events are offline'}>
+                        <Live className={`w-6 h-6 ${host.has_websocket_events ? 'text-emerald-600' : 'text-rose-600'}`} aria-label={host.has_websocket_events ? 'Live' : 'Offline'} />
+                    </TooltipWrapper>
                 </>}
                 bottomActions={<>
                     {host.enabled ? (
@@ -80,13 +85,18 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host, onPause,
                 panelIdPrefix="host-detail"
                 scrollFade
                 items={[
-                    { id: 'overview',     label: 'Overview',     panel: <OverviewTab host={host} /> },
+                    { id: 'overview', label: 'Overview', panel: <OverviewTab host={host} /> },
                     ...(isHealthy(host) ? [
-                        { id: 'cache',       label: 'Cache',        panel: <CacheTab host={host} /> },
-                        { id: 'performance', label: 'Performance',  panel: <PerformanceTab host={host} /> },
-                        { id: 'logs',        label: 'Logs',         panel: <LogsTab host={host} /> },
+                        { id: 'cache', label: 'Cache', panel: <CacheTab host={host} /> },
+                        { id: 'performance', label: 'Performance', panel: <PerformanceTab host={host} /> },
+                        { id: 'logs', label: 'Logs', panel: <LogsTab host={host} /> },
                     ] : []),
-                    { id: 'settings',    label: 'Settings',     panel: <SettingsTab host={host} /> },
+                    ...(host.is_reverse_proxy_enabled ? [{
+                        id: 'reverse-proxy',
+                        label: 'Reverse Proxy',
+                        panel: <ReverseProxy orchestratorHostId={host.id} />,
+                    }] : []),
+                    { id: 'settings', label: 'Settings', panel: <SettingsTab host={host} /> },
                 ]}
             />
 

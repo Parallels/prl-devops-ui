@@ -222,14 +222,31 @@ export interface CatalogPullRequest {
 }
 
 /**
+ * Minimum hardware requirements for a catalog manifest.
+ */
+export interface MinimumSpecRequirement {
+  cpu?: number;
+  memory?: number;
+  disk?: number;
+}
+
+/**
  * Catalog push request
  */
 export interface CatalogPushRequest {
+  local_path: string;
   catalog_id: string;
-  version: string;
-  architecture?: string;
   description?: string;
-  [key: string]: unknown;
+  version: string;
+  architecture: string;
+  connection?: string;
+  compress_pack?: boolean;
+  compress_pack_level?: string;
+  uuid?: string;
+  required_roles?: string[];
+  required_claims?: string[];
+  tags?: string[];
+  minimum_requirements?: MinimumSpecRequirement;
 }
 
 /**

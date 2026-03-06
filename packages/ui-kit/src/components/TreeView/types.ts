@@ -21,6 +21,8 @@ export interface TreeItemData {
     subtitleClassName?: string;
     description?: React.ReactNode;
     descriptionClassName?: string;
+    /** Optional badge/status slot rendered below description, without tone-derived text styling. */
+    badge?: React.ReactNode;
     // Appearance — tone drives card bg, border, text, connector and animation colors
     tone?: TreeTone;
     // Whether this item's branch should carry flowing dot animation
@@ -84,10 +86,16 @@ export interface TreeItemCardProps {
     iconClassName?: string;
     title?: React.ReactNode;
     titleClassName?: string;
+    /** When true, the title wraps on word boundaries up to 10 lines instead of truncating. Default: false */
+    titleWrap?: boolean;
+    /** When true, the title stays on one line and scrolls horizontally — no wrapping, no truncation. Default: false */
+    titleScroll?: boolean;
     subtitle?: React.ReactNode;
     subtitleClassName?: string;
     description?: React.ReactNode;
     descriptionClassName?: string;
+    /** Optional badge/status slot rendered below description, without tone-derived text styling. */
+    badge?: React.ReactNode;
     tone?: TreeTone;
     body?: React.ReactNode;
     defaultExpanded?: boolean;
@@ -100,6 +108,10 @@ export interface TreeItemCardProps {
     isDragging?: boolean;
     index?: number;
     className?: string;
+    /** When true, show a subtle hover lift effect (shadow + translate-y). Default: false */
+    hoverable?: boolean;
+    /** When true, overlay a pulsing background animation using the item's tone color. Default: false */
+    activePulse?: boolean;
 }
 
 // ── TreeFlowSvg (exported standalone for advanced consumers) ─────────────────

@@ -22,6 +22,7 @@ export interface ReverseProxyHostCors {
 
 export interface ReverseProxyHostHttpRoute {
     id?: string;
+    order: number;
     path?: string;
     target_vm_id?: string;
     target_host?: string;

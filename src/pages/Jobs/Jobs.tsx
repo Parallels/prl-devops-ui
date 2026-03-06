@@ -21,7 +21,7 @@ export const Jobs: React.FC = () => {
 
     const filtered = jobs
         .filter((j) => {
-            if (filter === 'active')    return j.state === 'pending' || j.state === 'running';
+            if (filter === 'active')    return j.state === 'pending' || j.state === 'running' || j.state === 'init';
             if (filter === 'completed') return j.state === 'completed';
             if (filter === 'failed')    return j.state === 'failed';
             return true;

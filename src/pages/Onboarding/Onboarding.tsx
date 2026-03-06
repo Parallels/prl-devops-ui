@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import parallelsBars from '../../assets/images/parallels-bars-small.png';
-import { Alert, Button, FormField, FormLayout, Input, Modal, Panel, Toggle } from '../../controls';
+import { Alert, Button, FormField, FormLayout, Input, Modal, Panel, PasswordInput, Toggle } from '../../controls';
 import { useConfig } from '../../contexts/ConfigContext';
 import { useSession } from '../../contexts/SessionContext';
 import { authService } from '../../services/authService';
@@ -18,6 +18,7 @@ interface DialogInformation {
   title: string;
   message: string;
   errorMessage?: string;
+  tone?: 'danger' | 'success' | 'warning' | 'neutral';
   actions: { label: string; onClick: () => void; variant?: string }[];
 }
 
@@ -45,6 +46,107 @@ export interface OnboardingPrefill {
 interface OnboardingProps {
   prefill?: OnboardingPrefill;
 }
+
+interface LoginErrorResult {
+  title: string;
+  message: string;
+  /** Optional technical detail shown as a secondary line (e.g. HTTP status). */
+  details?: string;
+}
+
+const friendlyLoginError = (error: unknown, targetUrl?: string): LoginErrorResult => {
+  const apiErr = error as { message?: string; statusCode?: number };
+  const status = apiErr?.statusCode;
+  const rawMsg = apiErr?.message ?? (error instanceof Error ? error.message : String(error));
+  const rawLower = rawMsg.toLowerCase();
+
+  if (status === 401) {
+    return {
+      title: 'Authentication Failed',
+      message: 'Invalid credentials. Please check your username and password.',
+      details: 'HTTP 401 Unauthorized',
+    };
+  }
+  if (status === 403) {
+    return {
+      title: 'Access Denied',
+      message: 'Your account does not have permission to sign in.',
+      details: 'HTTP 403 Forbidden',
+    };
+  }
+  if (status === 404) {
+    return {
+      title: 'Endpoint Not Found',
+      message: 'The authentication endpoint was not found. Please verify the server URL is correct.',
+      details: 'HTTP 404 Not Found',
+    };
+  }
+  if (status && status >= 500) {
+    return {
+      title: 'Server Error',
+      message: `The server is currently unavailable or encountered an internal error. Please try again later or contact your administrator.`,
+      details: `HTTP ${status}`,
+    };
+  }
+
+  // Network / connectivity errors — browser throws TypeError with no HTTP status
+  const isNetworkError =
+    !status &&
+    (rawLower.includes('load failed') ||
+      rawLower.includes('failed to fetch') ||
+      rawLower.includes('network request failed') ||
+      rawLower.includes('network error') ||
+      rawLower.includes('networkerror'));
+
+  if (isNetworkError) {
+    return {
+      title: 'Cannot Reach Server',
+      message:
+        'Could not connect to the server. Please check that the URL is correct, the server is running, and your network connection is active.',
+    };
+  }
+
+  // Separate check: mixed-content (must come after isNetworkError since the
+  // browser reports both as the same generic fetch failure).
+  // Only applies in production — in dev mode the Vite proxy handles HTTP targets.
+  const isMixedContent =
+    isNetworkError &&
+    !import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    window.location.protocol === 'https:' &&
+    targetUrl?.toLowerCase().startsWith('http:');
+
+  if (isMixedContent) {
+    return {
+      title: 'Mixed Content Blocked',
+      message:
+        'Your browser blocked the connection because this app is running over HTTPS but the server URL uses HTTP. ' +
+        'Use an HTTPS server URL, or access the app over HTTP.',
+    };
+  }
+
+  if (rawLower.includes('timeout') || rawLower.includes('timed out')) {
+    return {
+      title: 'Connection Timed Out',
+      message: 'The server did not respond in time. Please check your network and try again.',
+    };
+  }
+
+  if (rawLower.includes('certificate') || rawLower.includes('ssl') || rawLower.includes('tls')) {
+    return {
+      title: 'SSL / Certificate Error',
+      message:
+        'A certificate error occurred while connecting. The server may be using a self-signed or expired certificate.',
+      details: rawMsg,
+    };
+  }
+
+  // Fallback — show whatever message we got, at least it won't be empty
+  return {
+    title: 'Connection Failed',
+    message: rawMsg || 'An unexpected error occurred. Please try again.',
+  };
+};
 
 export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
   const config = useConfig();
@@ -141,6 +243,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
         isOpen: true,
         title: 'Configuration Reset',
         message: 'All saved hosts have been removed.',
+        tone: 'success',
         actions: [
           {
             label: 'OK',
@@ -295,11 +398,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
           console.error('[Onboarding] Error stack:', error.stack);
         }
         setIsSaving(false);
+        const { title, message: errMessage, details } = friendlyLoginError(error, serverUrl);
         setDialog({
           isOpen: true,
-          title: 'Connection Failed',
-          message: 'Could not connect to the server with the provided credentials.',
-          errorMessage: (error as Error)?.message || JSON.stringify(error),
+          title,
+          message: errMessage,
+          errorMessage: details,
+          tone: 'danger',
           actions: [
             {
               label: 'OK',
@@ -402,14 +507,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
                     width="full"
                     error={hasError('password') ? errors.password : undefined}
                   >
-                    <Input
-                      type="password"
+                    <PasswordInput
                       tone="blue"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       onBlur={() => handleBlur('password')}
                       required={true}
                       placeholder="Enter your password"
+                      autoComplete="current-password"
                     />
                   </FormField>
                 </>
@@ -422,14 +527,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
                   width="full"
                   error={hasError('apiKey') ? errors.apiKey : undefined}
                 >
-                  <Input
-                    type="password"
+                  <PasswordInput
                     tone="blue"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     onBlur={() => handleBlur('apiKey')}
                     required={true}
                     placeholder="Enter your API key"
+                    autoComplete="off"
                   />
                 </FormField>
               )}
@@ -476,15 +581,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ prefill }) => {
           onClose={() => setDialog((prev) => ({ ...prev, isOpen: false }))}
         >
           <div>
-            {dialog.errorMessage && (
-              <Alert
-                variant="outline"
-                tone="danger"
-                title={dialog.message}
-                description={dialog.errorMessage}
-              ></Alert>
-            )}
-            {!dialog.errorMessage && <p>{dialog.message}</p>}
+            <Alert
+              variant="outline"
+              tone={dialog.tone ?? 'neutral'}
+              title={dialog.message}
+              description={dialog.errorMessage}
+            />
             <div className="flex justify-end pt-3">
               {dialog.actions.map((action, index) => (
                 <Button

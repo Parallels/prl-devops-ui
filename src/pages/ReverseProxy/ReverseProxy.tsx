@@ -106,10 +106,10 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }
     useEffect(() => { void fetchAll(); }, [fetchAll]);
 
     useEffect(() => {
-        devopsService.machines.getVirtualMachines(hostname, false)
+        devopsService.machines.getVirtualMachines(hostname, !!orchestratorHostId)
             .then(setAvailableVms)
             .catch(() => setAvailableVms([]));
-    }, [hostname]);
+    }, [hostname, orchestratorHostId]);
 
     const handleToggleEngine = useCallback(async (enabled: boolean) => {
         setToggling(true);

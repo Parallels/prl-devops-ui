@@ -82,7 +82,7 @@ export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
         const isProxyDown = !proxyEnabled;
         const showVmAction = hasVmTarget && (health === 'stopped' || health === 'paused' || health === 'suspended');
         const targetLabel = route.target_vm_id
-            ? (route.target_vm_details?.name ?? route.target_vm_id)
+            ? (route.target_vm_details?.name ?? availableVms.find(v => v.ID === route.target_vm_id)?.Name ?? route.target_vm_id)
             : (route.target_host ?? '—');
 
         return {
@@ -104,24 +104,30 @@ export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
             titleClassName: '!overflow-visible',
             subtitle: `${targetLabel}:${route.target_port ?? '—'}`,
 
-            description: (hasVmTarget || isProxyDown || showVmAction) ? (
-                <>
-                    {hasVmTarget && <span>{health}</span>}
-                    {isProxyDown && <span className="block">Proxy disabled</span>}
-                    {showVmAction && !isProxyDown && (
-                        <div className="mt-1.5">
-                            <Button
-                                variant="solid"
-                                color={health === 'stopped' ? 'success' : 'warning'}
-                                size="xs"
-                                loading={actionLoading}
-                                onClick={() => void actionHandlers.current[i]?.()}
-                            >
-                                {health === 'stopped' ? 'Start VM' : 'Resume VM'}
-                            </Button>
-                        </div>
-                    )}
-                </>
+            badge: (hasVmTarget || isProxyDown) ? (
+                <div className="flex flex-wrap items-center gap-1">
+                    {hasVmTarget && !isProxyDown && (() => {
+                        switch (health) {
+                            case 'running':   return <Pill key="h" size="sm" tone="emerald" variant="soft">Running</Pill>;
+                            case 'stopped':   return <Pill key="h" size="sm" tone="rose" variant="soft">Stopped</Pill>;
+                            case 'paused':    return <Pill key="h" size="sm" tone="amber" variant="soft">Paused</Pill>;
+                            case 'suspended': return <Pill key="h" size="sm" tone="amber" variant="soft">Suspended</Pill>;
+                            default:          return <Pill key="h" size="sm" tone="neutral" variant="soft">Unknown</Pill>;
+                        }
+                    })()}
+                    {isProxyDown && <Pill size="sm" tone="neutral" variant="soft">Proxy disabled</Pill>}
+                </div>
+            ) : undefined,
+            actions: (showVmAction && !isProxyDown) ? (
+                <Button
+                    variant="solid"
+                    color={health === 'stopped' ? 'success' : 'warning'}
+                    size="xs"
+                    loading={actionLoading}
+                    onClick={() => void actionHandlers.current[i]?.()}
+                >
+                    {health === 'stopped' ? 'Start VM' : 'Resume VM'}
+                </Button>
             ) : undefined,
 
             hoverActions: canDelete ? (
@@ -208,7 +214,9 @@ export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
                             </div>
                         ),
                         titleClassName: '!overflow-visible',
-                        description: !proxyEnabled ? 'Proxy disabled' : undefined,
+                        badge: proxyEnabled
+                            ? <Pill size="sm" tone="emerald" variant="soft">Running</Pill>
+                            : <Pill size="sm" tone="neutral" variant="soft">Disabled</Pill>,
                     }}
                     items={routeItems}
                     stubHeight={12}

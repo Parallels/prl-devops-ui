@@ -96,7 +96,6 @@ interface CatalogSourcePanelProps {
   reloadToken: number;
   selectedManifestId?: string;
   onManifestClick: (manifest: CatalogManifestItem, tab?: 'details' | 'versions') => void;
-  onDeleteRow?: (row: CatalogRow) => void;
   onDownloadRow?: (row: CatalogRow) => void;
   onStatsChange?: (stats: CatalogSourceStats) => void;
 }
@@ -114,7 +113,6 @@ export const CatalogSourcePanel: React.FC<CatalogSourcePanelProps> = ({
   reloadToken,
   selectedManifestId,
   onManifestClick,
-  onDeleteRow,
   onDownloadRow,
   onStatsChange,
 }) => {
@@ -163,7 +161,6 @@ export const CatalogSourcePanel: React.FC<CatalogSourcePanelProps> = ({
       onRetry={() => void fetchCatalogs()}
       selectedManifestId={selectedManifestId}
       onSelectItem={onManifestClick}
-      onDeleteItem={onDeleteRow}
       onDownloadItem={onDownloadRow}
     />
   );
@@ -195,7 +192,7 @@ export const CatalogManagersPanel: React.FC<CatalogManagersPanelProps> = ({
   onRefresh,
 }) => {
   const { themeColor } = useSystemSettings();
-  const filteredManagers = useMemo(() => {
+  const filteredManifests = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return managers;
     return managers.filter((manager) =>
@@ -223,6 +220,7 @@ export const CatalogManagersPanel: React.FC<CatalogManagersPanelProps> = ({
             placeholder="Search catalog managers…"
             onSearch={setSearch}
             className="w-72"
+            color={themeColor}
           />
         )}
         actions={(
@@ -248,7 +246,7 @@ export const CatalogManagersPanel: React.FC<CatalogManagersPanelProps> = ({
       <div className="flex-1 min-h-0 p-2">
         <Table<CatalogManager>
           columns={columns}
-          data={filteredManagers}
+          data={filteredManifests}
           rowKey={(row) => row.id}
           variant="flat"
           stickyHeader

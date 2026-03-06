@@ -4,6 +4,7 @@ import { type IconSize } from "../types/Icon";
 import { useIconRenderer } from "../contexts/IconContext";
 import { getButtonColorClasses, type ThemeColor } from "../theme/Theme";
 import { iconAccentHover, iconAccentRing } from "../theme/ButtonTypes";
+import Tooltip, { type TooltipPosition } from "./Tooltip";
 
 export type ButtonColor = ThemeColor;
 export type ButtonVariant = "solid" | "soft" | "outline" | "ghost" | "link" | "clear" | "icon";
@@ -25,6 +26,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   accentColor?: ThemeColor;
   className?: string;
   children?: ReactNode;
+  /** When set, a styled tooltip is shown on hover. */
+  tooltip?: string;
+  /** Position of the tooltip relative to the button. Defaults to 'top'. */
+  tooltipPosition?: TooltipPosition;
 }
 
 const baseClasses =
@@ -93,6 +98,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       disabled,
       onClick,
+      tooltip,
+      tooltipPosition,
       ...props
     },
     ref
@@ -138,7 +145,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       onClick?.(event);
     };
 
-    return (
+    const button = (
       <button
         ref={ref}
         className={computedClassName}
@@ -155,6 +162,16 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {!loading && renderIcon(trailingIcon, size as IconSize, classNames("flex-shrink-0", sizeConfig.icon))}
       </button>
     );
+
+    if (tooltip) {
+      return (
+        <Tooltip text={tooltip} position={tooltipPosition} wrapperClassName={fullWidth ? "w-full" : undefined}>
+          {button}
+        </Tooltip>
+      );
+    }
+
+    return button;
   }
 );
 

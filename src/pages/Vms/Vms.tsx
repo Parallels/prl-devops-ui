@@ -577,15 +577,17 @@ export const Vms: React.FC = () => {
                                 })}
                             />
                         )}
-                        <IconButton
-                            icon="Trash" size="sm" variant="ghost" color="rose"
-                            aria-label="Delete VM"
-                            onClick={() => selectedVm && setPendingAction({
-                                type: 'delete',
-                                vm: selectedVm.vm,
-                                isOrchestrator: selectedVm.isOrchestrator,
-                            })}
-                        />
+                        {selectedVm?.vm.State === 'stopped' && (
+                            <IconButton
+                                icon="Trash" size="sm" variant="ghost" color="rose"
+                                aria-label="Delete VM"
+                                onClick={() => selectedVm && setPendingAction({
+                                    type: 'delete',
+                                    vm: selectedVm.vm,
+                                    isOrchestrator: selectedVm.isOrchestrator,
+                                })}
+                            />
+                        )}
                     </>
                 }
             >

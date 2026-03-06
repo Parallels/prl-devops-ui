@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { CustomIcon, StatGraphTile } from '@prl/ui-kit';
+import { CustomIcon, EmptyState, StatGraphTile } from '@prl/ui-kit';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { useHostStats } from '@/contexts/EventsHubContext';
 
@@ -30,11 +30,19 @@ export function PerformanceTab({ host }: { host: DevOpsRemoteHost }) {
 
     if (!latest) {
         return (
-            <div className="flex flex-col items-center justify-center gap-3 py-16 text-neutral-400 dark:text-neutral-500">
-                <CustomIcon icon="HealthCheck" className="h-8 w-8 opacity-30" />
-                <p className="text-sm">Waiting for agent stats…</p>
-                <p className="text-xs opacity-60">HOST_STATS_UPDATE messages will appear here</p>
-            </div>
+            // <div className="flex flex-col items-center justify-center gap-3 py-16 text-neutral-400 dark:text-neutral-500">
+            //     <CustomIcon icon="HealthCheck" className="h-8 w-8 opacity-30" />
+            //     <p className="text-sm">Waiting for agent stats…</p>
+            //     <p className="text-xs opacity-60">HOST_STATS_UPDATE messages will appear here</p>
+            // </div>
+            <EmptyState
+                icon="Realtime"
+                title="Waiting for agent stats…"
+                subtitle="Real-time performance data will appear here"
+                fullHeight
+                fullWidth
+                disableBorder
+            />
         );
     }
 

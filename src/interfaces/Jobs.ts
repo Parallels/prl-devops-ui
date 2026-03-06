@@ -1,3 +1,5 @@
+export type JobState = 'pending' | 'init' | 'running' | 'completed' | 'failed' | 'skipped' | string;
+
 /**
  * Job interface
  */
@@ -6,19 +8,32 @@ export interface Job {
     owner: string;
     owner_name?: string;
     owner_email?: string;
-    state: 'pending' | 'running' | 'completed' | 'failed' | string;
+    message?: string;
+    state: JobState;
     progress: number;
     job_type: string;
     job_operation: string;
-    action: string;
-    action_message?: string;
-    action_percentage?: number;
-    action_total?: number;
-    action_value?: number;
-    action_value_unit?: string;
-    action_eta?: number | string;
+    steps: JobStep[];
     result: string;
     error: string;
+    result_record_id?: string;
+    result_record_type?: string;
     created_at: string;
     updated_at: string;
+}
+
+export interface JobStep {
+    name: string;
+    display_name?: string;
+    weight: number;
+    parallel: boolean;
+    hasPercentage: boolean;
+    state: JobState;
+    value: number;
+    total: number;
+    eta: string;
+    message: string;
+    error: string;
+    filename: string;
+    unit: string;
 }

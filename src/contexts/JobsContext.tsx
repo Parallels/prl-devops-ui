@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { navigateToRecord, RECORD_TYPE_LABELS } from '@/hooks/useNavigateTo';
 import type { Job } from '@/interfaces/Jobs';
 import { jobsService } from '@/services/devops/jobsService';
 import { useSession } from './SessionContext';
@@ -114,6 +115,21 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 onClick: () => navigate('/jobs', { state: { selectJobId: job.id } }),
             };
 
+            // Build an optional "View <Record>" action when the job produced a known record
+            const recordAction = (job.result_record_id && job.result_record_type)
+                ? (() => {
+                    const label = RECORD_TYPE_LABELS[job.result_record_type!.toLowerCase()];
+                    if (!label) return null;
+                    return {
+                        label: `View ${label}`,
+                        icon: 'ArrowRight' as const,
+                        onClick: () => navigateToRecord(navigate, job.result_record_type!, job.result_record_id!),
+                    };
+                })()
+                : null;
+
+            const baseActions = recordAction ? [viewAction, recordAction] : [viewAction];
+
             if (msg === 'JOB_CREATED') {
                 addNotification({
                     id: job.id,
@@ -127,7 +143,7 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     autoClose: true,
                     autoCloseDuration: 15000,
                     dismissible: true,
-                    actions: [viewAction],
+                    actions: baseActions,
                 });
             } else if (msg === 'JOB_COMPLETED') {
                 addNotification({
@@ -144,7 +160,7 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     autoCloseDuration: 15000,
                     dismissible: true,
                     replace: true,
-                    actions: [viewAction],
+                    actions: baseActions,
                 });
             } else if (msg === 'JOB_FAILED') {
                 addNotification({
@@ -160,7 +176,7 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     autoClose: false,
                     dismissible: true,
                     replace: true,
-                    actions: [viewAction],
+                    actions: baseActions,
                 });
             }
         }
@@ -176,7 +192,7 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
 
     const activeJobs = useMemo(
-        () => jobs.filter((j) => j.state === 'pending' || j.state === 'running'),
+        () => jobs.filter((j) => j.state === 'pending' || j.state === 'running' || j.state === 'init'),
         [jobs]
     );
 

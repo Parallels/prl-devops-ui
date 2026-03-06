@@ -545,7 +545,7 @@ const SplitView: React.FC<SplitViewProps> = ({
             <Loader
               size="lg"
               label="Please wait..."
-              color="parallels"
+              color={color}
               variant="spinner"
               title="Loading..."
               spinnerThickness="thick"
@@ -557,19 +557,19 @@ const SplitView: React.FC<SplitViewProps> = ({
     }
     if (error) {
       return (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[inherit] bg-white/60 backdrop-blur-md p-6 dark:bg-neutral-900/50">
+        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[inherit] bg-white/60 backdrop-blur-md p-6 dark:bg-neutral-900/50">
           {errorState ?? (
             <EmptyState
               icon="Error"
               title="Something went wrong"
               subtitle={typeof error === "string" ? error : "An unexpected error occurred."}
-              tone="danger"
               showIcon
               actionLabel={onRetry ? "Retry" : undefined}
               onAction={onRetry}
               actionVariant="solid"
-              actionColor="blue"
+              actionColor={color}
               disableBorder
+              iconColor="danger"
               size="lg"
             />
           )}
@@ -621,7 +621,7 @@ const SplitView: React.FC<SplitViewProps> = ({
             <IconButton
               icon="ChevronRight"
               variant="ghost"
-              color="slate"
+              color={color}
               accentColor="parallels"
               size="xs"
               onClick={toggleCollapsed}
@@ -644,7 +644,7 @@ const SplitView: React.FC<SplitViewProps> = ({
                     <IconButton
                       icon="ChevronLeft"
                       variant="ghost"
-                      color="slate"
+                      color={color}
                       accentColor="parallels"
                       size="xs"
                       onClick={toggleCollapsed}
@@ -679,17 +679,17 @@ const SplitView: React.FC<SplitViewProps> = ({
                   const isExpanded = item.id === expandedId;
                   return (
                     <div key={item.id}>
-                      <button
-                        type="button"
-                        disabled={item.disabled}
-                        onClick={() => autoExpand ? handleSelect(item) : handleSelect(item)}
+                      {/* Row wrapper – uses a div so that action/expand buttons inside are not nested buttons */}
+                      <div
+                        role="button"
+                        tabIndex={item.disabled ? -1 : 0}
+                        aria-disabled={item.disabled}
+                        onClick={() => { if (!item.disabled) handleSelect(item); }}
+                        onKeyDown={(e) => { if (!item.disabled && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); handleSelect(item); } }}
                         className={classNames(
-                          "group/item w-full text-left border-l-3 transition-all duration-150 outline-none",
-                          "disabled:opacity-50 disabled:cursor-not-allowed",
+                          "group/item w-full text-left border-l-3 transition-all duration-150 outline-none cursor-default",
+                          item.disabled && "opacity-50 cursor-not-allowed pointer-events-none",
                           tokens.item,
-                          // Both modes: full accent bg+border when the row is selected (isActive).
-                          // autoExpand=false additionally tracks isExpanded for subContent only —
-                          // but the row highlight is identical in both modes.
                           isActive
                             ? classNames(accent.bg, accent.border, "border-l-[3px]")
                             : "border-l-[3px] border-l-transparent hover:bg-gray-100/80 dark:hover:bg-gray-800/60",
@@ -779,7 +779,7 @@ const SplitView: React.FC<SplitViewProps> = ({
                             </div>
                           )}
                         </div>
-                      </button>
+                      </div>
                       {item.subContent !== undefined && (
                         <div
                           className={classNames(
@@ -843,6 +843,8 @@ const SplitView: React.FC<SplitViewProps> = ({
                 title="No item selected"
                 subtitle="Select an item from the list to view its details."
                 showIcon
+                disableBorder
+                color={color}
               />
             )}
           </div>

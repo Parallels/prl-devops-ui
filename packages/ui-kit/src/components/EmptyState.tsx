@@ -77,6 +77,30 @@ const semanticTones: Partial<Record<ThemeColor, ToneConfig>> = {
     bg: "bg-rose-50/60 dark:bg-rose-950/20",
     icon: "text-rose-500 dark:text-rose-300",
   },
+  parallels: {
+    border: "border-red-300/60 dark:border-red-500/40",
+    text: "text-red-700 dark:text-red-200",
+    bg: "bg-red-50/60 dark:bg-red-950/20",
+    icon: "text-red-500 dark:text-red-300",
+  },
+  brand: {
+    border: "border-blue-300/60 dark:border-blue-500/40",
+    text: "text-blue-700 dark:text-blue-200",
+    bg: "bg-blue-50/60 dark:bg-blue-950/20",
+    icon: "text-blue-500 dark:text-blue-300",
+  },
+  theme: {
+    border: "border-slate-300/60 dark:border-slate-500/40",
+    text: "text-slate-700 dark:text-slate-200",
+    bg: "bg-slate-50/60 dark:bg-slate-950/20",
+    icon: "text-slate-500 dark:text-slate-300",
+  },
+  white: {
+    border: "border-slate-300/60 dark:border-slate-500/40",
+    text: "text-slate-700 dark:text-slate-200",
+    bg: "bg-slate-50/60 dark:bg-slate-950/20",
+    icon: "text-slate-500 dark:text-slate-300",
+  },
 };
 
 const sizes: Record<ThemeSize, string> = {
@@ -127,6 +151,7 @@ export interface EmptyStateProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   actionColor?: ButtonColor;
   icon?: string | React.ReactElement;
   iconSize?: IconSize;
+  iconColor?: ThemeColor;
   textSize?: TextSize;
   showIcon?: boolean;
   tone?: EmptyStateTone;
@@ -149,6 +174,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   actionColor = "blue",
   icon = "Plus",
   iconSize = "xl",
+  iconColor,
   textSize = "md",
   showIcon = true,
   tone = "neutral",
@@ -166,6 +192,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
 
   // lets make the subtitle text size smaller than the title text size
   const subtitleTextSize = textSize === "xs" ? "xs" : textSize === "sm" ? "xs" : textSize === "md" ? "sm" : textSize === "lg" ? "md" : "lg";
+  const iconPallete = !iconColor ? palette : buildToneClasses(iconColor);
 
   return (
     <section
@@ -182,7 +209,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       {...rest}
     >
       {showIcon && (
-        <div className={classNames("p-2 dark:bg-white/5", palette.icon)}>
+        <div className={classNames("p-2 dark:bg-white/5", iconPallete.icon)}>
           {React.isValidElement(icon) ? icon : renderIcon(icon, iconSize, iconSizes[iconSize])}
         </div>
       )}

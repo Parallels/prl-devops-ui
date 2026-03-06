@@ -6,6 +6,7 @@ import { useIconRenderer } from "../contexts/IconContext";
 import { getButtonColorClasses } from "../theme/Theme";
 import { iconAccentHover, iconAccentRing } from "../theme/ButtonTypes";
 import type { IconSize } from "../types/Icon";
+import Tooltip, { type TooltipPosition } from "./Tooltip";
 
 type IconButtonRounded = "md" | "lg" | "xl" | "full";
 
@@ -48,6 +49,10 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
   srLabel?: string;
   accent?: boolean;
   accentColor?: ButtonColor;
+  /** When set, a styled tooltip is shown on hover (replaces the native title attribute). */
+  tooltip?: string;
+  /** Position of the tooltip relative to the button. Defaults to 'top'. */
+  tooltipPosition?: TooltipPosition;
 }
 
 const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
@@ -68,6 +73,8 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       accentColor,
       className,
       disabled,
+      tooltip,
+      tooltipPosition,
       ...rest
     },
     ref
@@ -105,11 +112,12 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     // Pull aria-label and title out of rest so we can set them explicitly.
     // title falls back to aria-label → srLabel so the native browser tooltip
     // always shows the accessible label rather than the icon's own SVG title.
+    // When a styled tooltip is provided, omit the native title to avoid doubling.
     const { "aria-label": ariaLabel, title, ...restProps } = rest;
     const computedAriaLabel = ariaLabel ?? srLabel;
-    const computedTitle = title ?? computedAriaLabel;
+    const computedTitle = tooltip ? undefined : (title ?? computedAriaLabel);
 
-    return (
+    const button = (
       <button
         ref={ref}
         className={computedClassName}
@@ -125,6 +133,16 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         <span className="sr-only">{srLabel ?? rest["aria-label"] ?? "Icon button"}</span>
       </button>
     );
+
+    if (tooltip) {
+      return (
+        <Tooltip text={tooltip} position={tooltipPosition}>
+          {button}
+        </Tooltip>
+      );
+    }
+
+    return button;
   }
 );
 

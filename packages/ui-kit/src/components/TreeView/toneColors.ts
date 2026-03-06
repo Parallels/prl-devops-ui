@@ -5,6 +5,7 @@ import type { ThemeColor } from '../../theme/Theme';
 export interface TreeColorTokens {
     // Tailwind class strings — static so JIT scanner can include them
     bg: string;           // card background  (header area)
+    pulseBg: string;      // pulsing overlay background (more intense than bg, used with animate-pulse)
     border: string;       // card border
     headerText: string;   // primary title/subtitle text
     labelText: string;    // secondary icon / label / description text
@@ -19,6 +20,7 @@ export interface TreeColorTokens {
 
 export const NEUTRAL_TOKENS: TreeColorTokens = {
     bg: 'bg-neutral-50 dark:bg-neutral-800/50',
+    pulseBg: 'bg-neutral-100 dark:bg-neutral-700/60',
     border: 'border-neutral-200 dark:border-neutral-700',
     headerText: 'text-neutral-600 dark:text-neutral-400',
     labelText: 'text-neutral-500 dark:text-neutral-400',
@@ -37,6 +39,7 @@ export const NEUTRAL_TOKENS: TreeColorTokens = {
 const BASE_TOKENS: Record<string, TreeColorTokens> = {
     red: {
         bg: 'bg-red-50 dark:bg-red-950/30',
+        pulseBg: 'bg-red-100 dark:bg-red-800/60',
         border: 'border-red-200 dark:border-red-800',
         headerText: 'text-red-800 dark:text-red-200',
         labelText: 'text-red-600 dark:text-red-400',
@@ -47,6 +50,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     orange: {
         bg: 'bg-orange-50 dark:bg-orange-950/30',
+        pulseBg: 'bg-orange-100 dark:bg-orange-800/60',
         border: 'border-orange-200 dark:border-orange-800',
         headerText: 'text-orange-800 dark:text-orange-200',
         labelText: 'text-orange-600 dark:text-orange-400',
@@ -57,6 +61,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     amber: {
         bg: 'bg-amber-50 dark:bg-amber-950/30',
+        pulseBg: 'bg-amber-100 dark:bg-amber-800/60',
         border: 'border-amber-200 dark:border-amber-800',
         headerText: 'text-amber-800 dark:text-amber-200',
         labelText: 'text-amber-600 dark:text-amber-400',
@@ -67,6 +72,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     yellow: {
         bg: 'bg-yellow-50 dark:bg-yellow-950/30',
+        pulseBg: 'bg-yellow-100 dark:bg-yellow-800/60',
         border: 'border-yellow-200 dark:border-yellow-800',
         headerText: 'text-yellow-800 dark:text-yellow-200',
         labelText: 'text-yellow-600 dark:text-yellow-400',
@@ -77,6 +83,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     lime: {
         bg: 'bg-lime-50 dark:bg-lime-950/30',
+        pulseBg: 'bg-lime-100 dark:bg-lime-800/60',
         border: 'border-lime-200 dark:border-lime-800',
         headerText: 'text-lime-800 dark:text-lime-200',
         labelText: 'text-lime-600 dark:text-lime-400',
@@ -87,6 +94,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     green: {
         bg: 'bg-green-50 dark:bg-green-950/30',
+        pulseBg: 'bg-green-100 dark:bg-green-800/60',
         border: 'border-green-200 dark:border-green-800',
         headerText: 'text-green-800 dark:text-green-200',
         labelText: 'text-green-600 dark:text-green-400',
@@ -97,6 +105,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     emerald: {
         bg: 'bg-emerald-50 dark:bg-emerald-950/30',
+        pulseBg: 'bg-emerald-100 dark:bg-emerald-800/60',
         border: 'border-emerald-200 dark:border-emerald-800',
         headerText: 'text-emerald-800 dark:text-emerald-200',
         labelText: 'text-emerald-600 dark:text-emerald-400',
@@ -107,6 +116,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     teal: {
         bg: 'bg-teal-50 dark:bg-teal-950/30',
+        pulseBg: 'bg-teal-100 dark:bg-teal-800/60',
         border: 'border-teal-200 dark:border-teal-800',
         headerText: 'text-teal-800 dark:text-teal-200',
         labelText: 'text-teal-600 dark:text-teal-400',
@@ -117,6 +127,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     cyan: {
         bg: 'bg-cyan-50 dark:bg-cyan-950/30',
+        pulseBg: 'bg-cyan-100 dark:bg-cyan-800/60',
         border: 'border-cyan-200 dark:border-cyan-800',
         headerText: 'text-cyan-800 dark:text-cyan-200',
         labelText: 'text-cyan-600 dark:text-cyan-400',
@@ -127,6 +138,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     sky: {
         bg: 'bg-sky-50 dark:bg-sky-950/30',
+        pulseBg: 'bg-sky-100 dark:bg-sky-800/60',
         border: 'border-sky-200 dark:border-sky-800',
         headerText: 'text-sky-800 dark:text-sky-200',
         labelText: 'text-sky-600 dark:text-sky-400',
@@ -137,6 +149,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     blue: {
         bg: 'bg-blue-50 dark:bg-blue-950/30',
+        pulseBg: 'bg-blue-100 dark:bg-blue-800/60',
         border: 'border-blue-200 dark:border-blue-800',
         headerText: 'text-blue-800 dark:text-blue-200',
         labelText: 'text-blue-600 dark:text-blue-400',
@@ -147,6 +160,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     indigo: {
         bg: 'bg-indigo-50 dark:bg-indigo-950/30',
+        pulseBg: 'bg-indigo-100 dark:bg-indigo-800/60',
         border: 'border-indigo-200 dark:border-indigo-800',
         headerText: 'text-indigo-800 dark:text-indigo-200',
         labelText: 'text-indigo-600 dark:text-indigo-400',
@@ -157,6 +171,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     violet: {
         bg: 'bg-violet-50 dark:bg-violet-950/30',
+        pulseBg: 'bg-violet-100 dark:bg-violet-800/60',
         border: 'border-violet-200 dark:border-violet-800',
         headerText: 'text-violet-800 dark:text-violet-200',
         labelText: 'text-violet-600 dark:text-violet-400',
@@ -167,6 +182,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     purple: {
         bg: 'bg-purple-50 dark:bg-purple-950/30',
+        pulseBg: 'bg-purple-100 dark:bg-purple-800/60',
         border: 'border-purple-200 dark:border-purple-800',
         headerText: 'text-purple-800 dark:text-purple-200',
         labelText: 'text-purple-600 dark:text-purple-400',
@@ -177,6 +193,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     fuchsia: {
         bg: 'bg-fuchsia-50 dark:bg-fuchsia-950/30',
+        pulseBg: 'bg-fuchsia-100 dark:bg-fuchsia-800/60',
         border: 'border-fuchsia-200 dark:border-fuchsia-800',
         headerText: 'text-fuchsia-800 dark:text-fuchsia-200',
         labelText: 'text-fuchsia-600 dark:text-fuchsia-400',
@@ -187,6 +204,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     pink: {
         bg: 'bg-pink-50 dark:bg-pink-950/30',
+        pulseBg: 'bg-pink-100 dark:bg-pink-800/60',
         border: 'border-pink-200 dark:border-pink-800',
         headerText: 'text-pink-800 dark:text-pink-200',
         labelText: 'text-pink-600 dark:text-pink-400',
@@ -197,6 +215,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     rose: {
         bg: 'bg-rose-50 dark:bg-rose-950/30',
+        pulseBg: 'bg-rose-100 dark:bg-rose-800/60',
         border: 'border-rose-200 dark:border-rose-800',
         headerText: 'text-rose-800 dark:text-rose-200',
         labelText: 'text-rose-600 dark:text-rose-400',
@@ -207,6 +226,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     slate: {
         bg: 'bg-slate-50 dark:bg-slate-800/50',
+        pulseBg: 'bg-slate-100 dark:bg-slate-700/60',
         border: 'border-slate-200 dark:border-slate-700',
         headerText: 'text-slate-700 dark:text-slate-300',
         labelText: 'text-slate-500 dark:text-slate-400',
@@ -217,6 +237,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     gray: {
         bg: 'bg-gray-50 dark:bg-gray-800/50',
+        pulseBg: 'bg-gray-100 dark:bg-gray-700/60',
         border: 'border-gray-200 dark:border-gray-700',
         headerText: 'text-gray-700 dark:text-gray-300',
         labelText: 'text-gray-500 dark:text-gray-400',
@@ -227,6 +248,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     },
     zinc: {
         bg: 'bg-zinc-50 dark:bg-zinc-800/50',
+        pulseBg: 'bg-zinc-100 dark:bg-zinc-700/60',
         border: 'border-zinc-200 dark:border-zinc-700',
         headerText: 'text-zinc-700 dark:text-zinc-300',
         labelText: 'text-zinc-500 dark:text-zinc-400',
@@ -238,6 +260,7 @@ const BASE_TOKENS: Record<string, TreeColorTokens> = {
     neutral: NEUTRAL_TOKENS,
     stone: {
         bg: 'bg-stone-50 dark:bg-stone-800/50',
+        pulseBg: 'bg-stone-100 dark:bg-stone-700/60',
         border: 'border-stone-200 dark:border-stone-700',
         headerText: 'text-stone-700 dark:text-stone-300',
         labelText: 'text-stone-500 dark:text-stone-400',

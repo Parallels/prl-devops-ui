@@ -358,11 +358,13 @@ class MachinesService {
   /**
    * Create/download a virtual machine asynchronously from a catalog manifest.
    *
-   * Endpoint: POST /api/v1/machines/async
+   * Endpoint: POST /api/v1/machines/async  (host)
+   *           POST /api/v1/orchestrator/machines/async  (orchestrator)
    */
   async createVirtualMachineFromCatalogAsync(
     hostname: string | undefined,
-    request: CreateMachineAsyncRequest
+    request: CreateMachineAsyncRequest,
+    isOrchestrator = false
   ): Promise<void> {
     try {
       const targetHost = hostname || authService.currentHostname;
@@ -370,9 +372,13 @@ class MachinesService {
         throw new Error('No hostname provided and no active session found');
       }
 
+      const endpoint = isOrchestrator
+        ? '/api/v1/orchestrator/machines/async'
+        : '/api/v1/machines/async';
+
       await apiService.post<void>(
         targetHost,
-        '/api/v1/machines/async',
+        endpoint,
         request,
         { errorPrefix: 'Failed to start VM download from catalog', expectNoContent: true }
       );

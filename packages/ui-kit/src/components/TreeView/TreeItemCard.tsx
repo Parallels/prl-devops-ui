@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { getTreeColorTokens } from './toneColors';
 import type { TreeItemCardProps } from './types';
+import TooltipWrapper from '../TooltipWrapper';
 
 // ── TreeItemCard ─────────────────────────────────────────────────────────────
 //
@@ -14,21 +15,41 @@ import type { TreeItemCardProps } from './types';
 const TreeItemCard: React.FC<TreeItemCardProps> = ({
     icon, iconClassName,
     title, titleClassName,
+    titleWrap = false,
+    titleScroll = false,
     subtitle, subtitleClassName,
     description, descriptionClassName,
     tone, body, defaultExpanded = false,
     expanded,
     onToggleExpanded,
     forceToggle = false,
+    badge,
     actions, hoverActions,
     dragHandle,
     isDragging = false,
     index = 0, className,
+    hoverable = false,
+    activePulse = false,
 }) => {
     const tokens = getTreeColorTokens(tone);
     const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
     const isExpanded = expanded ?? internalExpanded;
     const canExpand = forceToggle || (body !== undefined && body !== null);
+
+    // ── Clamp detection (only when titleWrap is active, not titleScroll) ────────
+    const titleRef = useRef<HTMLDivElement>(null);
+    const [isTitleClamped, setIsTitleClamped] = useState(false);
+
+    useEffect(() => {
+        if (!titleWrap || titleScroll) { setIsTitleClamped(false); return; }
+        const el = titleRef.current;
+        if (!el) return;
+        const check = () => setIsTitleClamped(el.scrollHeight > el.clientHeight);
+        check();
+        const ro = new ResizeObserver(check);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [titleWrap, titleScroll, title]);
 
     const handleToggle = () => {
         if (onToggleExpanded) {
@@ -38,11 +59,39 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
         setInternalExpanded(v => !v);
     };
 
+    // ── Title element (shared between wrapped, scrolled, and truncated paths) ──
+    // titleScroll  → single line, scrollable horizontally
+    // titleWrap    → word-boundary wrapping, max 10 lines (via CSS -webkit-line-clamp)
+    // default      → single line, ellipsis truncation
+    const titleEl = title ? (
+        <div
+            ref={titleRef}
+            className={classNames(
+                'text-sm font-semibold mb-0.5',
+                titleScroll
+                    ? 'whitespace-nowrap overflow-x-auto'
+                    : titleWrap
+                        ? 'overflow-hidden'
+                        : 'truncate',
+                tokens.headerText,
+                titleClassName,
+            )}
+            style={titleWrap && !titleScroll ? {
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: 10,
+            } : undefined}
+        >
+            {title}
+        </div>
+    ) : null;
+
     return (
         <div
             className={classNames(
-                'relative transition-[transform,opacity] duration-200 ease-out',
+                'relative transition-[transform,opacity,box-shadow] duration-200 ease-out',
                 isDragging && 'opacity-70',
+                hoverable && 'hover:-translate-y-0.5 hover:shadow-md cursor-pointer',
                 className,
             )}
             style={index > 0 ? {
@@ -54,8 +103,19 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
                 'relative overflow-hidden rounded-xl border group/tree-card flex flex-col h-full',
                 tokens.border,
             )}>
-                {/* Header row */}
-                <div className={classNames('flex items-stretch gap-3 p-3 flex-1', tokens.bg)}>
+                {/* Pulsing background layer — sits behind the header so text is unaffected */}
+                {activePulse && (
+                    <div className={classNames(
+                        'absolute inset-0 pointer-events-none animate-pulse',
+                        tokens.pulseBg,
+                    )} />
+                )}
+
+                {/* Header row — bg-transparent when pulsing so the layer behind shows through */}
+                <div className={classNames(
+                    'relative flex items-stretch gap-3 p-3 flex-1',
+                    activePulse ? 'bg-transparent' : tokens.bg,
+                )}>
 
                     {/* Icon slot */}
                     {icon && (
@@ -70,14 +130,10 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
 
                     {/* Text content */}
                     <div className="flex-1 min-w-0">
-                        {title && (
-                            <div className={classNames(
-                                'text-sm font-semibold truncate mb-0.5',
-                                tokens.headerText,
-                                titleClassName,
-                            )}>
-                                {title}
-                            </div>
+                        {titleEl && (
+                            titleWrap && isTitleClamped && typeof title === 'string'
+                                ? <TooltipWrapper text={title}>{titleEl}</TooltipWrapper>
+                                : titleEl
                         )}
                         {subtitle && (
                             <div className={classNames(
@@ -95,6 +151,11 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
                                 descriptionClassName,
                             )}>
                                 {description}
+                            </div>
+                        )}
+                        {badge && (
+                            <div className="flex flex-wrap items-center gap-1 mt-1">
+                                {badge}
                             </div>
                         )}
                     </div>

@@ -31,9 +31,9 @@ function HostItemLabel({ host }: { host: DevOpsRemoteHost }) {
     const stateTone = host.state === 'healthy' ? 'emerald' : 'rose';
     const hostName = host.description ? host.description : host.host;
     return (
-        <div className="flex gap-2 min-w-0 flex-1 w-full flex-col">
+        <div className="flex gap-2 flex-1 w-full flex-col">
             <span className="flex-grow font-medium truncate">{hostName}</span>
-            <div className="flex items-center ">
+            <div className="flex flex-wrap items-center gap-1">
                 <Pill size="sm" tone={stateTone as any} variant="soft">
                     {host.state.charAt(0).toUpperCase() + host.state.slice(1)}
                 </Pill>
@@ -415,8 +415,6 @@ export const Hosts: React.FC = () => {
                                 variant="ghost"
                                 size="xs"
                                 color={themeColor}
-                                accent={true}
-                                accentColor={themeColor}
                                 icon="Add"
                                 onClick={() => setShowAddModal(true)}
                                 aria-label="Add host"
