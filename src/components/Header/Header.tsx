@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GLOBAL_NOTIFICATION_CHANNEL } from '@/constants/constants';
-import { HeaderGroup, UserAvatar, getGravatarUrl } from '@prl/ui-kit';
+import { HeaderGroup, UserAvatar, getGravatarUrl, useSideMenuActions } from '@prl/ui-kit';
 import { NotificationWrapper } from '../Notification/NotificationWrapper';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useConfig } from '@/contexts/ConfigContext';
@@ -69,6 +69,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = () => {
   const { isModalOpen, openModal, closeModal } = useLayout();
+  const { sideItemActions, sidePanelActions } = useSideMenuActions();
   const config = useConfig();
   const { session, setSession, clearSession, hasModule } = useSession();
   const { theme, toggleTheme } = useTheme();
@@ -215,6 +216,20 @@ export const Header: React.FC<HeaderProps> = () => {
         </div>
 
         <div className="flex flex-grow" />
+
+        {/* Side item actions (per-item actions from the list/sidebar) */}
+        {sideItemActions && (
+          <HeaderGroup>
+            {sideItemActions}
+          </HeaderGroup>
+        )}
+
+        {/* Side panel actions (detail panel header actions) */}
+        {sidePanelActions && (
+          <HeaderGroup>
+            {sidePanelActions}
+          </HeaderGroup>
+        )}
 
         {/* Theme toggle */}
         <HeaderGroup>

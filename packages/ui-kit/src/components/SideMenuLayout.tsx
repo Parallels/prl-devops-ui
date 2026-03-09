@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import classNames from "classnames";
 import SideMenu, { type SideMenuProps } from "./SideMenu";
 import CustomIcon from "./CustomIcon";
+import { SideMenuActionsProvider } from "../contexts/SideMenuActionsContext";
+
 
 export interface SideMenuLayoutProps {
   /** Props passed to the SideMenu component (including color). */
@@ -16,6 +18,16 @@ export interface SideMenuLayoutProps {
   headerClassName?: string;
   /** Additional class name for the scrollable body */
   bodyClassName?: string;
+  /**
+   * Per-item actions from the list/sidebar (e.g. edit/delete buttons for the active item).
+   * Consumed by the header via `useSideMenuActions`.
+   */
+  sideItemActions?: React.ReactNode;
+  /**
+   * Actions from the detail/side panel (e.g. PageHeader action buttons).
+   * Consumed by the header via `useSideMenuActions`.
+   */
+  sidePanelActions?: React.ReactNode;
 }
 
 export const SideMenuLayout = ({
@@ -25,6 +37,8 @@ export const SideMenuLayout = ({
   className,
   headerClassName,
   bodyClassName,
+  sideItemActions,
+  sidePanelActions,
 }: SideMenuLayoutProps) => {
   const [collapsed, setCollapsed] = useState(sideMenuProps.collapsed ?? false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -54,6 +68,7 @@ export const SideMenuLayout = ({
     : mobileOpen;
 
   return (
+    <SideMenuActionsProvider initialSideItemActions={sideItemActions} initialSidePanelActions={sidePanelActions}>
     <div className={classNames("flex h-full w-full overflow-hidden bg-gray-50", className)}>
       {/* Side Menu */}
       <SideMenu
@@ -101,6 +116,7 @@ export const SideMenuLayout = ({
         </main>
       </div>
     </div>
+    </SideMenuActionsProvider>
   );
 };
 

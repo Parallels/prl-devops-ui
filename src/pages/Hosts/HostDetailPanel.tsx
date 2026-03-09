@@ -81,7 +81,7 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host, onPause,
                 size="sm"
                 className="flex-1 min-h-0"
                 listClassName="bg-white dark:bg-neutral-900 px-1"
-                panelClassName=""
+                panelClassName="pt-2"
                 panelIdPrefix="host-detail"
                 scrollFade
                 items={[

@@ -4,6 +4,7 @@
 export interface VirtualMachine {
   ID: string;
   host_id: string;
+  host_name: string;
   host_external_ip_address: string;
   internal_ip_address: string;
   user: string;

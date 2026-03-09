@@ -156,6 +156,7 @@ export interface EmptyStateProps extends Omit<React.HTMLAttributes<HTMLDivElemen
   showIcon?: boolean;
   tone?: EmptyStateTone;
   disableBorder?: boolean;
+  transparentBackground?: boolean;
   fullWidth?: boolean;
   fullHeight?: boolean;
   actionSize?: ButtonSize;
@@ -185,6 +186,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   actionLeadingIcon,
   className,
   disableBorder = false,
+  transparentBackground = false,
   ...rest
 }) => {
   const renderIcon = useIconRenderer();
@@ -200,7 +202,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         "flex flex-col items-center justify-center gap-1 rounded-3xl px-6 py-10 text-center transition",
         !disableBorder && "border-2 border-dashed shadow-sm",
         palette.border,
-        palette.bg,
+        !transparentBackground && palette.bg,
         sizes[size],
         fullWidth && "w-full",
         fullHeight && "h-full",

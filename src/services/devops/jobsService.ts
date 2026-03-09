@@ -54,8 +54,30 @@ class JobsService {
   }
 
   /**
+   * Delete a specific job by ID
+   *
+   * @param hostname - The hostname identifier for the target server
+   * @param id - The ID of the job to delete
+   * @returns true if deleted successfully
+   */
+  async deleteJob(hostname: string, id: string): Promise<boolean> {
+    try {
+      if (!id) throw new Error('Job ID is required');
+      await apiService.delete(
+        hostname,
+        `/api/v1/jobs/${id}`,
+        { errorPrefix: 'Failed to delete job' }
+      );
+      return true;
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Test connectivity to the DevOps API
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @returns true if host is reachable and authenticated
    */

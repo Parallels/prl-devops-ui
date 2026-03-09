@@ -305,11 +305,11 @@ export const Home: React.FC = () => {
         cache: 'lime',
     };
     return (
-        <div className="flex flex-col w-full h-full p-6 gap-6 overflow-y-auto bg-neutral-50 dark:bg-neutral-950">
+        <div className="flex flex-col w-full h-full bg-neutral-50 dark:bg-neutral-950">
 
-            {/* ── Header ──────────────────────────────────────────────── */}
-            <div className="flex items-center gap-2">
-                <div className="flex  gap-2 flex-col flex-grow">
+            {/* ── Sticky header ───────────────────────────────────────── */}
+            <div className="sticky top-0 z-10 bg-neutral-50 dark:bg-neutral-950 px-6 pt-6 pb-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-2">
+                <div className="flex gap-2 flex-col flex-grow">
                     <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">
                         {session?.hostname ?? 'Dashboard'}
                     </h1>
@@ -321,6 +321,9 @@ export const Home: React.FC = () => {
                     <VmStatCard label="No Alerts" value={0} color="emerald" />
                 </div>
             </div>
+
+            {/* ── Scrollable body ─────────────────────────────────────── */}
+            <div className="flex-1 overflow-y-auto flex flex-col gap-6 p-6">
 
             {/* ── System info ─────────────────────────────────────────── */}
             <div>
@@ -430,6 +433,7 @@ export const Home: React.FC = () => {
                 </div>
             )}
 
+            </div>{/* end scrollable body */}
         </div>
     );
 };

@@ -48,6 +48,8 @@ interface BypassArcData {
     dy: number;
     sourceTone: TreeTone;
     destTone: TreeTone;
+    /** True when at least one item in the destination group is currently active (running). */
+    destActive: boolean;
 }
 
 /** How many px above the card tops the bypass path travels. */
@@ -264,8 +266,13 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
                     const dstTone: TreeTone = dstGroup
                         ? ((dstGroup.kind === 'single' ? dstGroup.item.tone : dstGroup.items[0]?.tone) ?? 'neutral')
                         : 'neutral';
+                    const destActive = dstGroup
+                        ? (dstGroup.kind === 'single'
+                            ? (dstGroup.item.active ?? false)
+                            : dstGroup.items.some(it => it.active ?? false))
+                        : false;
 
-                    arcs.push({ sx, sy, dx, dy, sourceTone: srcTone, destTone: dstTone });
+                    arcs.push({ sx, sy, dx, dy, sourceTone: srcTone, destTone: dstTone, destActive });
                 }
                 skipStart = -1;
             }
@@ -572,8 +579,16 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
                                 <path d={dstArcD} stroke={dstBorder} strokeWidth={bw} fill="none" strokeLinecap="round" />
                                 <circle cx={arc.dx} cy={dBase} r="2" fill={dstDot} />
 
-                                {/* Animated dots */}
-                                {animated && Array.from({ length: numDots }, (_, di) => (
+                                {/* Animated dots — only when bypass is actively being traversed
+                                    (source done, destination not yet reached), or when
+                                    animateCompleted is on (completed arcs also animate). */}
+                                {(() => {
+                                    // Animate when source is done AND destination is either
+                                    // not yet reached (neutral) or currently running (destActive).
+                                    const arcActive    = arc.sourceTone !== 'neutral' && (arc.destTone === 'neutral' || arc.destActive);
+                                    const arcCompleted = arc.sourceTone !== 'neutral' && arc.destTone !== 'neutral' && !arc.destActive;
+                                    return animated && (arcActive || (animateCompleted && arcCompleted));
+                                })() && Array.from({ length: numDots }, (_, di) => (
                                     <circle key={di} r="3" fill={dotFill} opacity="0">
                                         <animateMotion
                                             path={dMotion}

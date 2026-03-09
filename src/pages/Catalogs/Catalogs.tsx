@@ -107,12 +107,12 @@ export const Catalogs: React.FC = () => {
   const hasHostModule = hasModule(Modules.HOST);
   const hasOrchestratorModule = hasModule(Modules.ORCHESTRATOR);
 
-  const hasCreateManager = hasClaim(Claims.CATALOG_MANAGER_CREATE);
-  const hasCreateManagerOwn = hasClaim(Claims.CATALOG_MANAGER_CREATE_OWN);
+  const hasCreateCatalog = hasClaim(Claims.CATALOG_MANAGER_CREATE);
+  const hasCreateCatalogOwn = hasClaim(Claims.CATALOG_MANAGER_CREATE_OWN);
   const hasUpdateManager = hasClaim(Claims.CATALOG_MANAGER_UPDATE);
   const hasUpdateManagerOwn = hasClaim(Claims.CATALOG_MANAGER_UPDATE_OWN);
 
-  const canCreateManager = hasCreateManager || hasCreateManagerOwn;
+  const canCreateCatalog = hasCreateCatalog || hasCreateCatalogOwn;
 
   const canEditManager = useCallback((manager: CatalogManager): boolean => {
     if (hasUpdateManager) return true;
@@ -188,7 +188,7 @@ export const Catalogs: React.FC = () => {
     setSelectedCatalogItem(null);
   }, []);
 
-  const openAddManagerModal = useCallback(() => {
+  const openAddCatalogModal = useCallback(() => {
     openManagerManagement();
     setEditingManager(null);
     setManagerForm(defaultManagerForm);
@@ -215,7 +215,7 @@ export const Catalogs: React.FC = () => {
 
   const isEditMode = Boolean(editingManager);
   const isFormDirty = normalizeForDirtyCheck(managerForm) !== managerFormSnapshot;
-  const showAdvancedFlags = isEditMode ? hasUpdateManager : hasCreateManager;
+  const showAdvancedFlags = isEditMode ? hasUpdateManager : hasCreateCatalog;
 
   const handleSaveManager = useCallback(async () => {
     const payload = toManagerRequest(managerForm);
@@ -428,7 +428,7 @@ export const Catalogs: React.FC = () => {
                     icon="Edit"
                     size="xs"
                     variant="ghost"
-                    color="slate"
+                    color={themeColor}
                     onClick={(e) => {
                       e.stopPropagation();
                       openEditManagerModal(manager);
@@ -499,10 +499,10 @@ export const Catalogs: React.FC = () => {
         managers={allManagers}
         search={managerSearch}
         setSearch={setManagerSearch}
-        canCreateManager={canCreateManager}
+        canCreateManager={canCreateCatalog}
         canEditManager={canEditManager}
         canDeleteManager={canDeleteManager}
-        onAdd={openAddManagerModal}
+        onAdd={openAddCatalogModal}
         onEdit={openEditManagerModal}
         onDelete={(manager) => setManagerToDelete(manager)}
         onRefresh={() => void fetchCatalogContext()}
@@ -542,8 +542,8 @@ export const Catalogs: React.FC = () => {
         onRetry={() => void fetchCatalogContext()}
         listTitle={`Catalogs (${items.length})`}
         listActions={
-          canCreateManager
-            ? <IconButton icon="Add" size="sm" variant="ghost" color={themeColor} onClick={openAddManagerModal} />
+          canCreateCatalog
+            ? <IconButton icon="Add" size="sm" variant="ghost" color={themeColor} onClick={openAddCatalogModal} />
             : undefined
         }
         searchPlaceholder="Search sources"

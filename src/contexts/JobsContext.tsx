@@ -31,6 +31,7 @@ export interface JobsContextType {
     error: string | null;
     refresh: () => Promise<void>;
     cleanUp: () => Promise<void>;
+    deleteJob: (id: string) => Promise<void>;
 }
 
 // ── Reducer ───────────────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ type JobsState = Record<string, Job>; // keyed by id
 type JobsAction =
     | { type: 'SET_ALL'; jobs: Job[] }
     | { type: 'UPSERT'; job: Job }
+    | { type: 'REMOVE'; id: string }
     | { type: 'CLEAR' };
 
 function jobsReducer(state: JobsState, action: JobsAction): JobsState {
@@ -48,6 +50,11 @@ function jobsReducer(state: JobsState, action: JobsAction): JobsState {
             return Object.fromEntries(action.jobs.map((j) => [j.id, j]));
         case 'UPSERT':
             return { ...state, [action.job.id]: action.job };
+        case 'REMOVE': {
+            const next = { ...state };
+            delete next[action.id];
+            return next;
+        }
         case 'CLEAR':
             return {};
     }
@@ -212,6 +219,17 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await fetchJobs();
     }, [hostname, fetchJobs]);
 
+    const deleteJob = useCallback(async (id: string) => {
+        if (!hostname) return;
+        dispatch({ type: 'REMOVE', id }); // optimistic removal
+        try {
+            await jobsService.deleteJob(hostname, id);
+        } catch {
+            await fetchJobs(); // roll back on failure
+            throw new Error('Failed to delete job');
+        }
+    }, [hostname, fetchJobs]);
+
     const value = useMemo<JobsContextType>(() => ({
         jobs,
         activeJobs,
@@ -221,7 +239,8 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error,
         refresh: fetchJobs,
         cleanUp,
-    }), [jobs, activeJobs, activeByType, loading, error, fetchJobs, cleanUp]);
+        deleteJob,
+    }), [jobs, activeJobs, activeByType, loading, error, fetchJobs, cleanUp, deleteJob]);
 
     return <JobsContext.Provider value={value}>{children}</JobsContext.Provider>;
 };

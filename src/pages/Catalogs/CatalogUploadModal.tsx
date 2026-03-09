@@ -736,7 +736,7 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
                   <Button
                     type="button"
                     variant="soft"
-                    color="slate"
+                    color={themeColor}
                     size="sm"
                     leadingIcon="Folder"
                     onClick={() => void handleBrowse()}

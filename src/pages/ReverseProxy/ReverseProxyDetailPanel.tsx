@@ -183,6 +183,7 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
                     className="flex-1 min-h-0"
                     listClassName="bg-white dark:bg-neutral-900 px-1"
                     panelIdPrefix="tcp-route-detail"
+                    panelClassName="pt-2"
                     scrollFade
                     items={[
                         {
@@ -227,6 +228,7 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
                     className="flex-1 min-h-0"
                     listClassName="bg-white dark:bg-neutral-900 px-1"
                     panelIdPrefix="proxy-detail"
+                    panelClassName="pt-2"
                     scrollFade
                     items={[
                         {

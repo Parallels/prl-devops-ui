@@ -454,7 +454,7 @@ export const SideMenu = ({
         )}
 
         {/* Navigation Items */}
-        <div className="flex-1 px-3 py-2 overflow-y-auto w-full">
+        <div className="flex-1 px-3 py-1 overflow-y-auto w-full">
           <nav className="space-y-1 w-full">
             {visibleItems.map((item, index) => {
               // Divider
@@ -476,7 +476,7 @@ export const SideMenu = ({
                     {item.hasDivider && (
                       <div className={`my-2 border-t border-gray-200/60 ${isCollapsed && !isMobile ? "mx-1" : "mx-0"}`} />
                     )}
-                    <div className="px-3 py-2 mt-4 mb-1 text-xs font-semibold text-gray-400 dark:text-neutral-500 uppercase tracking-wider">
+                    <div className={`px-3 py-1 mb-1 text-xs font-semibold text-gray-400 dark:text-neutral-500 uppercase tracking-wider ${index === 0 ? 'mt-1' : 'mt-4'}`}>
                       {item.label}
                     </div>
                   </React.Fragment>

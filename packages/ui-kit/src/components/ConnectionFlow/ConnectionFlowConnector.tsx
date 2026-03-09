@@ -141,7 +141,6 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
     const ci = isDark ? 1 : 0;
     const bw = BORDER_WIDTH[borderSize];
     const ringR = 5.5;
-    const STRAIGHT = 8; // tangent length so bezier curves arrive/depart horizontally at rings
 
     // isActive gates animated-dot rendering; extended to 'stopped' when animateCompleted is on
     const isActive = state === 'flowing' || (animateCompleted && state === 'stopped');
@@ -214,7 +213,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                                     key={`hline-src-${idx}`}
                                     d={ay === sy
                                         ? `M 0 ${ay} L ${trunkX} ${sy}`
-                                        : `M 0 ${ay} L ${STRAIGHT} ${ay} C ${trunkX / 2} ${ay}, ${trunkX - STRAIGHT} ${sy}, ${trunkX} ${sy}`
+                                        : `M 0 ${ay} C ${trunkX / 2} ${ay}, ${trunkX / 2} ${sy}, ${trunkX} ${sy}`
                                     }
                                     stroke={lineColor}
                                     strokeWidth={idx === 0 ? 2 : 1.5}
@@ -245,7 +244,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                                     key={`hline-target-${idx}`}
                                     d={ry === sy
                                         ? `M ${ringR} ${sy} L ${width - ringR} ${ry}`
-                                        : `M ${ringR} ${sy} L ${ringR + STRAIGHT} ${sy} C ${fanOutCx} ${sy}, ${width - ringR - STRAIGHT} ${ry}, ${width - ringR} ${ry}`
+                                        : `M ${ringR} ${sy} C ${fanOutCx} ${sy}, ${fanOutCx} ${ry}, ${width - ringR} ${ry}`
                                     }
                                     stroke={lineColor}
                                     strokeWidth={idx === 0 ? 2 : 1.5}
@@ -377,7 +376,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                             // Same bezier as the visual line; append a short L for overflow fade-out
                             const pathData = ry === sy
                                 ? `M ${ringR} ${sy} L ${width - ringR + overflow} ${sy}`
-                                : `M ${ringR} ${sy} L ${ringR + STRAIGHT} ${sy} C ${fanOutCx} ${sy}, ${width - ringR - STRAIGHT} ${ry}, ${width - ringR} ${ry} L ${width - ringR + overflow} ${ry}`;
+                                : `M ${ringR} ${sy} C ${fanOutCx} ${sy}, ${fanOutCx} ${ry}, ${width - ringR} ${ry} L ${width - ringR + overflow} ${ry}`;
 
                             const fadeOutEnd = actualLen / virtualLen;
                             const fadeOutStart = Math.max(0, fadeOutEnd - 10 / virtualLen);
@@ -426,7 +425,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                             const feedEndX = width - ringR + overflow;
                             const branchSeg = ay === sy
                                 ? `M 0 ${ay} L ${trunkX} ${sy}`
-                                : `M 0 ${ay} L ${STRAIGHT} ${ay} C ${trunkX / 2} ${ay}, ${trunkX - STRAIGHT} ${sy}, ${trunkX} ${sy}`;
+                                : `M 0 ${ay} C ${trunkX / 2} ${ay}, ${trunkX / 2} ${sy}, ${trunkX} ${sy}`;
                             const feedSeg = sy === ty
                                 ? ` L ${feedEndX} ${ty}`
                                 : ` C ${cx} ${sy}, ${cx} ${ty}, ${feedEndX} ${ty}`;

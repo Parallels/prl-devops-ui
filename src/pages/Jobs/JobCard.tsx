@@ -4,7 +4,9 @@ import {
     ArrowRight,
     Calendar,
     CheckCircle,
+    ConfirmModal,
     ConnectionFlow,
+    IconButton,
     Panel,
     Pill,
     Progress,
@@ -15,6 +17,7 @@ import {
     type ConnectionFlowItem,
 } from '@prl/ui-kit';
 import type { Job, JobStep } from '@/interfaces/Jobs';
+import { useJobs } from '@/contexts/JobsContext';
 import { stateToTone, jobTypeIcon, formatTimestamp, titleCase, stepName, joinNames, formatEta, parseEtaToSeconds, TONE_ICON_BG } from './jobsUtils';
 
 interface JobCardProps {
@@ -153,6 +156,9 @@ const JobProgress: React.FC<{ job: Job }> = ({ job }) => {
 export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) => {
     const cardRef = useRef<HTMLDivElement>(null);
     const [isHighlighted, setIsHighlighted] = useState(highlighted);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const { deleteJob } = useJobs();
 
     useEffect(() => {
         if (!highlighted) return;
@@ -161,6 +167,16 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
         const t = setTimeout(() => setIsHighlighted(false), 3000);
         return () => clearTimeout(t);
     }, [highlighted]);
+
+    const handleDelete = async () => {
+        setDeleting(true);
+        try {
+            await deleteJob(job.id);
+        } finally {
+            setDeleting(false);
+            setConfirmDelete(false);
+        }
+    };
 
     const tone = stateToTone(job.state);
     const isInit = job.state === 'init';
@@ -276,11 +292,47 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
                             </span>
                         )}
                     </div>
-                    <span className="text-[10px] font-mono text-neutral-300 dark:text-neutral-600 truncate max-w-[140px]">
-                        {job.id}
-                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-neutral-300 dark:text-neutral-600 truncate max-w-[140px]">
+                            {job.id}
+                        </span>
+                        {!isActive && (
+                            <IconButton
+                                icon="Trash"
+                                variant="ghost"
+                                color="rose"
+                                size="xs"
+                                aria-label="Delete job"
+                                onClick={() => setConfirmDelete(true)}
+                            />
+                        )}
+                    </div>
                 </div>
             </Panel>
+
+            {/* Delete confirmation modal */}
+            <ConfirmModal
+                isOpen={confirmDelete}
+                onClose={() => setConfirmDelete(false)}
+                onConfirm={() => void handleDelete()}
+                title="Delete Job"
+                description="This action cannot be undone."
+                icon="Trash"
+                size="sm"
+                confirmLabel="Delete"
+                confirmVariant="solid"
+                confirmColor="rose"
+                confirmButtonProps={{ leadingIcon: 'Trash', loading: deleting }}
+                isConfirmDisabled={deleting}
+            >
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Are you sure you want to delete the{' '}
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                        {titleCase(job.job_type)} · {titleCase(job.job_operation)}
+                    </span>{' '}
+                    job?
+                </p>
+            </ConfirmModal>
         </div>
     );
 };

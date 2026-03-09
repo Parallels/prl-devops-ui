@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSideMenuActions } from "../contexts/SideMenuActionsContext";
 import classNames from "classnames";
 import { type ThemeColor, getPillColorClasses } from "../theme/Theme";
 import CustomIcon from "./CustomIcon";
@@ -277,6 +278,8 @@ const SplitView: React.FC<SplitViewProps> = ({
   onExpand,
   panelScrollable = true,
 }) => {
+  const { setSideItemActions } = useSideMenuActions();
+
   const visibleItems = useMemo(() => items.filter((i) => !i.hidden), [items]);
   const isSingleVisibleItem = visibleItems.length === 1;
   // Single-item mode is now always detail-only; keep autoHideList reference for backward compatibility.
@@ -338,6 +341,14 @@ const SplitView: React.FC<SplitViewProps> = ({
       }
     }
   }, [shouldHideList, visibleItems, activeId, value]);
+
+  // When the list panel is hidden (single-item mode), promote listActions to the
+  // SideMenuActionsContext so they surface in the app header instead.
+  useEffect(() => {
+    if (!shouldHideList) return;
+    setSideItemActions(listActions);
+    return () => setSideItemActions(undefined);
+  }, [shouldHideList, listActions, setSideItemActions]);
 
   const filteredItems = useMemo(() => {
     if (!filter) return visibleItems;
@@ -569,6 +580,7 @@ const SplitView: React.FC<SplitViewProps> = ({
               actionVariant="solid"
               actionColor={color}
               disableBorder
+              transparentBackground
               iconColor="danger"
               size="lg"
             />
@@ -622,7 +634,6 @@ const SplitView: React.FC<SplitViewProps> = ({
               icon="ChevronRight"
               variant="ghost"
               color={color}
-              accentColor="parallels"
               size="xs"
               onClick={toggleCollapsed}
               aria-label="Expand list"
@@ -645,7 +656,6 @@ const SplitView: React.FC<SplitViewProps> = ({
                       icon="ChevronLeft"
                       variant="ghost"
                       color={color}
-                      accentColor="parallels"
                       size="xs"
                       onClick={toggleCollapsed}
                       aria-label="Collapse list"
