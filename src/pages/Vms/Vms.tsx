@@ -133,7 +133,7 @@ const orchestratorColumns: Column<VirtualMachine>[] = [
         header: 'Host',
         accessor: 'host_name',
         width: 200,
-        render: (row) => <HostLink hostId={String(row.host_id ?? '—')} />,
+        render: (row) => <HostLink hostId={String(row.host_name ?? '—')} />,
     },
     {
         id: 'user',
