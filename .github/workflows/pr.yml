@@ -4,6 +4,9 @@ on:
   pull_request:
     branches:
       - main
+  pull_request_target:
+    branches:
+      - main
   workflow_call:
     secrets:
       GH_WORKFLOW_TOKEN:
