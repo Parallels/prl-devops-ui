@@ -1,6 +1,9 @@
-name: PRL DevOps UI PR Validation
+name: PRL DevOps UI — PR Validation
 
 on:
+  pull_request:
+    branches:
+      - main
   workflow_call:
     secrets:
       GH_WORKFLOW_TOKEN:
@@ -11,129 +14,125 @@ permissions:
   contents: read
   pull-requests: write
 
+# Cancel in-flight runs for the same PR when new commits are pushed
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "24"
+
 jobs:
-  # ── UI Kit Pipeline ──────────────────────────────────────
+
+  # ── UI Kit ─────────────────────────────────────────────────────────────────
+
   ui-kit-lint:
-    name: Lint UI Kit
+    name: "UI Kit: Type Check"
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint UI Kit
-        run: make ui-kit-lint
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: make ui-kit-lint
 
   ui-kit-build:
-    name: Build UI Kit
+    name: "UI Kit: Build"
     needs: ui-kit-lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: make ui-kit-build
+      - name: Upload UI Kit dist
+        uses: actions/upload-artifact@v4
         with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: package-lock.json
+          name: ui-kit-dist
+          path: packages/ui-kit/dist
+          retention-days: 1
 
-      - name: Install dependencies
-        run: npm ci
+  # ── App ────────────────────────────────────────────────────────────────────
 
-      - name: Build UI Kit
-        run: make ui-kit-build
-
-  # ── Main App Pipeline ───────────────────────────────────
-  prl-devops-ui-lint:
-    name: Lint PRL DevOps UI
+  app-lint:
+    name: "App: Type Check"
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: make lint
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint
-        run: make lint
-
-  prl-devops-ui-test:
-    name: Test PRL DevOps UI
-    needs: prl-devops-ui-lint
+  app-test:
+    name: "App: Tests"
+    needs: app-lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Run tests with coverage
+        run: make test-coverage
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: package-lock.json
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: make test
-
-  prl-devops-ui-build:
-    name: Build PRL DevOps UI
-    needs: prl-devops-ui-lint
+  app-build:
+    name: "App: Build"
+    needs: [ui-kit-build, app-lint]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Download UI Kit dist
+        uses: actions/download-artifact@v4
         with:
-          node-version: "24"
-          cache: "npm"
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
+          name: ui-kit-dist
+          path: packages/ui-kit/dist
+      - name: Build web app
         run: make build-web
+      - name: Upload app dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-dist
+          path: dist/
+          retention-days: 1
 
+  # ── Docker ─────────────────────────────────────────────────────────────────
+
+  docker-build:
+    name: "Docker: Build"
+    needs: [app-build, app-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
-          context: ${{ github.workspace }}
-          file: ${{ github.workspace }}/Dockerfile
+          context: .
+          file: Dockerfile
           push: false
-          tags: prl-devops-ui:latest
+          tags: prl-devops-ui:pr-${{ github.event.pull_request.number || 'ci' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
