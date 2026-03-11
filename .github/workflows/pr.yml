@@ -30,28 +30,36 @@ jobs:
     name: "UI Kit: Type Check"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      - run: make ui-kit-lint
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint UI Kit
+        run: make ui-kit-lint
 
   ui-kit-build:
     name: "UI Kit: Build"
     needs: ui-kit-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      - run: make ui-kit-build
-      - name: Upload UI Kit dist
-        uses: actions/upload-artifact@v4
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
           name: ui-kit-dist
           path: packages/ui-kit/dist
@@ -63,30 +71,39 @@ jobs:
     name: "App: Type Check"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
       - run: make lint
 
-  app-test:
-    name: "App: Tests"
-    needs: app-lint
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: make lint
+
+  prl-devops-ui-test:
+    name: Test PRL DevOps UI
+    needs: prl-devops-ui-lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      - name: Run tests with coverage
-        run: make test-coverage
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
           name: coverage-report
           path: coverage/
@@ -97,14 +114,13 @@ jobs:
     needs: [ui-kit-build, app-lint]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      - name: Download UI Kit dist
-        uses: actions/download-artifact@v4
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
         with:
           name: ui-kit-dist
           path: packages/ui-kit/dist
@@ -126,9 +142,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
+
       - name: Build Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
