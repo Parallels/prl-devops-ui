@@ -1,0 +1,115 @@
+name: Create Release PR
+
+run-name: "Create release PR — ${{ github.event.inputs.version }} bump"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        required: true
+        type: choice
+        description: "Version bump type"
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-release-pr:
+    name: Create Release PR
+    runs-on: ubuntu-latest
+    env:
+      NEW_VERSION: ""
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_WORKFLOW_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      # ── Compute next version ───────────────────────────────────────────────
+      - name: Compute next version
+        id: version
+        run: |
+          NEW_VERSION=$(./.github/workflow_scripts/increment-version.sh \
+            -t ${{ inputs.version }} \
+            -f VERSION)
+          echo "NEW_VERSION=${NEW_VERSION}" >> "$GITHUB_ENV"
+          echo "value=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+
+      # ── Create release branch ──────────────────────────────────────────────
+      - name: Create release branch
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b release/${{ env.NEW_VERSION }}
+
+      # ── Bump version files ─────────────────────────────────────────────────
+      - name: Bump VERSION file
+        run: echo "${{ env.NEW_VERSION }}" > VERSION
+
+      - name: Bump package.json version
+        run: |
+          npm version ${{ env.NEW_VERSION }} --no-git-tag-version --allow-same-version
+
+      - name: Bump Helm chart versions
+        run: |
+          V="${{ env.NEW_VERSION }}"
+          sed -i "s/^version:.*/version: ${V}/" helm/prl-devops-ui/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${V}\"/" helm/prl-devops-ui/Chart.yaml
+
+      # ── Generate changelog ─────────────────────────────────────────────────
+      - name: Generate changelog
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          chmod +x ./.github/workflow_scripts/generate-changelog.sh
+          ./.github/workflow_scripts/generate-changelog.sh \
+            --mode GENERATE \
+            --repo ${{ github.repository }} \
+            --version ${{ env.NEW_VERSION }} \
+            --verbose
+
+      # ── Commit and push ────────────────────────────────────────────────────
+      - name: Commit and push release branch
+        run: |
+          git add VERSION package.json package-lock.json CHANGELOG.md \
+            helm/prl-devops-ui/Chart.yaml
+          git commit -m "chore(release): bump to ${{ env.NEW_VERSION }}"
+          git push --set-upstream origin release/${{ env.NEW_VERSION }}
+
+      # ── Generate PR body ───────────────────────────────────────────────────
+      - name: Generate release PR body
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          chmod +x ./.github/workflow_scripts/generate-changelog.sh
+          ./.github/workflow_scripts/generate-changelog.sh \
+            --mode RELEASE \
+            --repo ${{ github.repository }} \
+            --version ${{ env.NEW_VERSION }} \
+            --output-to-file \
+            --file release_notes.md \
+            --verbose
+
+      # ── Open pull request ──────────────────────────────────────────────────
+      - name: Create release PR
+        env:
+          GH_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+        run: |
+          gh pr create \
+            --title "chore(release): ${{ env.NEW_VERSION }}" \
+            --body-file release_notes.md \
+            --base main \
+            --head release/${{ env.NEW_VERSION }} \
+            --label release-request

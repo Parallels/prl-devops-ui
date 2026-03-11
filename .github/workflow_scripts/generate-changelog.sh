@@ -1,0 +1,323 @@
+#!/bin/bash
+# generate-changelog.sh
+#
+# Collects changelog entries from merged PRs since the last release, optionally
+# generates an AI-written description via the Claude API, and writes the result
+# to CHANGELOG.md (GENERATE mode) or release_notes.md (RELEASE mode).
+#
+# PR bodies must follow the pull_request_template.md format:
+#   ## Changelog
+#   - feat: ...
+#   - fix: ...
+#
+# Usage:
+#   generate-changelog.sh [options]
+#
+# Options:
+#   -m | --mode          GENERATE (default) or RELEASE
+#   -v | --version       Version string, e.g. 1.2.3
+#   -r | --repo          GitHub repository, e.g. Parallels/prl-devops-ui
+#        --changelog     Path to CHANGELOG.md (default: CHANGELOG.md)
+#        --file          Path to release notes output file (default: release_notes.md)
+#        --output-to-file  Write output to file instead of stdout
+#        --no-ai         Skip AI description generation even if ANTHROPIC_API_KEY is set
+#        --verbose       Enable verbose logging
+
+set -euo pipefail
+
+# ── Defaults ──────────────────────────────────────────────────────────────────
+VERBOSE="false"
+CHANGELOG_FILE="CHANGELOG.md"
+RELEASE_NOTES_FILE="release_notes.md"
+OUTPUT_TO_FILE="false"
+MODE="GENERATE"
+NEW_RELEASE=""
+REPO_NAME=""
+NO_AI="false"
+
+# ── Argument parsing ──────────────────────────────────────────────────────────
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -m|--mode)            MODE="$2";             shift 2 ;;
+    -v|--version)         NEW_RELEASE="$2";      shift 2 ;;
+    -r|--repo)            REPO_NAME="$2";        shift 2 ;;
+    --changelog)          CHANGELOG_FILE="$2";   shift 2 ;;
+    --file)               RELEASE_NOTES_FILE="$2"; shift 2 ;;
+    --output-to-file)     OUTPUT_TO_FILE="true"; shift ;;
+    --no-ai)              NO_AI="true";          shift ;;
+    --verbose)            VERBOSE="true";        shift ;;
+    *) echo "Unknown argument: $1" >&2; exit 1 ;;
+  esac
+done
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+log() { [[ "$VERBOSE" == "true" ]] && echo "[changelog] $*" >&2 || true; }
+
+require() {
+  command -v "$1" >/dev/null 2>&1 || { echo "Required tool not found: $1" >&2; exit 1; }
+}
+
+require gh
+require jq
+
+# ── Collect changelog entries from merged PRs ─────────────────────────────────
+# Reads the ## Changelog section from each PR body and extracts prefixed bullets.
+collect_entries() {
+  log "Fetching merged PRs for ${REPO_NAME}"
+
+  # Find when the most recent release PR was merged so we only include newer PRs
+  LAST_RELEASE_MERGED_AT=$(
+    gh pr list \
+      --repo "$REPO_NAME" \
+      --base main \
+      --state merged \
+      --json mergedAt \
+      --search "label:release-request" \
+      --limit 1 \
+    | jq -r '.[0].mergedAt // empty'
+  )
+
+  if [[ -n "$LAST_RELEASE_MERGED_AT" ]]; then
+    log "Last release merged at: $LAST_RELEASE_MERGED_AT"
+    SEARCH_QUERY="merged:>${LAST_RELEASE_MERGED_AT} -label:release-request"
+  else
+    log "No previous release found — collecting all merged PRs"
+    SEARCH_QUERY="-label:release-request"
+  fi
+
+  CHANGELIST=$(
+    gh pr list \
+      --repo "$REPO_NAME" \
+      --base main \
+      --state merged \
+      --json number,title,body \
+      --search "$SEARCH_QUERY" \
+      --limit 200
+  )
+
+  PR_COUNT=$(echo "$CHANGELIST" | jq 'length')
+  log "Found ${PR_COUNT} PR(s) to process"
+
+  # Extract ## Changelog section from each PR body
+  # Accepts lines starting with "- " between "## Changelog" and the next "##"
+  ENTRIES=$(
+    echo "$CHANGELIST" | jq -r '.[].body // ""' | \
+    awk '
+      /^## Changelog/ { in_section=1; next }
+      /^##/           { in_section=0 }
+      in_section && /^[[:space:]]*-[[:space:]]/ { print }
+    ' | \
+    sed 's/^[[:space:]]*//' | \
+    grep -v '^-[[:space:]]*$' || true
+  )
+
+  echo "$ENTRIES"
+}
+
+# ── Generate AI description via Claude API ────────────────────────────────────
+generate_ai_description() {
+  local entries="$1"
+
+  if [[ "$NO_AI" == "true" ]]; then
+    log "AI generation skipped (--no-ai)"
+    echo ""
+    return
+  fi
+
+  if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+    log "ANTHROPIC_API_KEY not set — skipping AI description"
+    echo ""
+    return
+  fi
+
+  if [[ -z "$entries" ]]; then
+    log "No entries to summarise — skipping AI description"
+    echo ""
+    return
+  fi
+
+  log "Generating AI description via Claude API"
+
+  local prompt
+  prompt="You are writing release notes for Parallels DevOps UI, a React-based web application for managing Parallels virtual machine infrastructure.
+
+Based on the changelog entries below, write a concise 2-3 sentence release description that:
+- Summarises the most significant user-visible improvements
+- Groups related changes naturally (don't list every bullet)
+- Is professional, clear, and written for end users and operators
+- Does NOT start with 'This release' or 'In this release'
+
+Changelog entries:
+${entries}
+
+Reply with only the description text. No headings, no bullet points, no preamble."
+
+  local response
+  response=$(
+    curl -sf https://api.anthropic.com/v1/messages \
+      -H "x-api-key: ${ANTHROPIC_API_KEY}" \
+      -H "anthropic-version: 2023-06-01" \
+      -H "content-type: application/json" \
+      -d "$(jq -n \
+        --arg model "claude-haiku-4-5-20251001" \
+        --arg prompt "$prompt" \
+        '{
+          model: $model,
+          max_tokens: 256,
+          messages: [{ role: "user", content: $prompt }]
+        }'
+      )"
+  ) || { log "Claude API call failed — skipping AI description"; echo ""; return; }
+
+  echo "$response" | jq -r '.content[0].text // empty'
+}
+
+# ── Format the full changelog block ──────────────────────────────────────────
+build_changelog_block() {
+  local version="$1"
+  local entries="$2"
+  local ai_description="$3"
+  local today
+  today=$(date '+%Y-%m-%d')
+
+  {
+    echo "## [${version}] - ${today}"
+    echo ""
+    if [[ -n "$ai_description" ]]; then
+      echo "$ai_description"
+      echo ""
+    fi
+    if [[ -n "$entries" ]]; then
+      echo "$entries"
+    else
+      echo "- chore: maintenance release"
+    fi
+    echo ""
+  }
+}
+
+# ── Insert content into CHANGELOG.md ─────────────────────────────────────────
+insert_into_changelog() {
+  local block="$1"
+  local tmp
+  tmp=$(mktemp)
+
+  # Find the first existing ## version line and insert before it,
+  # or append after the header block if no versions exist yet.
+  local insert_after
+  insert_after=$(grep -n "^## \[" "$CHANGELOG_FILE" | head -1 | cut -d: -f1)
+
+  if [[ -z "$insert_after" ]]; then
+    # No versions yet — append to end of header
+    insert_after=$(wc -l < "$CHANGELOG_FILE")
+  else
+    insert_after=$((insert_after - 1))
+  fi
+
+  awk -v line="$insert_after" -v block="$block" '
+    NR == line { print; printf "%s", block; next }
+    { print }
+  ' "$CHANGELOG_FILE" > "$tmp"
+
+  mv "$tmp" "$CHANGELOG_FILE"
+}
+
+# ── Append content to an existing version section ────────────────────────────
+append_to_version_section() {
+  local version_line="$1"
+  local entries="$2"
+  local tmp
+  tmp=$(mktemp)
+  local entries_file
+  entries_file=$(mktemp)
+  echo "$entries" > "$entries_file"
+
+  # Find the end of this version's section
+  local end_line
+  end_line=$(awk -v start="$version_line" \
+    'NR > start && /^## \[/ { print NR-1; exit }' "$CHANGELOG_FILE")
+  [[ -z "$end_line" ]] && end_line=$(wc -l < "$CHANGELOG_FILE")
+
+  awk -v end="$end_line" -v ef="$entries_file" '
+    NR == end { print; while ((getline line < ef) > 0) print line; next }
+    { print }
+  ' "$CHANGELOG_FILE" > "$tmp"
+
+  mv "$tmp" "$CHANGELOG_FILE"
+  rm "$entries_file"
+}
+
+# ── GENERATE mode: update CHANGELOG.md ───────────────────────────────────────
+run_generate() {
+  if [[ -z "$NEW_RELEASE" ]]; then
+    echo "--version is required in GENERATE mode" >&2; exit 1
+  fi
+  if [[ -z "$REPO_NAME" ]]; then
+    echo "--repo is required" >&2; exit 1
+  fi
+
+  local entries ai_description
+  entries=$(collect_entries)
+  ai_description=$(generate_ai_description "$entries")
+
+  local version_line
+  version_line=$(grep -n "^## \[${NEW_RELEASE}\]" "$CHANGELOG_FILE" | cut -d: -f1 || true)
+
+  if [[ -z "$version_line" ]]; then
+    log "Creating new section for ${NEW_RELEASE}"
+    local block
+    block=$(build_changelog_block "$NEW_RELEASE" "$entries" "$ai_description")
+    insert_into_changelog "$block"
+  else
+    log "Appending to existing section for ${NEW_RELEASE}"
+    append_to_version_section "$version_line" "$entries"
+  fi
+
+  log "CHANGELOG.md updated successfully"
+}
+
+# ── RELEASE mode: write release_notes.md (for PR body / GitHub Release) ──────
+run_release() {
+  if [[ -z "$REPO_NAME" ]]; then
+    echo "--repo is required" >&2; exit 1
+  fi
+
+  local entries ai_description
+  entries=$(collect_entries)
+  ai_description=$(generate_ai_description "$entries")
+
+  local output
+  output=$(
+    {
+      if [[ -n "$NEW_RELEASE" ]]; then
+        echo "# Release ${NEW_RELEASE}"
+      fi
+      echo ""
+      if [[ -n "$ai_description" ]]; then
+        echo "$ai_description"
+        echo ""
+      fi
+      echo "## Changes"
+      echo ""
+      if [[ -n "$entries" ]]; then
+        echo "$entries"
+      else
+        echo "- chore: maintenance release"
+      fi
+    }
+  )
+
+  if [[ "$OUTPUT_TO_FILE" == "true" ]]; then
+    echo "$output" > "$RELEASE_NOTES_FILE"
+    log "Release notes written to ${RELEASE_NOTES_FILE}"
+  else
+    echo "$output"
+  fi
+}
+
+# ── Dispatch ──────────────────────────────────────────────────────────────────
+case "$MODE" in
+  GENERATE) run_generate ;;
+  RELEASE)  run_release  ;;
+  *) echo "Unknown mode: $MODE (use GENERATE or RELEASE)" >&2; exit 1 ;;
+esac
