@@ -10,6 +10,11 @@ on:
         description: "GitHub workflow token for releases and operations"
         required: true
 
+# Cancel in-flight runs for the same PR when new commits are pushed
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   pull-requests: write
