@@ -1,0 +1,26 @@
+services:
+  prl-devops-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: prl-devops-ui:latest
+    container_name: prl-devops-ui
+    ports:
+      - "5780:80"
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+    restart: unless-stopped
+
+  prl-devops-ui-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: prl-devops-ui:latest
+    container_name: prl-devops-ui-dev
+    ports:
+      - "8081:80"
+    environment:
+      APP_ENV: development
+    restart: unless-stopped
+    profiles:
+      - dev
