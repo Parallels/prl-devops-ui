@@ -401,7 +401,7 @@ export const Catalogs: React.FC = () => {
     setUploadLoading(true);
     setUploadError(null);
     try {
-      await devopsService.catalog.pushCatalog(hostname, data);
+      await devopsService.catalog.pushCatalogAsync(hostname, data);
       setIsUploadModalOpen(false);
       setCatalogReloadToken((prev) => prev + 1);
     } catch (err: any) {

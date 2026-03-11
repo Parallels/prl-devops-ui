@@ -190,8 +190,8 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({
   return (
     <div className="flex-1 min-h-0 p-4">
       <div className="grid h-full min-h-0 grid-cols-1 gap-4">
-        <div className="min-h-0 overflow-y-auto pr-1">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+        <div className="min-h-0 overflow-y-auto pr-1 @container">
+          <div className="grid grid-cols-1 gap-4 @[480px]:grid-cols-2 @[768px]:grid-cols-3 @[1100px]:grid-cols-4">
             {manifests.map((card) => {
               const { manifest, previewRow, latestRow, latestVersionLabel, featuredTags, activeRows } = card;
               const active = selectedManifestId === manifest.id;

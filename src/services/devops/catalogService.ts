@@ -1,5 +1,5 @@
 import { apiService } from '../api';
-import { CatalogManifestItem, CatalogPushRequest } from '../../interfaces/devops';
+import { CatalogManifestItem, CatalogPullRequest, CatalogPushRequest } from '../../interfaces/devops';
 
 /**
  * Catalog Service - Handles catalog-related operations for Parallels DevOps API
@@ -21,6 +21,63 @@ class CatalogService {
       );
     } catch (error) {
       console.error('Failed to push catalog:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Pull (download) a catalog manifest to the local host.
+   *
+   * Endpoint: POST /api/v1/catalog/pull
+   */
+  async pullCatalog(hostname: string, request: CatalogPullRequest): Promise<void> {
+    try {
+      await apiService.post<void>(
+        hostname,
+        '/api/v1/catalog/pull',
+        request,
+        { errorPrefix: 'Failed to pull catalog', expectNoContent: true }
+      );
+    } catch (error) {
+      console.error('Failed to pull catalog:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Push (upload) a local VM to the catalog asynchronously (returns immediately, tracked via Jobs).
+   *
+   * Endpoint: POST /api/v1/catalog/push/async
+   */
+  async pushCatalogAsync(hostname: string, request: CatalogPushRequest): Promise<void> {
+    try {
+      await apiService.post<void>(
+        hostname,
+        '/api/v1/catalog/push/async',
+        request,
+        { errorPrefix: 'Failed to push catalog async', expectNoContent: true }
+      );
+    } catch (error) {
+      console.error('Failed to push catalog async:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Pull (download) a catalog manifest asynchronously (returns immediately, tracked via Jobs).
+   *
+   * Endpoint: POST /api/v1/catalog/pull/async
+   */
+  async pullCatalogAsync(hostname: string, request: CatalogPullRequest): Promise<void> {
+    try {
+      await apiService.post<void>(
+        hostname,
+        '/api/v1/catalog/pull/async',
+        request,
+        { errorPrefix: 'Failed to pull catalog async', expectNoContent: true }
+      );
+    } catch (error) {
+      console.error('Failed to pull catalog async:', error);
       throw error;
     }
   }

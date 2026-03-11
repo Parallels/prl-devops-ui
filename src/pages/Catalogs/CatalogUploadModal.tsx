@@ -484,6 +484,13 @@ const COMPRESSION_LEVELS = [
 
 const IS_TAURI = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 
+function normalizeCatalogId(name: string): string {
+  return name
+    .toUpperCase()
+    .replace(/ /g, '_')
+    .replace(/[^A-Z0-9_-]/g, '_');
+}
+
 // ─── Form state ───────────────────────────────────────────────────────────────
 
 type SourceMode = 'vm' | 'manual';
@@ -497,8 +504,8 @@ interface UploadFormState {
   version: string;
   architecture: string;
   connection: string;
-  compress_pack: boolean;
-  compress_pack_level: string;
+  compress: boolean;
+  compress_level: string;
   uuid: string;
   required_roles: string[];
   required_claims: string[];
@@ -517,8 +524,8 @@ const defaultForm = (): UploadFormState => ({
   version: '',
   architecture: 'arm64',
   connection: '',
-  compress_pack: false,
-  compress_pack_level: 'default',
+  compress: false,
+  compress_level: 'default',
   uuid: '',
   required_roles: [],
   required_claims: [],
@@ -593,7 +600,13 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
 
   const handleVmSelect = (item: PickerItem) => {
     const vm = vms.find(v => v.ID === item.id);
-    setForm((prev) => ({ ...prev, vmId: item.id, local_path: vm?.Home ?? '' }));
+    const vmName = vm?.Name ?? '';
+    setForm((prev) => ({
+      ...prev,
+      vmId: item.id,
+      local_path: vm?.Home ?? '',
+      catalog_id: vmName ? normalizeCatalogId(vmName) : prev.catalog_id,
+    }));
     setValidationError(null);
   };
 
@@ -638,9 +651,9 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
       architecture: form.architecture.trim(),
       ...(form.description.trim() ? { description: form.description.trim() } : {}),
       ...(form.connection.trim() ? { connection: form.connection.trim() } : {}),
-      ...(form.compress_pack ? {
-        compress_pack: true,
-        compress_pack_level: form.compress_pack_level,
+      ...(form.compress ? {
+        compress: true,
+        compress_level: form.compress_level,
       } : {}),
       ...(form.uuid.trim() ? { uuid: form.uuid.trim() } : {}),
       ...(form.tags.length ? { tags: form.tags } : {}),
@@ -796,14 +809,14 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
                     Pack and compress the VM bundle before uploading.
                   </p>
                 </div>
-                <Toggle checked={form.compress_pack}
-                  onChange={(e) => set('compress_pack', e.target.checked)} size="sm" color="blue" />
+                <Toggle checked={form.compress}
+                  onChange={(e) => set('compress', e.target.checked)} size="sm" color="blue" />
               </div>
-              {form.compress_pack && (
+              {form.compress && (
                 <div className="mt-3 border-t border-neutral-100 pt-3 dark:border-neutral-700/60">
                   <FormField label="Compression Level" width="full">
-                    <Select value={form.compress_pack_level} size="sm"
-                      onChange={(e) => set('compress_pack_level', e.target.value)}>
+                    <Select value={form.compress_level} size="sm"
+                      onChange={(e) => set('compress_level', e.target.value)}>
                       {COMPRESSION_LEVELS.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}

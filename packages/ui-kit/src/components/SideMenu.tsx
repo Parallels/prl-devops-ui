@@ -405,7 +405,7 @@ export const SideMenu = ({
   `;
 
   const logoSection = (logoIcon || logoText) && (
-    <div className={`flex items-center border-b border-gray-500/60 dark:border-neutral-700/60 px-4 py-4 ${isCollapsed ? "justify-center" : ""}`}>
+    <div className={`flex h-15 items-center bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 px-4 py-4 ${isCollapsed ? "justify-center" : ""}`}>
       {logoIcon && (
         <div className="flex-shrink-0">{logoIcon}</div>
       )}

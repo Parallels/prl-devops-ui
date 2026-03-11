@@ -217,20 +217,6 @@ export const Header: React.FC<HeaderProps> = () => {
 
         <div className="flex flex-grow" />
 
-        {/* Side item actions (per-item actions from the list/sidebar) */}
-        {sideItemActions && (
-          <HeaderGroup>
-            {sideItemActions}
-          </HeaderGroup>
-        )}
-
-        {/* Side panel actions (detail panel header actions) */}
-        {sidePanelActions && (
-          <HeaderGroup>
-            {sidePanelActions}
-          </HeaderGroup>
-        )}
-
         {/* Theme toggle */}
         <HeaderGroup>
           <button
@@ -343,6 +329,20 @@ export const Header: React.FC<HeaderProps> = () => {
             )}
           </div>
         </HeaderGroup>
+
+        {/* Side panel actions (detail panel header actions) */}
+        {sidePanelActions && (
+          <HeaderGroup>
+            {sidePanelActions}
+          </HeaderGroup>
+        )}
+
+        {/* Side item actions (per-item actions from the list/sidebar) */}
+        {sideItemActions && (
+          <HeaderGroup>
+            {sideItemActions}
+          </HeaderGroup>
+        )}
       </div>
     </header>
   );

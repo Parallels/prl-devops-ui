@@ -240,8 +240,8 @@ export interface CatalogPushRequest {
   version: string;
   architecture: string;
   connection?: string;
-  compress_pack?: boolean;
-  compress_pack_level?: string;
+  compress?: boolean;
+  compress_level?: string;
   uuid?: string;
   required_roles?: string[];
   required_claims?: string[];

@@ -1,6 +1,6 @@
 import { apiService } from '../api';
 import { CatalogManager, CatalogManagerCreateRequest, CatalogManagerUpdateRequest } from '@/interfaces/CatalogManager';
-import { CatalogManifestItem } from '@/interfaces/devops';
+import { CatalogManifestItem, CatalogPullRequest, CatalogPushRequest } from '@/interfaces/devops';
 /**
  * Catalog Manager Service - Handles catalog manager operations
  */
@@ -126,6 +126,86 @@ class CatalogManagerService {
     } catch (error) {
       console.error('Failed to delete catalog manager:', error);
       return false;
+    }
+  }
+
+  /**
+   * Push (upload) a local VM to the catalog via a specific catalog manager.
+   *
+   * Endpoint: POST /api/v1/catalog-managers/:id/catalog/push
+   */
+  async pushCatalog(hostname: string, catalogManagerId: string, request: CatalogPushRequest): Promise<void> {
+    try {
+      const base = this.getCatalogBasePath(catalogManagerId);
+      await apiService.post<void>(
+        hostname,
+        `${base}/push`,
+        request,
+        { errorPrefix: 'Failed to push catalog via manager', expectNoContent: true }
+      );
+    } catch (error) {
+      console.error('Failed to push catalog via manager:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Pull (download) a catalog manifest to the local host via a specific catalog manager.
+   *
+   * Endpoint: POST /api/v1/catalog-managers/:id/catalog/pull
+   */
+  async pullCatalog(hostname: string, catalogManagerId: string, request: CatalogPullRequest): Promise<void> {
+    try {
+      const base = this.getCatalogBasePath(catalogManagerId);
+      await apiService.post<void>(
+        hostname,
+        `${base}/pull`,
+        request,
+        { errorPrefix: 'Failed to pull catalog via manager', expectNoContent: true }
+      );
+    } catch (error) {
+      console.error('Failed to pull catalog via manager:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Push (upload) a local VM to the catalog via a specific catalog manager asynchronously.
+   *
+   * Endpoint: POST /api/v1/catalog-managers/:id/catalog/push/async
+   */
+  async pushCatalogAsync(hostname: string, catalogManagerId: string, request: CatalogPushRequest): Promise<void> {
+    try {
+      const base = this.getCatalogBasePath(catalogManagerId);
+      await apiService.post<void>(
+        hostname,
+        `${base}/push/async`,
+        request,
+        { errorPrefix: 'Failed to push catalog async via manager', expectNoContent: true }
+      );
+    } catch (error) {
+      console.error('Failed to push catalog async via manager:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Pull (download) a catalog manifest via a specific catalog manager asynchronously.
+   *
+   * Endpoint: POST /api/v1/catalog-managers/:id/catalog/pull/async
+   */
+  async pullCatalogAsync(hostname: string, catalogManagerId: string, request: CatalogPullRequest): Promise<void> {
+    try {
+      const base = this.getCatalogBasePath(catalogManagerId);
+      await apiService.post<void>(
+        hostname,
+        `${base}/pull/async`,
+        request,
+        { errorPrefix: 'Failed to pull catalog async via manager', expectNoContent: true }
+      );
+    } catch (error) {
+      console.error('Failed to pull catalog async via manager:', error);
+      throw error;
     }
   }
 

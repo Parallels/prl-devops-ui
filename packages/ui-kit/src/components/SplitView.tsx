@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSideMenuActions } from "../contexts/SideMenuActionsContext";
 import classNames from "classnames";
 import { type ThemeColor, getPillColorClasses } from "../theme/Theme";
 import CustomIcon from "./CustomIcon";
@@ -198,43 +197,43 @@ const iconSizeClasses: Record<SplitViewSize, string> = {
   lg: "h-6 w-6",
 };
 
-type ActiveColorTokens = { bg: string; border: string; text: string; subtitle: string };
+type ActiveColorTokens = { bg: string; border: string; text: string; subtitle: string; resizer: string };
 
 // All class names must be written out as full strings so Tailwind's JIT scanner can detect them.
-const neutralActive: ActiveColorTokens = { bg: "bg-neutral-100 dark:bg-neutral-800/40", border: "border-l-neutral-500", text: "text-neutral-900 dark:text-neutral-100", subtitle: "text-neutral-600 dark:text-neutral-400" };
+const neutralActive: ActiveColorTokens = { bg: "bg-neutral-100 dark:bg-neutral-800/40", border: "border-l-neutral-500", text: "text-neutral-900 dark:text-neutral-100", subtitle: "text-neutral-600 dark:text-neutral-400", resizer: "bg-neutral-400/40" };
 
 const activeColors: Record<ThemeColor, ActiveColorTokens> = {
-  red: { bg: "bg-red-50 dark:bg-red-900/30", border: "border-l-red-600", text: "text-red-900 dark:text-red-100", subtitle: "text-red-600 dark:text-red-400" },
-  orange: { bg: "bg-orange-50 dark:bg-orange-900/30", border: "border-l-orange-600", text: "text-orange-900 dark:text-orange-100", subtitle: "text-orange-600 dark:text-orange-400" },
-  amber: { bg: "bg-amber-50 dark:bg-amber-900/30", border: "border-l-amber-600", text: "text-amber-900 dark:text-amber-100", subtitle: "text-amber-600 dark:text-amber-400" },
-  yellow: { bg: "bg-yellow-50 dark:bg-yellow-900/30", border: "border-l-yellow-600", text: "text-yellow-900 dark:text-yellow-100", subtitle: "text-yellow-600 dark:text-yellow-400" },
-  lime: { bg: "bg-lime-50 dark:bg-lime-900/30", border: "border-l-lime-600", text: "text-lime-900 dark:text-lime-100", subtitle: "text-lime-600 dark:text-lime-400" },
-  green: { bg: "bg-green-50 dark:bg-green-900/30", border: "border-l-green-600", text: "text-green-900 dark:text-green-100", subtitle: "text-green-600 dark:text-green-400" },
-  emerald: { bg: "bg-emerald-50 dark:bg-emerald-900/30", border: "border-l-emerald-600", text: "text-emerald-900 dark:text-emerald-100", subtitle: "text-emerald-600 dark:text-emerald-400" },
-  teal: { bg: "bg-teal-50 dark:bg-teal-900/30", border: "border-l-teal-600", text: "text-teal-900 dark:text-teal-100", subtitle: "text-teal-600 dark:text-teal-400" },
-  cyan: { bg: "bg-cyan-50 dark:bg-cyan-900/30", border: "border-l-cyan-600", text: "text-cyan-900 dark:text-cyan-100", subtitle: "text-cyan-600 dark:text-cyan-400" },
-  sky: { bg: "bg-sky-50 dark:bg-sky-900/30", border: "border-l-sky-600", text: "text-sky-900 dark:text-sky-100", subtitle: "text-sky-600 dark:text-sky-400" },
-  blue: { bg: "bg-blue-50 dark:bg-blue-900/30", border: "border-l-blue-600", text: "text-blue-900 dark:text-blue-100", subtitle: "text-blue-600 dark:text-blue-400" },
-  indigo: { bg: "bg-indigo-50 dark:bg-indigo-900/30", border: "border-l-indigo-600", text: "text-indigo-900 dark:text-indigo-100", subtitle: "text-indigo-600 dark:text-indigo-400" },
-  violet: { bg: "bg-violet-50 dark:bg-violet-900/30", border: "border-l-violet-600", text: "text-violet-900 dark:text-violet-100", subtitle: "text-violet-600 dark:text-violet-400" },
-  purple: { bg: "bg-purple-50 dark:bg-purple-900/30", border: "border-l-purple-600", text: "text-purple-900 dark:text-purple-100", subtitle: "text-purple-600 dark:text-purple-400" },
-  fuchsia: { bg: "bg-fuchsia-50 dark:bg-fuchsia-900/30", border: "border-l-fuchsia-600", text: "text-fuchsia-900 dark:text-fuchsia-100", subtitle: "text-fuchsia-600 dark:text-fuchsia-400" },
-  pink: { bg: "bg-pink-50 dark:bg-pink-900/30", border: "border-l-pink-600", text: "text-pink-900 dark:text-pink-100", subtitle: "text-pink-600 dark:text-pink-400" },
-  rose: { bg: "bg-rose-50 dark:bg-rose-900/30", border: "border-l-rose-600", text: "text-rose-900 dark:text-rose-100", subtitle: "text-rose-600 dark:text-rose-400" },
-  slate: { bg: "bg-slate-50 dark:bg-slate-900/30", border: "border-l-slate-600", text: "text-slate-900 dark:text-slate-100", subtitle: "text-slate-600 dark:text-slate-400" },
-  gray: { bg: "bg-gray-50 dark:bg-gray-900/30", border: "border-l-gray-600", text: "text-gray-900 dark:text-gray-100", subtitle: "text-gray-600 dark:text-gray-400" },
-  zinc: { bg: "bg-zinc-50 dark:bg-zinc-900/30", border: "border-l-zinc-600", text: "text-zinc-900 dark:text-zinc-100", subtitle: "text-zinc-600 dark:text-zinc-400" },
+  red: { bg: "bg-red-50 dark:bg-red-900/30", border: "border-l-red-600", text: "text-red-900 dark:text-red-100", subtitle: "text-red-600 dark:text-red-400", resizer: "bg-red-400" },
+  orange: { bg: "bg-orange-50 dark:bg-orange-900/30", border: "border-l-orange-600", text: "text-orange-900 dark:text-orange-100", subtitle: "text-orange-600 dark:text-orange-400", resizer: "bg-orange-400" },
+  amber: { bg: "bg-amber-50 dark:bg-amber-900/30", border: "border-l-amber-600", text: "text-amber-900 dark:text-amber-100", subtitle: "text-amber-600 dark:text-amber-400", resizer: "bg-amber-400" },
+  yellow: { bg: "bg-yellow-50 dark:bg-yellow-900/30", border: "border-l-yellow-600", text: "text-yellow-900 dark:text-yellow-100", subtitle: "text-yellow-600 dark:text-yellow-400", resizer: "bg-yellow-400" },
+  lime: { bg: "bg-lime-50 dark:bg-lime-900/30", border: "border-l-lime-600", text: "text-lime-900 dark:text-lime-100", subtitle: "text-lime-600 dark:text-lime-400", resizer: "bg-lime-400" },
+  green: { bg: "bg-green-50 dark:bg-green-900/30", border: "border-l-green-600", text: "text-green-900 dark:text-green-100", subtitle: "text-green-600 dark:text-green-400", resizer: "bg-green-400" },
+  emerald: { bg: "bg-emerald-50 dark:bg-emerald-900/30", border: "border-l-emerald-600", text: "text-emerald-900 dark:text-emerald-100", subtitle: "text-emerald-600 dark:text-emerald-400", resizer: "bg-emerald-400" },
+  teal: { bg: "bg-teal-50 dark:bg-teal-900/30", border: "border-l-teal-600", text: "text-teal-900 dark:text-teal-100", subtitle: "text-teal-600 dark:text-teal-400", resizer: "bg-teal-400" },
+  cyan: { bg: "bg-cyan-50 dark:bg-cyan-900/30", border: "border-l-cyan-600", text: "text-cyan-900 dark:text-cyan-100", subtitle: "text-cyan-600 dark:text-cyan-400", resizer: "bg-cyan-400" },
+  sky: { bg: "bg-sky-50 dark:bg-sky-900/30", border: "border-l-sky-600", text: "text-sky-900 dark:text-sky-100", subtitle: "text-sky-600 dark:text-sky-400", resizer: "bg-sky-400" },
+  blue: { bg: "bg-blue-50 dark:bg-blue-900/30", border: "border-l-blue-600", text: "text-blue-900 dark:text-blue-100", subtitle: "text-blue-600 dark:text-blue-400", resizer: "bg-blue-400" },
+  indigo: { bg: "bg-indigo-50 dark:bg-indigo-900/30", border: "border-l-indigo-600", text: "text-indigo-900 dark:text-indigo-100", subtitle: "text-indigo-600 dark:text-indigo-400", resizer: "bg-indigo-400" },
+  violet: { bg: "bg-violet-50 dark:bg-violet-900/30", border: "border-l-violet-600", text: "text-violet-900 dark:text-violet-100", subtitle: "text-violet-600 dark:text-violet-400", resizer: "bg-violet-400" },
+  purple: { bg: "bg-purple-50 dark:bg-purple-900/30", border: "border-l-purple-600", text: "text-purple-900 dark:text-purple-100", subtitle: "text-purple-600 dark:text-purple-400", resizer: "bg-purple-400" },
+  fuchsia: { bg: "bg-fuchsia-50 dark:bg-fuchsia-900/30", border: "border-l-fuchsia-600", text: "text-fuchsia-900 dark:text-fuchsia-100", subtitle: "text-fuchsia-600 dark:text-fuchsia-400", resizer: "bg-fuchsia-400" },
+  pink: { bg: "bg-pink-50 dark:bg-pink-900/30", border: "border-l-pink-600", text: "text-pink-900 dark:text-pink-100", subtitle: "text-pink-600 dark:text-pink-400", resizer: "bg-pink-400" },
+  rose: { bg: "bg-rose-50 dark:bg-rose-900/30", border: "border-l-rose-600", text: "text-rose-900 dark:text-rose-100", subtitle: "text-rose-600 dark:text-rose-400", resizer: "bg-rose-400" },
+  slate: { bg: "bg-slate-50 dark:bg-slate-900/30", border: "border-l-slate-600", text: "text-slate-900 dark:text-slate-100", subtitle: "text-slate-600 dark:text-slate-400", resizer: "bg-slate-400" },
+  gray: { bg: "bg-gray-50 dark:bg-gray-900/30", border: "border-l-gray-600", text: "text-gray-900 dark:text-gray-100", subtitle: "text-gray-600 dark:text-gray-400", resizer: "bg-gray-400" },
+  zinc: { bg: "bg-zinc-50 dark:bg-zinc-900/30", border: "border-l-zinc-600", text: "text-zinc-900 dark:text-zinc-100", subtitle: "text-zinc-600 dark:text-zinc-400", resizer: "bg-zinc-400" },
   neutral: neutralActive,
   stone: neutralActive,
   white: neutralActive,
   // Semantic aliases
-  brand: { bg: "bg-blue-50 dark:bg-blue-900/30", border: "border-l-blue-600", text: "text-blue-900 dark:text-blue-100", subtitle: "text-blue-600 dark:text-blue-400" },
-  info: { bg: "bg-sky-50 dark:bg-sky-900/30", border: "border-l-sky-600", text: "text-sky-900 dark:text-sky-100", subtitle: "text-sky-600 dark:text-sky-400" },
-  success: { bg: "bg-emerald-50 dark:bg-emerald-900/30", border: "border-l-emerald-600", text: "text-emerald-900 dark:text-emerald-100", subtitle: "text-emerald-600 dark:text-emerald-400" },
-  warning: { bg: "bg-amber-50 dark:bg-amber-900/30", border: "border-l-amber-600", text: "text-amber-900 dark:text-amber-100", subtitle: "text-amber-600 dark:text-amber-400" },
-  danger: { bg: "bg-rose-50 dark:bg-rose-900/30", border: "border-l-rose-600", text: "text-rose-900 dark:text-rose-100", subtitle: "text-rose-600 dark:text-rose-400" },
+  brand: { bg: "bg-blue-50 dark:bg-blue-900/30", border: "border-l-blue-600", text: "text-blue-900 dark:text-blue-100", subtitle: "text-blue-600 dark:text-blue-400", resizer: "bg-blue-400" },
+  info: { bg: "bg-sky-50 dark:bg-sky-900/30", border: "border-l-sky-600", text: "text-sky-900 dark:text-sky-100", subtitle: "text-sky-600 dark:text-sky-400", resizer: "bg-sky-400" },
+  success: { bg: "bg-emerald-50 dark:bg-emerald-900/30", border: "border-l-emerald-600", text: "text-emerald-900 dark:text-emerald-100", subtitle: "text-emerald-600 dark:text-emerald-400", resizer: "bg-emerald-400" },
+  warning: { bg: "bg-amber-50 dark:bg-amber-900/30", border: "border-l-amber-600", text: "text-amber-900 dark:text-amber-100", subtitle: "text-amber-600 dark:text-amber-400", resizer: "bg-amber-400" },
+  danger: { bg: "bg-rose-50 dark:bg-rose-900/30", border: "border-l-rose-600", text: "text-rose-900 dark:text-rose-100", subtitle: "text-rose-600 dark:text-rose-400", resizer: "bg-rose-400" },
   theme: neutralActive,
-  parallels: { bg: "bg-red-50 dark:bg-red-900/30", border: "border-l-red-600", text: "text-red-900 dark:text-red-100", subtitle: "text-red-600 dark:text-red-400" },
+  parallels: { bg: "bg-red-50 dark:bg-red-900/30", border: "border-l-red-600", text: "text-red-900 dark:text-red-100", subtitle: "text-red-600 dark:text-red-400", resizer: "bg-red-400" },
 };
 
 /* ------------------------------------------------------------------ */
@@ -278,8 +277,6 @@ const SplitView: React.FC<SplitViewProps> = ({
   onExpand,
   panelScrollable = true,
 }) => {
-  const { setSideItemActions } = useSideMenuActions();
-
   const visibleItems = useMemo(() => items.filter((i) => !i.hidden), [items]);
   const isSingleVisibleItem = visibleItems.length === 1;
   // Single-item mode is now always detail-only; keep autoHideList reference for backward compatibility.
@@ -342,14 +339,6 @@ const SplitView: React.FC<SplitViewProps> = ({
     }
   }, [shouldHideList, visibleItems, activeId, value]);
 
-  // When the list panel is hidden (single-item mode), promote listActions to the
-  // SideMenuActionsContext so they surface in the app header instead.
-  useEffect(() => {
-    if (!shouldHideList) return;
-    setSideItemActions(listActions);
-    return () => setSideItemActions(undefined);
-  }, [shouldHideList, listActions, setSideItemActions]);
-
   const filteredItems = useMemo(() => {
     if (!filter) return visibleItems;
     const lower = filter.toLowerCase();
@@ -366,6 +355,8 @@ const SplitView: React.FC<SplitViewProps> = ({
 
   const tokens = sizeTokens[size];
   const accent = activeColors[color];
+  const resizerColor = accent.resizer;
+  const resizerActiveColor = accent.resizer;
 
   const handleSelect = (item: SplitViewItem) => {
     if (item.disabled) return;
@@ -433,14 +424,10 @@ const SplitView: React.FC<SplitViewProps> = ({
     const headerDetails = resolveHeaderSlot(headerProps.headerDetails, item);
     const customActions = resolveHeaderSlot(headerProps.actions, item);
     const promotedActions = options?.promoteItemActions ? item.actions : undefined;
-    const mergedActions = customActions && promotedActions
-      ? (
-        <>
-          {customActions}
-          {promotedActions}
-        </>
-      )
-      : (customActions ?? promotedActions);
+    const promotedListActions = options?.promoteItemActions ? listActions : undefined;
+    const mergedActions = (customActions || promotedActions || promotedListActions)
+      ? <>{customActions}{promotedActions}{promotedListActions}</>
+      : undefined;
     const border = headerProps.border ?? true;
     const detailsVariant = headerDetails?.variant ?? headerDetails?.variants ?? "subtle";
     const detailsDecoration = headerDetails?.decoration ?? headerDetails?.decorations ?? "none";
@@ -599,11 +586,15 @@ const SplitView: React.FC<SplitViewProps> = ({
         <div className={classNames("flex flex-1 flex-col min-w-0 h-full overflow-hidden", panelClassName)}>
           {singleItem && (
             <>
-              {singleHeader && (
+              {singleHeader ? (
                 <div className="flex-shrink-0">
                   {singleHeader}
                 </div>
-              )}
+              ) : listActions ? (
+                <div className="flex-shrink-0 flex items-center justify-end gap-1 px-4 py-2 border-b border-neutral-200 dark:border-neutral-700">
+                  {listActions}
+                </div>
+              ) : null}
               <div className={classNames("flex-1", panelScrollable ? "overflow-y-auto" : "overflow-hidden")}>
                 {singleItem.panel}
               </div>
@@ -822,9 +813,9 @@ const SplitView: React.FC<SplitViewProps> = ({
           <div
             {...handleProps}
             className={classNames(
-              "w-1.5 flex-shrink-0 cursor-col-resize transition-colors duration-150",
-              "hover:bg-blue-400/30 active:bg-blue-400/40",
-              isDragging && "bg-blue-400/40",
+              "w-1.5 flex-shrink-0 cursor-col-resize transition-all duration-150",
+              resizerColor,
+              isDragging ? "opacity-100" : "opacity-0 hover:opacity-30 active:opacity-100",
             )}
           />
         )
