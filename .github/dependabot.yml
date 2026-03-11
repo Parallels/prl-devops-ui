@@ -25,33 +25,9 @@ updates:
     labels:
       - npm
       - dependencies
+    # Dependabot auto-discovers npm workspaces (packages/ui-kit) from root
     commit-message:
       prefix: "deps"
-      include: scope
-
-  # ── npm (ui-kit package) ────────────────────────────────────────────────────
-  - package-ecosystem: npm
-    directory: /packages/ui-kit
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:00"
-      timezone: Europe/London
-    open-pull-requests-limit: 5
-    groups:
-      minor-and-patch:
-        update-types:
-          - minor
-          - patch
-      major:
-        update-types:
-          - major
-    labels:
-      - npm
-      - ui-kit
-      - dependencies
-    commit-message:
-      prefix: "deps/ui-kit"
       include: scope
 
   # ── Docker ──────────────────────────────────────────────────────────────────
