@@ -521,8 +521,9 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({
             }
 
             if (routeMode === 'http') {
-                payload.http_routes = httpRoutes.map((r) => {
-                    const route: Partial<ReverseProxyHostHttpRoute> = {
+                payload.http_routes = httpRoutes.map((r, i) => {
+                    const route: ReverseProxyHostHttpRoute = {
+                        order: i,
                         path: r.path.trim(),
                         schema: r.schema,
                         target_port: r.targetPort.trim(),

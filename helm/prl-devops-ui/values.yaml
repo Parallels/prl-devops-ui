@@ -1,0 +1,50 @@
+replicaCount: 1
+
+image:
+  repository: prl-devops-ui
+  pullPolicy: IfNotPresent
+  tag: ""  # defaults to .Chart.AppVersion
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+# ── Environment ───────────────────────────────────────────────────────────────
+# Valid values: production | canary | beta | development
+environment: production
+
+# ── Service ───────────────────────────────────────────────────────────────────
+service:
+  type: ClusterIP
+  port: 80
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: prl-devops-ui.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ── Resources ─────────────────────────────────────────────────────────────────
+resources: {}
+
+# ── Autoscaling ───────────────────────────────────────────────────────────────
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+# ── Pod settings ──────────────────────────────────────────────────────────────
+podAnnotations: {}
+podLabels: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

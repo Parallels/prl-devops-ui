@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { CustomIcon, EmptyState, StatGraphTile } from '@prl/ui-kit';
+import { useMemo } from 'react';
+import { EmptyState, StatGraphTile } from '@prl/ui-kit';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { useHostStats } from '@/contexts/EventsHubContext';
 

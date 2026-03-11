@@ -1,7 +1,7 @@
-name: PRL DevOps UI PR Validation
+name: PRL DevOps UI — PR Validation
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - main
   workflow_call:
@@ -19,22 +19,28 @@ permissions:
   contents: read
   pull-requests: write
 
+env:
+  NODE_VERSION: "24"
+
 jobs:
-  # ── UI Kit Pipeline ──────────────────────────────────────
+
+  # ── UI Kit ─────────────────────────────────────────────────────────────────
+
   ui-kit-lint:
-    name: Lint UI Kit
+    name: "UI Kit: Type Check"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
@@ -44,20 +50,21 @@ jobs:
         run: make ui-kit-lint
 
   ui-kit-build:
-    name: Build UI Kit
+    name: "UI Kit: Build"
     needs: ui-kit-lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
@@ -66,21 +73,30 @@ jobs:
       - name: Build UI Kit
         run: make ui-kit-build
 
-  # ── Main App Pipeline ───────────────────────────────────
-  prl-devops-ui-lint:
-    name: Lint PRL DevOps UI
+      - name: Upload UI Kit dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-kit-dist
+          path: packages/ui-kit/dist
+          retention-days: 1
+
+  # ── App ────────────────────────────────────────────────────────────────────
+
+  app-lint:
+    name: "App: Type Check"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
@@ -89,59 +105,96 @@ jobs:
       - name: Lint
         run: make lint
 
-  prl-devops-ui-test:
-    name: Test PRL DevOps UI
-    needs: prl-devops-ui-lint
+  app-test:
+    name: "App: Test"
+    needs: app-lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
-        run: make test
+      - name: Run tests with coverage
+        run: make test-coverage
 
-  prl-devops-ui-build:
-    name: Build PRL DevOps UI
-    needs: prl-devops-ui-lint
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7
+
+  app-build:
+    name: "App: Build"
+    needs: [ui-kit-build, app-lint]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
-          node-version: "24"
-          cache: "npm"
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Download UI Kit dist
+        uses: actions/download-artifact@v4
+        with:
+          name: ui-kit-dist
+          path: packages/ui-kit/dist
+
+      - name: Build web app
         run: make build-web
+
+      - name: Upload app dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-dist
+          path: dist/
+          retention-days: 1
+
+  # ── Docker ─────────────────────────────────────────────────────────────────
+
+  docker-build:
+    name: "Docker: Build"
+    needs: [app-build, app-test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
       - name: Build Docker image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
-          context: ${{ github.workspace }}
-          file: ${{ github.workspace }}/Dockerfile
+          context: .
+          file: Dockerfile
           push: false
-          tags: prl-devops-ui:latest
+          tags: prl-devops-ui:pr-${{ github.event.pull_request.number || 'ci' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

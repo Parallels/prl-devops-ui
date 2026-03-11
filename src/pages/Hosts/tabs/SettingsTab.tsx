@@ -1,4 +1,3 @@
-import React from 'react';
 import { InfoRow, Panel, SectionCard } from '@prl/ui-kit';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 
