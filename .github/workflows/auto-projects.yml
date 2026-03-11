@@ -82,7 +82,7 @@ jobs:
 
       - name: Add issue to project based on template
         if: steps.check-project.outputs.skip_add == 'false'
-        uses: actions/add-to-project@v0.5.0
+        uses: actions/add-to-project@v1.0.2
         with:
           project-url: https://github.com/orgs/${{ github.repository_owner }}/projects/${{ env.PROJECT_ID }}
           github-token: ${{ secrets.GH_WORKFLOW_TOKEN }}
