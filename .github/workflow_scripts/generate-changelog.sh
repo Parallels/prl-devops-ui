@@ -60,8 +60,43 @@ require() {
 require gh
 require jq
 
+# ── Parse a Dependabot PR title into a changelog entry ───────────────────────
+# Titles arrive with a conventional commit prefix, e.g.:
+#   "deps(deps): bump the minor-and-patch group across 1 directory with 18 updates"
+#   "deps/actions(deps): bump the actions group with 2 updates"
+#   "deps(deps-dev): bump the major group with 3 updates"
+#   "deps(deps): bump axios from 1.13.2 to 1.13.6"
+dependabot_entry_from_title() {
+  local title="$1"
+
+  # Strip conventional commit prefix (everything up to and including ": ")
+  local bump
+  bump=$(echo "$title" | sed -E 's/^[^:]+:[[:space:]]*//')
+
+  # Grouped bump: "bump the <group> group ... with <N> updates"
+  if echo "$bump" | grep -qiE "bump the .+ group .* with [0-9]+ updates?"; then
+    local group count
+    group=$(echo "$bump" | sed -E 's/.*bump the ([^ ]+) group.*/\1/')
+    count=$(echo "$bump" | sed -E 's/.*with ([0-9]+) updates?.*/\1/')
+    echo "- deps: bump ${count} packages (${group})"
+    return
+  fi
+
+  # Individual bump: "bump <package> from X to Y"
+  if echo "$bump" | grep -qiE "^bump .+ from .+ to "; then
+    local rest
+    rest=$(echo "$bump" | sed -E 's/^bump //')
+    echo "- deps: bump ${rest}"
+    return
+  fi
+
+  # Fallback: use the stripped bump text
+  echo "- deps: ${bump}"
+}
+
 # ── Collect changelog entries from merged PRs ─────────────────────────────────
-# Reads the ## Changelog section from each PR body and extracts prefixed bullets.
+# Reads the ## Changelog section from regular PR bodies and extracts prefixed
+# bullets. For Dependabot PRs, derives an entry from the PR title.
 collect_entries() {
   log "Fetching merged PRs for ${REPO_NAME}"
 
@@ -90,7 +125,7 @@ collect_entries() {
       --repo "$REPO_NAME" \
       --base main \
       --state merged \
-      --json number,title,body \
+      --json number,title,body,author \
       --search "$SEARCH_QUERY" \
       --limit 200
   )
@@ -98,10 +133,21 @@ collect_entries() {
   PR_COUNT=$(echo "$CHANGELIST" | jq 'length')
   log "Found ${PR_COUNT} PR(s) to process"
 
-  # Extract ## Changelog section from each PR body
-  # Accepts lines starting with "- " between "## Changelog" and the next "##"
+  if [[ "$VERBOSE" == "true" ]]; then
+    echo "$CHANGELIST" | jq -r '.[] | "\(.author.login)\t\(.title)"' | \
+      while IFS=$'\t' read -r author title; do
+        log "  PR author=${author} title=${title}"
+      done
+  fi
+
+  # Identify Dependabot PRs: author contains "dependabot" OR title contains "bump"
+  # Author comes back as "app/dependabot" from gh CLI (not "dependabot[bot]")
+  is_dependabot_filter='(.author.login | test("dependabot"; "i")) or (.title | test("\\bbump\\b"; "i"))'
+
+  # Extract ## Changelog section from regular (non-Dependabot) PRs
   ENTRIES=$(
-    echo "$CHANGELIST" | jq -r '.[].body // ""' | \
+    echo "$CHANGELIST" | \
+    jq -r ".[] | select(($is_dependabot_filter) | not) | .body // \"\"" | \
     awk '
       /^## Changelog/ { in_section=1; next }
       /^##/           { in_section=0 }
@@ -111,7 +157,21 @@ collect_entries() {
     grep -v '^-[[:space:]]*$' || true
   )
 
-  echo "$ENTRIES"
+  # Extract entries from Dependabot PRs via title parsing
+  DEPENDABOT_ENTRIES=""
+  while IFS= read -r title; do
+    [[ -z "$title" ]] && continue
+    entry=$(dependabot_entry_from_title "$title")
+    DEPENDABOT_ENTRIES="${DEPENDABOT_ENTRIES}${entry}"$'\n'
+    log "Dependabot entry: ${entry}"
+  done < <(echo "$CHANGELIST" | jq -r ".[] | select($is_dependabot_filter) | .title")
+
+  # Combine: regular entries first, then dependency bumps
+  ALL_ENTRIES=""
+  [[ -n "$ENTRIES" ]] && ALL_ENTRIES="${ENTRIES}"$'\n'
+  [[ -n "$DEPENDABOT_ENTRIES" ]] && ALL_ENTRIES="${ALL_ENTRIES}${DEPENDABOT_ENTRIES}"
+
+  echo "$ALL_ENTRIES" | grep -v '^[[:space:]]*$' || true
 }
 
 # ── Generate AI description via Claude API ────────────────────────────────────
