@@ -1,0 +1,166 @@
+name: PRL DevOps UI — Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write       # create GitHub Release
+  packages: write       # push to GHCR
+  pull-requests: read
+
+env:
+  NODE_VERSION: "24"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+
+  # ── Validate ────────────────────────────────────────────────────────────────
+  # Run the full PR pipeline before publishing anything
+
+  validate:
+    name: "Validate"
+    uses: ./.github/workflows/pr.yml
+    secrets:
+      GH_WORKFLOW_TOKEN: ${{ secrets.GH_WORKFLOW_TOKEN }}
+
+  # ── Extract release metadata ─────────────────────────────────────────────
+  metadata:
+    name: "Metadata"
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      is_prerelease: ${{ steps.tag.outputs.is_prerelease }}
+    steps:
+      - name: Extract version from tag
+        id: tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ── Build & publish Docker image ─────────────────────────────────────────
+  docker-publish:
+    name: "Docker: Publish"
+    needs: [validate, metadata]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ needs.metadata.outputs.is_prerelease == 'false' }}
+            type=raw,value=latest,enable=${{ needs.metadata.outputs.is_prerelease == 'false' }}
+            type=raw,value=canary,enable=${{ needs.metadata.outputs.is_prerelease == 'true' }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            APP_VERSION=${{ needs.metadata.outputs.version }}
+
+  # ── Update Helm chart version ─────────────────────────────────────────────
+  helm-version:
+    name: "Helm: Bump version"
+    needs: [validate, metadata]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_WORKFLOW_TOKEN }}
+
+      - name: Update Chart.yaml versions
+        run: |
+          VERSION="${{ needs.metadata.outputs.version }}"
+          sed -i "s/^version:.*/version: ${VERSION}/" helm/prl-devops-ui/Chart.yaml
+          sed -i "s/^appVersion:.*/appVersion: \"${VERSION}\"/" helm/prl-devops-ui/Chart.yaml
+
+      - name: Commit updated Chart.yaml
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add helm/prl-devops-ui/Chart.yaml
+          git diff --staged --quiet || git commit -m "chore(helm): bump chart to ${{ needs.metadata.outputs.version }}"
+          git push origin HEAD:main
+
+  # ── Create GitHub Release ─────────────────────────────────────────────────
+  github-release:
+    name: "GitHub Release"
+    needs: [docker-publish, helm-version, metadata]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          # Pull Changelog entries from all merged PRs since the previous tag
+          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]' | sed -n '2p')
+          if [ -z "$PREV_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${PREV_TAG}..HEAD"
+          fi
+
+          NOTES=$(git log "$RANGE" --merges --pretty=format:"- %s" | \
+                  grep -E "^- Merge pull request" | \
+                  sed 's/- Merge pull request #[0-9]* from [^/]*\//- /' || true)
+
+          if [ -z "$NOTES" ]; then
+            NOTES="- See commit history for changes."
+          fi
+
+          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$NOTES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ needs.metadata.outputs.version }}
+          prerelease: ${{ needs.metadata.outputs.is_prerelease }}
+          generate_release_notes: true
+          body: |
+            ## Docker
+
+            ```sh
+            docker pull ghcr.io/${{ github.repository }}:${{ needs.metadata.outputs.version }}
+            ```
+
+            ## Helm
+
+            ```sh
+            helm upgrade --install prl-devops-ui ./helm/prl-devops-ui \
+              --set image.tag=${{ needs.metadata.outputs.version }}
+            ```

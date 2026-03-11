@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/Parallels/prl-devops-ui/blob/main/.github/security.md
+    about: Please do NOT open a public issue for security vulnerabilities. Review our security policy instead.
+  - name: Documentation
+    url: https://parallels.github.io/prl-devops-service/docs
+    about: Browse the Parallels DevOps Service documentation.
