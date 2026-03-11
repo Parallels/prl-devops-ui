@@ -288,9 +288,9 @@ const Tabs: React.FC<TabsProps> = ({
     className
   );
 
-  const badgeBase = config.badge ?? "bg-slate-100 text-slate-600";
-  const badgeActive = config.badgeActive ?? badgeBase;
-  const badgeInactive = config.badgeInactive ?? badgeBase;
+  // const badgeBase = config.badge ?? "bg-slate-100 text-slate-600";
+  // const badgeActive = config.badgeActive ?? badgeBase;
+  // const badgeInactive = config.badgeInactive ?? badgeBase;
 
   const renderTabIcon = (icon: string | React.ReactElement | undefined) => {
     if (!icon) {

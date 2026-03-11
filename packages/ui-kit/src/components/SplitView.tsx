@@ -356,7 +356,6 @@ const SplitView: React.FC<SplitViewProps> = ({
   const tokens = sizeTokens[size];
   const accent = activeColors[color];
   const resizerColor = accent.resizer;
-  const resizerActiveColor = accent.resizer;
 
   const handleSelect = (item: SplitViewItem) => {
     if (item.disabled) return;

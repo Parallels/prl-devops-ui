@@ -1,5 +1,5 @@
 .PHONY: help install dev build build-web build-all build-windows build-macos build-linux ios android check clean
-.PHONY: lint test ui-kit-lint ui-kit-build
+.PHONY: lint test test-coverage ui-kit-lint ui-kit-build
 
 # Default target
 .DEFAULT_GOAL := help
@@ -38,6 +38,10 @@ lint:
 ## Run tests
 test:
 	npm run test
+
+## Run tests with coverage report
+test-coverage:
+	npm run test -- --coverage
 
 ## Start development server (Desktop)
 dev:

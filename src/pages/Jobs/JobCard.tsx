@@ -102,50 +102,50 @@ const JobProgress: React.FC<{ job: Job }> = ({ job }) => {
 
             {/* One block per running step: message → bar → size/ETA */}
             <div className="flex flex-col gap-1.5 mt-2">
-            {runningSteps.map((step, i) => {
-                const hasValueData = step.value > 0 && step.total > 0;
-                if (!hasValueData && !step.hasPercentage) return null;
+                {runningSteps.map((step, i) => {
+                    const hasValueData = step.value > 0 && step.total > 0;
+                    if (!hasValueData && !step.hasPercentage) return null;
 
-                const barValue = hasValueData
-                    ? Math.min(100, Math.round((step.value / step.total) * 100))
-                    : 0;
+                    const barValue = hasValueData
+                        ? Math.min(100, Math.round((step.value / step.total) * 100))
+                        : 0;
 
-                let valueLabel = '';
-                if (hasValueData) {
-                    const inputUnit = normalizeDataSizeUnit(step.unit);
-                    const fmt = formatProgressBytes(step.value, step.total, inputUnit);
-                    valueLabel = `${fmt.valueLabel} / ${fmt.totalLabel} ${fmt.unit}`;
-                }
+                    let valueLabel = '';
+                    if (hasValueData) {
+                        const inputUnit = normalizeDataSizeUnit(step.unit);
+                        const fmt = formatProgressBytes(step.value, step.total, inputUnit);
+                        valueLabel = `${fmt.valueLabel} / ${fmt.totalLabel} ${fmt.unit}`;
+                    }
 
-                const stepMessage = step.message || step.filename || null;
-                const stepColor = STEP_COLORS[i % STEP_COLORS.length];
+                    const stepMessage = step.message || step.filename || null;
+                    const stepColor = STEP_COLORS[i % STEP_COLORS.length];
 
-                return (
-                    <div key={`${step.name}-${i}`} className="flex flex-col gap-1">
-                        {stepMessage && (
-                            <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-snug truncate">
-                                {step.parallel && (
-                                    <span className="text-[10px] font-semibold text-blue-400 dark:text-blue-500 mr-1.5 font-mono">∥</span>
-                                )}
-                                {stepMessage}
-                            </p>
-                        )}
-                        <Progress size="sm" color={stepColor} value={barValue} motion="stripes" motionSpeed="fast" motionDirection="forward" />
-                        {(valueLabel || parseEtaToSeconds(step.eta) > 0) && (
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500">
-                                    {valueLabel}
-                                </span>
-                                {parseEtaToSeconds(step.eta) > 0 && (
-                                    <span className="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500 shrink-0">
-                                        ETA {formatEta(step.eta)}
+                    return (
+                        <div key={`${step.name}-${i}`} className="flex flex-col gap-1">
+                            {stepMessage && (
+                                <p className="text-xs text-neutral-500 dark:text-neutral-400 leading-snug truncate">
+                                    {step.parallel && (
+                                        <span className="text-[10px] font-semibold text-blue-400 dark:text-blue-500 mr-1.5 font-mono">∥</span>
+                                    )}
+                                    {stepMessage}
+                                </p>
+                            )}
+                            <Progress size="sm" color={stepColor} value={barValue} motion="stripes" motionSpeed="fast" motionDirection="forward" />
+                            {(valueLabel || parseEtaToSeconds(step.eta) > 0) && (
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500">
+                                        {valueLabel}
                                     </span>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
+                                    {parseEtaToSeconds(step.eta) > 0 && (
+                                        <span className="text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500 shrink-0">
+                                            ETA {formatEta(step.eta)}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
@@ -185,10 +185,10 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
     const hasSteps = !isInit && (job.steps?.length ?? 0) > 0;
 
     // Use the first running step's message (or name) as the active subtitle
-    const runningStep = job.steps?.find(s => s.state === 'running');
-    const activeMessage = runningStep
-        ? (runningStep.message || (runningStep.name ? titleCase(runningStep.name) : null))
-        : null;
+    // const runningStep = job.steps?.find(s => s.state === 'running');
+    // const activeMessage = runningStep
+    //     ? (runningStep.message || (runningStep.name ? titleCase(runningStep.name) : null))
+    //     : null;
 
     return (
         <div

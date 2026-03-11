@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
 import { CustomIcon, formatLogTime } from '@prl/ui-kit';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { useHostLogs } from '@/contexts/EventsHubContext';
-import { LEVEL_META, levelMeta } from '@/utils/logUtils';
+import { levelMeta } from '@/utils/logUtils';
 
 export function LogsTab({ host }: { host: DevOpsRemoteHost }) {
     const logs = useHostLogs(host.id || '');

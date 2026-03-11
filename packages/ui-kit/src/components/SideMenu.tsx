@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import React, { useMemo, useState } from "react";
 import CustomIcon from "./CustomIcon";
 import { type IconName } from "../icons/registry";
-import { ThemeColor } from "@/theme";
+import { ThemeColor } from "../theme";
 
 export type SideMenuItemType = "link" | "group" | "divider";
 
