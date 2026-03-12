@@ -184,16 +184,17 @@ class MachinesService {
    * @returns true if successful
    * @throws ApiError
    */
-  async removeVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<boolean> {
+  async removeVirtualMachine(hostname: string | undefined, vmId: string, isOrchestrator = false, force = false): Promise<boolean> {
     try {
       const targetHost = hostname || authService.currentHostname;
       if (!targetHost) {
         throw new Error('No hostname provided and no active session found');
       }
 
-      const endpoint = isOrchestrator
+      const base = isOrchestrator
         ? `/api/v1/orchestrator/machines/${vmId}`
         : `/api/v1/machines/${vmId}`;
+      const endpoint = force ? `${base}?force=true` : base;
 
       await apiService.delete(
         targetHost,
