@@ -138,6 +138,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
+          pattern: "{web-dist,tauri-linux,tauri-macos,tauri-windows}"
+          merge-multiple: false
 
       - name: Assemble release assets
         run: |
