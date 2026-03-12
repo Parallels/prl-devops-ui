@@ -142,7 +142,8 @@ collect_entries() {
 
   # Identify Dependabot PRs: author contains "dependabot" OR title contains "bump"
   # Author comes back as "app/dependabot" from gh CLI (not "dependabot[bot]")
-  is_dependabot_filter='(.author.login | test("dependabot"; "i")) or (.title | test("\\bbump\\b"; "i"))'
+  # Use contains() instead of test() regex to avoid jq regex engine differences
+  is_dependabot_filter='((.author.login | ascii_downcase) | contains("dependabot")) or ((.title | ascii_downcase) | contains("bump"))'
 
   # Extract ## Changelog section from regular (non-Dependabot) PRs
   ENTRIES=$(
@@ -259,26 +260,31 @@ build_changelog_block() {
 # ── Insert content into CHANGELOG.md ─────────────────────────────────────────
 insert_into_changelog() {
   local block="$1"
-  local tmp
+  local tmp block_file
   tmp=$(mktemp)
+  block_file=$(mktemp)
+
+  # Write block to a temp file — avoids awk -v multiline mangling
+  printf '%s\n' "$block" > "$block_file"
 
   # Find the first existing ## version line and insert before it,
   # or append after the header block if no versions exist yet.
   local insert_after
-  insert_after=$(grep -n "^## \[" "$CHANGELOG_FILE" | head -1 | cut -d: -f1)
+  insert_after=$(grep -n "^## \[" "$CHANGELOG_FILE" | head -1 | cut -d: -f1 || true)
 
   if [[ -z "$insert_after" ]]; then
-    # No versions yet — append to end of header
-    insert_after=$(wc -l < "$CHANGELOG_FILE")
+    # No versions yet — append to end of file (strip wc -l leading whitespace)
+    insert_after=$(wc -l < "$CHANGELOG_FILE" | tr -d ' ')
   else
     insert_after=$((insert_after - 1))
   fi
 
-  awk -v line="$insert_after" -v block="$block" '
-    NR == line { print; printf "%s", block; next }
+  awk -v line="$insert_after" -v bf="$block_file" '
+    NR == line { print; while ((getline bline < bf) > 0) print bline; next }
     { print }
   ' "$CHANGELOG_FILE" > "$tmp"
 
+  rm -f "$block_file"
   mv "$tmp" "$CHANGELOG_FILE"
 }
 
@@ -296,7 +302,7 @@ append_to_version_section() {
   local end_line
   end_line=$(awk -v start="$version_line" \
     'NR > start && /^## \[/ { print NR-1; exit }' "$CHANGELOG_FILE")
-  [[ -z "$end_line" ]] && end_line=$(wc -l < "$CHANGELOG_FILE")
+  [[ -z "$end_line" ]] && end_line=$(wc -l < "$CHANGELOG_FILE" | tr -d ' ')
 
   awk -v end="$end_line" -v ef="$entries_file" '
     NR == end { print; while ((getline line < ef) > 0) print line; next }
