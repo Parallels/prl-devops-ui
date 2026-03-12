@@ -125,8 +125,8 @@ jobs:
       - name: Build Tauri — macOS (universal)
         if: inputs.platform == 'macos'
         env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_CERTIFICATE != '' && 'Developer ID Application: Parallels International GmbH (4C6364ACXT)' || '-' }}
-          APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY != '' && format('~/.private_keys/AuthKey_{0}.p8', secrets.APPLE_API_KEY_ID) || '' }}
+          APPLE_SIGNING_IDENTITY: "Developer ID Application: Parallels International GmbH (4C6364ACXT)"
+          APPLE_API_KEY_PATH: ${{ format('~/.private_keys/AuthKey_{0}.p8', secrets.APPLE_API_KEY_ID) }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_KEY_ISSUER }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
