@@ -458,7 +458,7 @@ export const Vms: React.FC = () => {
         }
     }, [pendingAction, session?.hostname, fetchVms]);
 
-    const handleDeleteConfirm = useCallback(async () => {
+    const handleDeleteConfirm = useCallback(async (force: boolean) => {
         if (!pendingAction) return;
         setModalLoading(true);
         try {
@@ -466,6 +466,7 @@ export const Vms: React.FC = () => {
                 session?.hostname ?? '',
                 pendingAction.vm.ID ?? '',
                 pendingAction.isOrchestrator,
+                force,
             );
             setPendingAction(null);
             setSelectedVm(null);
@@ -577,17 +578,16 @@ export const Vms: React.FC = () => {
                                 })}
                             />
                         )}
-                        {selectedVm?.vm.State === 'stopped' && (
-                            <IconButton
-                                icon="Trash" size="sm" variant="ghost" color="rose"
-                                aria-label="Delete VM"
-                                onClick={() => selectedVm && setPendingAction({
-                                    type: 'delete',
-                                    vm: selectedVm.vm,
-                                    isOrchestrator: selectedVm.isOrchestrator,
-                                })}
-                            />
-                        )}
+                        <IconButton
+                            icon="Trash" size="sm" variant="ghost" color="rose"
+                            aria-label="Delete VM"
+                            onClick={() => selectedVm && setPendingAction({
+                                type: 'delete',
+                                vm: selectedVm.vm,
+                                isOrchestrator: selectedVm.isOrchestrator,
+                            })}
+                        />
+
                     </>
                 }
             >
@@ -614,7 +614,7 @@ export const Vms: React.FC = () => {
                 vm={pendingAction?.vm ?? null}
                 loading={modalLoading}
                 onClose={() => setPendingAction(null)}
-                onConfirm={() => void handleDeleteConfirm()}
+                onConfirm={(force) => void handleDeleteConfirm(force)}
             />
         </div>
     );

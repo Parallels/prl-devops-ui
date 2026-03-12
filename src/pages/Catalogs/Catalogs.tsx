@@ -401,7 +401,12 @@ export const Catalogs: React.FC = () => {
     setUploadLoading(true);
     setUploadError(null);
     try {
-      await devopsService.catalog.pushCatalogAsync(hostname, data);
+      const activeSource = sources.find((src) => src.id === selectedSourceId);
+      if (activeSource?.type === 'manager' && activeSource.managerId) {
+        await devopsService.catalogManagers.pushCatalogAsync(hostname, activeSource.managerId, data);
+      } else {
+        await devopsService.catalog.pushCatalogAsync(hostname, data);
+      }
       setIsUploadModalOpen(false);
       setCatalogReloadToken((prev) => prev + 1);
     } catch (err: any) {
@@ -409,7 +414,7 @@ export const Catalogs: React.FC = () => {
     } finally {
       setUploadLoading(false);
     }
-  }, [hostname]);
+  }, [hostname, sources, selectedSourceId]);
 
   const items = useMemo<SplitViewItem[]>(
     () =>
@@ -552,6 +557,8 @@ export const Catalogs: React.FC = () => {
           const stats = sourceStats[activeItem.id] ?? { manifests: 0, versions: 0, images: 0 };
           const hasDetails = stats.manifests > 0 || stats.versions > 0 || stats.images > 0;
           const hasItems = stats.manifests > 0;
+          const activeSource = sources.find((src) => src.id === activeItem.id);
+          const isLocalSource = activeSource?.type === 'local';
           return {
             title: <span className="text-neutral-700 dark:text-neutral-300">{activeItem.label}</span>,
             icon: (
@@ -577,7 +584,7 @@ export const Catalogs: React.FC = () => {
               color: themeColor,
               content: "Catalogs are used to store and manage catalog metadata for download of virtual machines golden images for each user. [See documentation](https://parallels.github.io/prl-devops-service/docs/devops/catalog/overview/)"
             },
-            actions: hasHostModule ? (
+            actions: hasHostModule && isLocalSource ? (
               <Button
                 variant="soft"
                 color={themeColor}
