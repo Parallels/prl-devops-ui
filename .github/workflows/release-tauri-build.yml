@@ -34,11 +34,13 @@ jobs:
   build:
     name: "Tauri (${{ inputs.platform }})"
     runs-on: >-
-      ${{ inputs.platform == 'macos' && 'macos-latest' ||
-          inputs.platform == 'windows' && 'windows-latest' ||
-          inputs.platform == 'linux-arm64' && 'ubuntu-22.04-arm' ||
-          inputs.platform == 'windows-arm64' && 'windows-11-arm' ||
-          'ubuntu-latest' }}
+      ${{ fromJSON(
+            inputs.platform == 'macos'         && '"macos-latest"' ||
+            inputs.platform == 'windows'       && '"windows-latest"' ||
+            inputs.platform == 'linux-arm64'   && '["self-hosted","linux","ARM64"]' ||
+            inputs.platform == 'windows-arm64' && '["self-hosted","windows","ARM64"]' ||
+            '"ubuntu-latest"'
+          ) }}
 
     steps:
       - name: Checkout repository
