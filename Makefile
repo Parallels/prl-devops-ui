@@ -1,4 +1,4 @@
-.PHONY: help install dev build build-web build-all build-windows build-macos build-linux ios android check clean
+.PHONY: help install dev build build-web build-all build-windows build-macos build-linux build-linux-arm64 build-windows-arm64 ios android check clean
 .PHONY: lint test test-coverage ui-kit-lint ui-kit-build
 
 # Default target
@@ -75,8 +75,16 @@ build-windows:
 build-linux:
 	npm run tauri build -- --target x86_64-unknown-linux-gnu
 
+## Build for Linux (ARM64)
+build-linux-arm64:
+	npm run tauri build -- --target aarch64-unknown-linux-gnu
+
+## Build for Windows (ARM64)
+build-windows-arm64:
+	npm run tauri build -- --target aarch64-pc-windows-msvc
+
 ## Build for all desktop platforms (Note: Requires cross-compilation setup)
-build-all: build-macos build-windows build-linux
+build-all: build-macos build-windows build-linux build-linux-arm64 build-windows-arm64
 
 ## Start iOS development
 ios:

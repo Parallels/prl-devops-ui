@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       platform:
-        description: "Target platform: linux | macos | windows"
+        description: "Target platform: linux | macos | windows | linux-arm64 | windows-arm64"
         required: true
         type: string
       release_version:
@@ -36,6 +36,8 @@ jobs:
     runs-on: >-
       ${{ inputs.platform == 'macos' && 'macos-latest' ||
           inputs.platform == 'windows' && 'windows-latest' ||
+          inputs.platform == 'linux-arm64' && 'ubuntu-22.04-arm' ||
+          inputs.platform == 'windows-arm64' && 'windows-11-arm' ||
           'ubuntu-latest' }}
 
     steps:
@@ -51,7 +53,7 @@ jobs:
 
       # ── Platform deps — Linux ─────────────────────────────────────────────
       - name: Install Linux system dependencies
-        if: inputs.platform == 'linux'
+        if: inputs.platform == 'linux' || inputs.platform == 'linux-arm64'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -112,7 +114,7 @@ jobs:
           # WiX MSI requires a numeric-only pre-release identifier (semver with digits only).
           # Convert e.g. 0.1.1-canary.5 → 0.1.1-5 (strip the channel name, keep run number).
           # 0.1.1 (production) is unchanged — sed pattern only matches when a channel is present.
-          if [[ "${{ inputs.platform }}" == "windows" ]]; then
+          if [[ "${{ inputs.platform }}" == "windows" || "${{ inputs.platform }}" == "windows-arm64" ]]; then
             VERSION=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+)-[a-zA-Z]+\.([0-9]+)$/\1-\2/')
           fi
           jq --arg v "$VERSION" '.version = $v' \
@@ -137,6 +139,8 @@ jobs:
           targets: >-
             ${{ inputs.platform == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' ||
                 inputs.platform == 'windows' && 'x86_64-pc-windows-msvc' ||
+                inputs.platform == 'linux-arm64' && 'aarch64-unknown-linux-gnu' ||
+                inputs.platform == 'windows-arm64' && 'aarch64-pc-windows-msvc' ||
                 'x86_64-unknown-linux-gnu' }}
 
       - name: Cache Rust build
@@ -172,6 +176,20 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: make build-windows
 
+      - name: Build Tauri — Linux (ARM64)
+        if: inputs.platform == 'linux-arm64'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: make build-linux-arm64
+
+      - name: Build Tauri — Windows (ARM64)
+        if: inputs.platform == 'windows-arm64'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: make build-windows-arm64
+
       # ── Collect & upload artifacts ────────────────────────────────────────
       - name: Collect Linux artifacts
         if: inputs.platform == 'linux'
@@ -200,10 +218,28 @@ jobs:
           Get-ChildItem release-artifacts/
         shell: pwsh
 
+      - name: Collect Linux ARM64 artifacts
+        if: inputs.platform == 'linux-arm64'
+        run: |
+          mkdir -p release-artifacts
+          find src-tauri/target/aarch64-unknown-linux-gnu/release/bundle \
+            \( -name "*.AppImage" -o -name "*.deb" \) \
+            -exec cp {} release-artifacts/ \;
+          ls -la release-artifacts/
+
+      - name: Collect Windows ARM64 artifacts
+        if: inputs.platform == 'windows-arm64'
+        run: |
+          mkdir -p release-artifacts
+          Get-ChildItem -Recurse src-tauri/target/aarch64-pc-windows-msvc/release/bundle `
+            -Include "*.msi","*.exe" | Copy-Item -Destination release-artifacts/
+          Get-ChildItem release-artifacts/
+        shell: pwsh
+
       - name: Upload Tauri artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: tauri-${{ inputs.platform }}
+          name: tauri-${{ inputs.platform == 'linux-arm64' && 'linux-arm64' || inputs.platform == 'windows-arm64' && 'windows-arm64' || inputs.platform }}
           path: release-artifacts/
           retention-days: 1
           if-no-files-found: error

@@ -124,6 +124,28 @@ jobs:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+  build-tauri-linux-arm64:
+    name: "Build: Tauri (Linux ARM64)"
+    needs: [metadata, build-web]
+    uses: ./.github/workflows/release-tauri-build.yml
+    with:
+      platform: linux-arm64
+      release_version: ${{ needs.metadata.outputs.release_version }}
+    secrets:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
+  build-tauri-windows-arm64:
+    name: "Build: Tauri (Windows ARM64)"
+    needs: [metadata, build-web]
+    uses: ./.github/workflows/release-tauri-build.yml
+    with:
+      platform: windows-arm64
+      release_version: ${{ needs.metadata.outputs.release_version }}
+    secrets:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
   # ── Publish Docker image ──────────────────────────────────────────────────
 
   docker-publish:
@@ -146,6 +168,8 @@ jobs:
       - build-tauri-linux
       - build-tauri-macos
       - build-tauri-windows
+      - build-tauri-linux-arm64
+      - build-tauri-windows-arm64
       - docker-publish
     steps:
       - name: Checkout repository
@@ -155,7 +179,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
-          pattern: "{web-dist,tauri-linux,tauri-macos,tauri-windows}"
+          pattern: "{web-dist,tauri-linux,tauri-macos,tauri-windows,tauri-linux-arm64,tauri-windows-arm64}"
           merge-multiple: false
 
       - name: Assemble release assets
@@ -163,9 +187,11 @@ jobs:
           mkdir -p release-assets
           tar -czf release-assets/prl-devops-ui-web-${{ needs.metadata.outputs.release_version }}.tar.gz \
             -C release-artifacts/web-dist .
-          find release-artifacts/tauri-linux   -type f -exec cp {} release-assets/ \;
-          find release-artifacts/tauri-macos   -type f -exec cp {} release-assets/ \;
-          find release-artifacts/tauri-windows -type f -exec cp {} release-assets/ \;
+          find release-artifacts/tauri-linux        -type f -exec cp {} release-assets/ \;
+          find release-artifacts/tauri-macos        -type f -exec cp {} release-assets/ \;
+          find release-artifacts/tauri-windows      -type f -exec cp {} release-assets/ \;
+          find release-artifacts/tauri-linux-arm64  -type f -exec cp {} release-assets/ \;
+          find release-artifacts/tauri-windows-arm64 -type f -exec cp {} release-assets/ \;
           cd release-assets
           shasum -a 256 * > checksums.txt
           cat checksums.txt
@@ -181,31 +207,41 @@ jobs:
           read_sig() { cat "$1" 2>/dev/null || echo ""; }
 
           DMG=$(find release-assets -name "*.dmg" | head -1 | xargs basename 2>/dev/null || echo "")
-          APPIMAGE=$(find release-assets -name "*.AppImage" | head -1 | xargs basename 2>/dev/null || echo "")
-          MSI=$(find release-assets -name "*.msi" | head -1 | xargs basename 2>/dev/null || echo "")
+          APPIMAGE=$(find release-assets -name "*.AppImage" | grep -iv arm | head -1 | xargs basename 2>/dev/null || echo "")
+          APPIMAGE_ARM64=$(find release-assets -name "*arm64*.AppImage" -o -name "*aarch64*.AppImage" | head -1 | xargs basename 2>/dev/null || echo "")
+          MSI=$(find release-assets -name "*.msi" | grep -iv arm | head -1 | xargs basename 2>/dev/null || echo "")
+          MSI_ARM64=$(find release-assets -name "*arm64*.msi" -o -name "*aarch64*.msi" | head -1 | xargs basename 2>/dev/null || echo "")
 
           DMG_SIG=$(read_sig "release-assets/${DMG}.sig")
           APPIMAGE_SIG=$(read_sig "release-assets/${APPIMAGE}.sig")
+          APPIMAGE_ARM64_SIG=$(read_sig "release-assets/${APPIMAGE_ARM64}.sig")
           MSI_SIG=$(read_sig "release-assets/${MSI}.sig")
+          MSI_ARM64_SIG=$(read_sig "release-assets/${MSI_ARM64}.sig")
 
           jq -n \
             --arg version  "$VERSION" \
             --arg pub_date "$PUB_DATE" \
-            --arg dmg         "${BASE_URL}/${DMG}" \
-            --arg dmg_sig     "$DMG_SIG" \
-            --arg appimage    "${BASE_URL}/${APPIMAGE}" \
-            --arg appimage_sig "$APPIMAGE_SIG" \
-            --arg msi         "${BASE_URL}/${MSI}" \
-            --arg msi_sig     "$MSI_SIG" \
+            --arg dmg              "${BASE_URL}/${DMG}" \
+            --arg dmg_sig          "$DMG_SIG" \
+            --arg appimage         "${BASE_URL}/${APPIMAGE}" \
+            --arg appimage_sig     "$APPIMAGE_SIG" \
+            --arg appimage_arm64   "${BASE_URL}/${APPIMAGE_ARM64}" \
+            --arg appimage_arm64_sig "$APPIMAGE_ARM64_SIG" \
+            --arg msi              "${BASE_URL}/${MSI}" \
+            --arg msi_sig          "$MSI_SIG" \
+            --arg msi_arm64        "${BASE_URL}/${MSI_ARM64}" \
+            --arg msi_arm64_sig    "$MSI_ARM64_SIG" \
             '{
               version:  $version,
               notes:    "See release notes at https://github.com/'"${REPO}"'/releases/tag/v'"${VERSION}"'",
               pub_date: $pub_date,
               platforms: {
-                "darwin-aarch64": { url: $dmg, signature: $dmg_sig },
-                "darwin-x86_64":  { url: $dmg, signature: $dmg_sig },
-                "linux-x86_64":   { url: $appimage, signature: $appimage_sig },
-                "windows-x86_64": { url: $msi, signature: $msi_sig }
+                "darwin-aarch64":   { url: $dmg, signature: $dmg_sig },
+                "darwin-x86_64":    { url: $dmg, signature: $dmg_sig },
+                "linux-x86_64":     { url: $appimage, signature: $appimage_sig },
+                "linux-aarch64":    { url: $appimage_arm64, signature: $appimage_arm64_sig },
+                "windows-x86_64":   { url: $msi, signature: $msi_sig },
+                "windows-aarch64":  { url: $msi_arm64, signature: $msi_arm64_sig }
               }
             }' > release-assets/latest.json
 
