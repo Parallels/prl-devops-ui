@@ -66,6 +66,16 @@ jobs:
           sed -i "s/^version:.*/version: ${V}/" helm/prl-devops-ui/Chart.yaml
           sed -i "s/^appVersion:.*/appVersion: \"${V}\"/" helm/prl-devops-ui/Chart.yaml
 
+      - name: Bump Tauri version
+        run: |
+          V="${{ env.NEW_VERSION }}"
+          # tauri.conf.json — update top-level "version" field
+          jq --arg v "$V" '.version = $v' src-tauri/tauri.conf.json > /tmp/tauri.conf.json \
+            && mv /tmp/tauri.conf.json src-tauri/tauri.conf.json
+          # Cargo.toml — update only the first version = "..." line (the [package] entry)
+          sed -i "0,/^version = \"[^\"]*\"/{s/^version = \"[^\"]*\"/version = \"${V}\"/}" \
+            src-tauri/Cargo.toml
+
       # ── Generate changelog ─────────────────────────────────────────────────
       - name: Generate changelog
         env:
@@ -83,7 +93,8 @@ jobs:
       - name: Commit and push release branch
         run: |
           git add VERSION package.json package-lock.json CHANGELOG.md \
-            helm/prl-devops-ui/Chart.yaml
+            helm/prl-devops-ui/Chart.yaml \
+            src-tauri/tauri.conf.json src-tauri/Cargo.toml
           git commit -m "chore(release): bump to ${{ env.NEW_VERSION }}"
           git push --set-upstream origin release/${{ env.NEW_VERSION }}
 

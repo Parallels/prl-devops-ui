@@ -101,6 +101,16 @@ jobs:
           echo "$APPLE_API_KEY" | base64 --decode > \
             "$HOME/.private_keys/AuthKey_${APPLE_API_KEY_ID}.p8"
 
+      # ── Patch version for channel builds ─────────────────────────────────
+      # Tauri derives artifact filenames from tauri.conf.json "version".
+      # For canary/beta, release_version includes the suffix (0.1.1-canary.4)
+      # so the built artifacts are named correctly.
+      - name: Set Tauri version to release version
+        run: |
+          jq --arg v "${{ inputs.release_version }}" '.version = $v' \
+            src-tauri/tauri.conf.json > /tmp/tauri.conf.json
+          mv /tmp/tauri.conf.json src-tauri/tauri.conf.json
+
       # ── Node.js ───────────────────────────────────────────────────────────
       - name: Set up Node.js
         uses: actions/setup-node@v4

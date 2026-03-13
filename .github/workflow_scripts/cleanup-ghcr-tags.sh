@@ -124,4 +124,6 @@ done < <(echo "$VERSIONS" | jq -c '.[]')
 
 echo ""
 echo "Summary: deleted=${DELETED} kept=${SKIPPED} not-matched=${NOT_MATCHED}"
-[[ "$DRY_RUN" == "true" ]] && echo "(dry-run mode — nothing was actually deleted)"
+if [[ "$DRY_RUN" == "true" ]]; then
+  echo "(dry-run mode — nothing was actually deleted)"
+fi
