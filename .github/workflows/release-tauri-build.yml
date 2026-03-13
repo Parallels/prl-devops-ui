@@ -108,7 +108,13 @@ jobs:
       - name: Set Tauri version to release version
         shell: bash
         run: |
-          jq --arg v "${{ inputs.release_version }}" '.version = $v' \
+          VERSION="${{ inputs.release_version }}"
+          # WiX MSI bundler requires a purely numeric version (major.minor.patch.build).
+          # Convert e.g. 0.1.1-canary.5 → 0.1.1.5 for Windows; other platforms keep the full string.
+          if [[ "${{ inputs.platform }}" == "windows" ]]; then
+            VERSION=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+)-[a-zA-Z]+\.([0-9]+)$/\1.\2/')
+          fi
+          jq --arg v "$VERSION" '.version = $v' \
             src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
           mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
