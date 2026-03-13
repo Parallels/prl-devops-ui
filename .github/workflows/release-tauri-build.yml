@@ -38,7 +38,7 @@ jobs:
             inputs.platform == 'macos'         && '"macos-latest"' ||
             inputs.platform == 'windows'       && '"windows-latest"' ||
             inputs.platform == 'linux-arm64'   && '["self-hosted","linux","ARM64"]' ||
-            inputs.platform == 'windows-arm64' && '["self-hosted","windows","ARM64"]' ||
+            inputs.platform == 'windows-arm64' && '["self-hosted","linux","ARM64"]' ||
             '"ubuntu-latest"'
           ) }}
 
