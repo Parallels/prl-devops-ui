@@ -109,10 +109,11 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ inputs.release_version }}"
-          # WiX MSI bundler requires a purely numeric version (major.minor.patch.build).
-          # Convert e.g. 0.1.1-canary.5 → 0.1.1.5 for Windows; other platforms keep the full string.
+          # WiX MSI requires a numeric-only pre-release identifier (semver with digits only).
+          # Convert e.g. 0.1.1-canary.5 → 0.1.1-5 (strip the channel name, keep run number).
+          # 0.1.1 (production) is unchanged — sed pattern only matches when a channel is present.
           if [[ "${{ inputs.platform }}" == "windows" ]]; then
-            VERSION=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+)-[a-zA-Z]+\.([0-9]+)$/\1.\2/')
+            VERSION=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+)-[a-zA-Z]+\.([0-9]+)$/\1-\2/')
           fi
           jq --arg v "$VERSION" '.version = $v' \
             src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
