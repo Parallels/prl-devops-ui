@@ -106,10 +106,11 @@ jobs:
       # For canary/beta, release_version includes the suffix (0.1.1-canary.4)
       # so the built artifacts are named correctly.
       - name: Set Tauri version to release version
+        shell: bash
         run: |
           jq --arg v "${{ inputs.release_version }}" '.version = $v' \
-            src-tauri/tauri.conf.json > /tmp/tauri.conf.json
-          mv /tmp/tauri.conf.json src-tauri/tauri.conf.json
+            src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
+          mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
       # ── Node.js ───────────────────────────────────────────────────────────
       - name: Set up Node.js
