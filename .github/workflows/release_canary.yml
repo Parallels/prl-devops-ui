@@ -153,6 +153,22 @@ jobs:
           shasum -a 256 * > checksums.txt
           cat checksums.txt
 
+      - name: Collect changelog entries
+        id: changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x ./.github/workflow_scripts/generate-changelog.sh
+          ENTRIES=$(./.github/workflow_scripts/generate-changelog.sh \
+            --mode RELEASE \
+            --repo ${{ github.repository }} \
+            --no-ai)
+          # Use a random delimiter to safely handle multiline content
+          DELIM=$(openssl rand -hex 8)
+          echo "entries<<${DELIM}" >> "$GITHUB_OUTPUT"
+          echo "$ENTRIES"          >> "$GITHUB_OUTPUT"
+          echo "${DELIM}"          >> "$GITHUB_OUTPUT"
+
       - name: Generate latest.json for Tauri updater
         run: |
           VERSION="${{ needs.metadata.outputs.release_version }}"
@@ -197,6 +213,10 @@ jobs:
             > **Pre-release build** — not intended for production use.
 
             Canary build from `main` at run #${{ github.run_number }}.
+
+            ${{ steps.changelog.outputs.entries }}
+
+            ---
 
             ## Docker
 

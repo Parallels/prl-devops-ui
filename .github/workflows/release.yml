@@ -219,9 +219,10 @@ jobs:
           NOTES=$(./.github/workflow_scripts/get-latest-changelog.sh \
             --mode GENERATE \
             --changelog CHANGELOG.md)
-          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$NOTES"     >> "$GITHUB_OUTPUT"
-          echo "EOF"        >> "$GITHUB_OUTPUT"
+          DELIM=$(openssl rand -hex 8)
+          echo "notes<<${DELIM}" >> "$GITHUB_OUTPUT"
+          echo "$NOTES"          >> "$GITHUB_OUTPUT"
+          echo "${DELIM}"        >> "$GITHUB_OUTPUT"
 
       - name: Create production GitHub Release
         uses: softprops/action-gh-release@v2
