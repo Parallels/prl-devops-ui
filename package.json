@@ -57,15 +57,15 @@
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.1.6",
-    "@vitejs/plugin-react": "^5.1.4",
+    "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.0",
     "autoprefixer": "^10.4.27",
-    "jsdom": "^28.1.0",
+    "jsdom": "^29.0.0",
     "postcss": "^8.5.8",
     "sass-embedded": "^1.98.0",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",
-    "vite": "^7.0.4",
+    "vite": "^8.0.0",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.0.16"
   }
