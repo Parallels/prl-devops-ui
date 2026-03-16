@@ -44,11 +44,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ── Download pre-built web dist ───────────────────────────────────────
       - name: Download web dist
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: web-dist
           path: dist
@@ -126,7 +126,7 @@ jobs:
 
       # ── Node.js ───────────────────────────────────────────────────────────
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -240,7 +240,7 @@ jobs:
         shell: pwsh
 
       - name: Upload Tauri artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tauri-${{ inputs.platform == 'linux-arm64' && 'linux-arm64' || inputs.platform == 'windows-arm64' && 'windows-arm64' || inputs.platform }}
           path: release-artifacts/
