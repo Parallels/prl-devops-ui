@@ -1,7 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
-import type { IncomingMessage } from "http";
+import type { ClientRequest } from "http";
+import type { ProxyOptions } from "vite";
+
+type ProxyServer = Parameters<NonNullable<ProxyOptions["configure"]>>[0];
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -19,6 +22,15 @@ export default defineConfig(async () => ({
       name: 'ignore-ds-store',
       load(id: string) {
         if (id.endsWith('.DS_Store')) return '';
+      },
+    },
+    // Strip sourceMappingURL comments from node_modules that don't ship .map files
+    {
+      name: 'strip-missing-sourcemaps',
+      transform(code: string, id: string) {
+        if (id.includes('/node_modules/')) {
+          return { code: code.replace(/\/\/# sourceMappingURL=\S+/g, ''), map: null };
+        }
       },
     },
   ],
@@ -55,11 +67,11 @@ export default defineConfig(async () => ({
         changeOrigin: true,
         secure: false,
         ws: true,
-        configure: (proxy) => {
+        configure: (proxy: ProxyServer) => {
           // The browser sends Origin: http://localhost:1421 on the WS upgrade.
           // Most Go WebSocket upgraders reject origins that don't match the host.
           // Rewrite Origin to the target server so the upgrader accepts it.
-          proxy.on("proxyReqWs", (proxyReq: IncomingMessage & { setHeader: (k: string, v: string) => void }) => {
+          proxy.on("proxyReqWs", (proxyReq: ClientRequest) => {
             const apiUrl = process.env.VITE_DEVOPS_API_URL || "http://localhost:5680";
             proxyReq.setHeader("Origin", apiUrl);
           });
