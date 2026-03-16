@@ -16,7 +16,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "^2.36.3",
+    "@amplitude/analytics-browser": "^2.36.5",
     "@base-ui-components/react": "^1.0.0-beta.2",
     "@prl/ui-kit": "workspace:*",
     "@tauri-apps/api": "^2.8.0",
@@ -54,11 +54,11 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@types/node": "^25.4.0",
+    "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^5.1.4",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.0",
     "autoprefixer": "^10.4.27",
     "jsdom": "^28.1.0",
     "postcss": "^8.5.8",
