@@ -133,7 +133,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       # ── Rust ──────────────────────────────────────────────────────────────
       - name: Set up Rust
