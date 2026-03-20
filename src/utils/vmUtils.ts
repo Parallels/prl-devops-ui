@@ -105,6 +105,70 @@ export function sortVirtualMachines(vms: VirtualMachine[]): VirtualMachine[] {
     return [...vms].sort(compareVmDisplayName);
 }
 
+// ── Host event parsers ────────────────────────────────────────────────────────
+
+type HostAddedBody = {
+    host_id?: string;
+    host?: string;
+    description?: string;
+    event?: HostAddedBody;
+};
+
+type HostRemovedBody = {
+    host_id?: string;
+    host?: string;
+    event?: HostRemovedBody;
+};
+
+type HostDeployedBody = {
+    host_id?: string;
+    host?: string;
+    message?: string;
+    event?: HostDeployedBody;
+};
+
+export interface ParsedHostAdded {
+    hostId?: string;
+    host?: string;
+    description?: string;
+}
+
+export function parseHostAddedBody(body: unknown): ParsedHostAdded {
+    const outer = (body ?? {}) as HostAddedBody;
+    const inner = outer.event;
+    return {
+        hostId: inner?.host_id ?? outer.host_id,
+        host: inner?.host ?? outer.host,
+        description: inner?.description ?? outer.description,
+    };
+}
+
+export interface ParsedHostRemoved {
+    hostId?: string;
+}
+
+export function parseHostRemovedBody(body: unknown): ParsedHostRemoved {
+    const outer = (body ?? {}) as HostRemovedBody;
+    const inner = outer.event;
+    return {
+        hostId: inner?.host_id ?? outer.host_id,
+    };
+}
+
+export interface ParsedHostDeployed {
+    hostId?: string;
+    message?: string;
+}
+
+export function parseHostDeployedBody(body: unknown): ParsedHostDeployed {
+    const outer = (body ?? {}) as HostDeployedBody;
+    const inner = outer.event;
+    return {
+        hostId: inner?.host_id ?? outer.host_id,
+        message: inner?.message ?? outer.message,
+    };
+}
+
 export function upsertVirtualMachine(vms: VirtualMachine[], nextVm: VirtualMachine): VirtualMachine[] {
     const index = vms.findIndex((vm) => vm.ID === nextVm.ID);
     if (index === -1) return sortVirtualMachines([...vms, nextVm]);

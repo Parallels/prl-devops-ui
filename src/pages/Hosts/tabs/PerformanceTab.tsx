@@ -3,26 +3,35 @@ import { EmptyState, StatGraphTile } from '@prl/ui-kit';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { useHostStats } from '@/contexts/EventsHubContext';
 
+function autoScaleBytes(bytes: number): string {
+    if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+    if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(2)} MB`;
+    return `${(bytes / 1024).toFixed(2)} KB`;
+}
+
 export function PerformanceTab({ host }: { host: DevOpsRemoteHost }) {
     const stats = useHostStats(host.id || '');
     const latest = stats[stats.length - 1];
 
-    // Transform the rolling buffer into chart-ready data, computing CPU rate
-    // from consecutive point deltas (cpu_*_seconds are cumulative counters).
+    // Transform the rolling buffer into chart-ready data.
+    // CPU: prefer server-provided cpu_percent; if absent, derive from consecutive
+    // cumulative-second deltas (same approach as SystemStatsContext).
     const graphData = useMemo(() => stats.map((point, i) => {
-        const prev = i > 0 ? stats[i - 1] : null;
-        let cpuRate = 0;
-        if (prev && point.ts > prev.ts) {
-            const cpuDelta = (point.cpu_user_seconds + point.cpu_system_seconds)
-                - (prev.cpu_user_seconds + prev.cpu_system_seconds);
+        let cpuPercent = point.cpu_percent;
+        if (!cpuPercent && i > 0) {
+            const prev = stats[i - 1];
             const timeDelta = (point.ts - prev.ts) / 1000;
-            cpuRate = Math.min(100, Math.max(0, Math.round((cpuDelta / timeDelta) * 1000) / 10));
+            if (timeDelta > 0) {
+                const userDelta = Math.max(0, point.cpu_user_seconds - prev.cpu_user_seconds);
+                const systemDelta = Math.max(0, point.cpu_system_seconds - prev.cpu_system_seconds);
+                cpuPercent = Math.max(0, Math.min(100, ((userDelta + systemDelta) / timeDelta) * 100));
+            }
         }
         return {
             timestamp: point.ts,
-            cpuRate,
-            memoryMB: Math.round(point.memory_bytes / (1024 * 1024) * 10) / 10,
-            goroutines: point.goroutines,
+            cpuPercent,
+            memoryBytes: point.memory_alloc_bytes,
+            goroutines: point.goroutines_smoothed,
         };
     }), [stats]);
 
@@ -52,11 +61,12 @@ export function PerformanceTab({ host }: { host: DevOpsRemoteHost }) {
             <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                 <StatGraphTile
                     title="CPU Usage"
-                    value={`${latestGraph?.cpuRate ?? 0}%`}
-                    subtitle="Agent process (% of 1 core)"
+                    value={`${(latestGraph?.cpuPercent ?? 0).toFixed(2)}%`}
+                    subtitle="Agent process"
                     data={graphData}
                     variant="sparkline"
-                    series={[{ key: 'cpuRate', label: 'CPU %', color: 'blue' }]}
+                    series={[{ key: 'cpuPercent', label: 'CPU %', color: 'blue' }]}
+                    yDomain={['auto', 'auto']}
                     height={80}
                     showLegend={false}
                     showAxes={false}
@@ -70,11 +80,12 @@ export function PerformanceTab({ host }: { host: DevOpsRemoteHost }) {
             <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
                 <StatGraphTile
                     title="Memory"
-                    value={`${latestGraph?.memoryMB ?? 0} MB`}
+                    value={autoScaleBytes(latestGraph?.memoryBytes ?? 0)}
                     subtitle="Agent process heap"
                     data={graphData}
                     variant="sparkline"
-                    series={[{ key: 'memoryMB', label: 'MB', color: 'amber' }]}
+                    series={[{ key: 'memoryBytes', label: 'Bytes', color: 'amber' }]}
+                    yDomain={['auto', 'auto']}
                     height={80}
                     showLegend={false}
                     showAxes={false}

@@ -397,15 +397,18 @@ export const SideMenu = ({
   `;
 
   // Desktop Classes
+  // NOTE: backdrop-blur is intentionally NOT on this element — it would create a CSS stacking
+  // context that scopes child z-indices, preventing the logo from escaping the overlay.
+  // The blur + background are applied via an inner absolute layer instead.
   const desktopClasses = `
-    hidden md:flex flex-col flex-shrink-0 ${fullHeight ? "h-full" : "sticky top-16 h-[calc(100vh-64px)]"}
-    transition-all duration-300 backdrop-blur-2xl bg-white/70 dark:bg-neutral-900/90 border-r border-white/20 dark:border-neutral-700/60
+    hidden md:flex flex-col flex-shrink-0 relative ${fullHeight ? "h-full" : "sticky top-16 h-[calc(100vh-64px)]"}
+    transition-all duration-300 border-r border-white/20 dark:border-neutral-700/60
     shadow-[10px_0_30px_-10px_rgba(0,0,0,0.1)] dark:shadow-[10px_0_30px_-10px_rgba(0,0,0,0.4)] overflow-hidden
     ${isCollapsed ? "w-[68px]" : "w-64"}
   `;
 
   const logoSection = (logoIcon || logoText) && (
-    <div className={`flex h-15 items-center bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 px-4 py-4 ${isCollapsed ? "justify-center" : ""}`}>
+    <div className={`relative z-50 flex h-15 items-center bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 px-4 py-4 ${isCollapsed ? "justify-center" : ""}`}>
       {logoIcon && (
         <div className="flex-shrink-0">{logoIcon}</div>
       )}
@@ -422,6 +425,11 @@ export const SideMenu = ({
 
   const renderContent = (isMobile: boolean) => (
     <>
+      {/* Glass background — kept on a separate layer so the outer wrapper doesn't
+          create a stacking context. This lets child elements use root-level z-indices. */}
+      {!isMobile && (
+        <div className="absolute inset-0 backdrop-blur-2xl bg-white/70 dark:bg-neutral-900/90 pointer-events-none" />
+      )}
       {/* Dither Noise Overlay */}
       <div
         className="absolute inset-0 opacity-[0.4] pointer-events-none mix-blend-overlay"

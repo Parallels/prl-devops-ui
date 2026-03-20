@@ -48,6 +48,12 @@ export { default as Picker, type PickerProps, type PickerItem, type PickerTag, t
 export { default as Checkbox, type CheckboxProps } from "./Checkbox";
 export { default as Toggle, type ToggleProps } from "./Toggle";
 export { default as MultiToggle, type MultiToggleProps, type MultiToggleOption, type MultiToggleVariant } from "./MultiToggle";
+export {
+  default as ButtonSelector,
+  type ButtonSelectorProps,
+  type ButtonSelectorOption,
+  type ButtonSelectorMode,
+} from "./ButtonSelector";
 export { default as FormField, type FormFieldProps } from "./FormField";
 export { default as FormLayout, type FormLayoutProps } from "./FormLayout";
 export { default as FormSection, type FormSectionProps } from "./FormSection";
@@ -114,7 +120,7 @@ export { default as StatGoalTile, type StatGoalTileProps } from "./StatGoalTile"
 export { default as StatGraphTile, type StatGraphTileProps, type StatGraphSeries } from "./StatGraphTile";
 export { default as StatTile, type StatTileProps } from "./StatTile";
 export { default as Stepper, type StepperProps, type Step } from "./Stepper";
-export { default as Table, type TableProps, type Column } from "./Table";
+export { default as Table, type TableProps, type TableColumn, type TableSortState, type TablePaginationState, type Column } from "./Table";
 export { default as VariablePicker } from "./VariablePicker";
 export { default as KeyValueArrayField, type KeyValueArrayFieldProps } from "./KeyValueArrayField";
 export { default as ApiErrorState, type ApiErrorStateProps } from "./ApiErrorState";

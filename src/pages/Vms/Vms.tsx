@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
     EmptyState,
     IconButton,
+    Panel,
     Pill,
     SearchBar,
     SidePanel,
@@ -25,7 +26,13 @@ import type { VmsDeepLinkState } from '@/types/deepLink';
 import { getStateTone, parseVmReferenceBody, parseVmStateChangeBody, parseVmUptimeChangeBody, sortVirtualMachines, upsertVirtualMachine } from '@/utils/vmUtils';
 import { drainUnseenMessages } from '@/utils/messageQueue';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { useUserConfig } from '@/contexts/UserConfigContext';
 
+
+// ── User config slugs ──────────────────────────────────────────────────────
+
+const SLUG_LOCAL_COLS = 'vms::localColumns';
+const SLUG_ORCH_COLS  = 'vms::orchestratorColumns';
 
 // ── Table columns ──────────────────────────────────────────────────────────
 
@@ -170,9 +177,11 @@ interface VmTablePanelProps {
     emptyTitle: string;
     emptySubtitle: string;
     onRowClick: (vm: VirtualMachine) => void;
+    columnVisibility?: Record<string, boolean>;
+    onColumnVisibilityChange?: (v: Record<string, boolean>) => void;
 }
 
-function VmTablePanel({ title, columns, data, defaultSort, emptyTitle, emptySubtitle, onRowClick }: VmTablePanelProps) {
+function VmTablePanel({ title, columns, data, defaultSort, emptyTitle, emptySubtitle, onRowClick, columnVisibility, onColumnVisibilityChange }: VmTablePanelProps) {
     const [search, setSearch] = useState('');
 
     const filtered = useMemo(() => {
@@ -220,6 +229,8 @@ function VmTablePanel({ title, columns, data, defaultSort, emptyTitle, emptySubt
                     variant="flat"
                     defaultSort={defaultSort}
                     onRowClick={onRowClick}
+                    columnVisibility={columnVisibility}
+                    onColumnVisibilityChange={onColumnVisibilityChange}
                     emptyState={
                         <EmptyState
                             icon="Container"
@@ -227,6 +238,39 @@ function VmTablePanel({ title, columns, data, defaultSort, emptyTitle, emptySubt
                             subtitle={emptySubtitle}
                         />
                     }
+                    panelItem={(vm) => (
+                        <Panel
+                            variant="glass"
+                            padding="sm"
+                            tone={getStateTone(vm.State)}
+                            decoration="both"
+                            hoverable
+                            onClick={() => onRowClick(vm)}
+                        >
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <OsIcon os={vm.OS} />
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-sm text-neutral-900 dark:text-neutral-100 truncate">{vm.Name ?? '—'}</p>
+                                        <p className="text-xs text-neutral-400 dark:text-neutral-500 font-mono truncate">{vm.ID ?? '—'}</p>
+                                    </div>
+                                </div>
+                                <Pill size="sm" tone={getStateTone(vm.State)} variant="soft" className="shrink-0">
+                                    {vm.State ?? 'Unknown'}
+                                </Pill>
+                            </div>
+                            {(vm.internal_ip_address || vm.Description) && (
+                                <div className="mt-2 space-y-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+                                    {vm.internal_ip_address && (
+                                        <p className="font-mono">{String(vm.internal_ip_address)}</p>
+                                    )}
+                                    {vm.Description && (
+                                        <p className="truncate">{vm.Description}</p>
+                                    )}
+                                </div>
+                            )}
+                        </Panel>
+                    )}
                 />
             </div>
         </div>
@@ -250,6 +294,10 @@ interface PendingVmAction {
 
 export const Vms: React.FC = () => {
     const { themeColor } = useSystemSettings();
+    const { isLoaded: configLoaded, getConfig, setConfig } = useUserConfig();
+
+    const localColVisibility  = getConfig<Record<string, boolean>>(SLUG_LOCAL_COLS, {});
+    const orchColVisibility   = getConfig<Record<string, boolean>>(SLUG_ORCH_COLS, {});
     const [orchestratorVms, setOrchestratorVms] = useState<VirtualMachine[]>([]);
     const [localVms, setLocalVms] = useState<VirtualMachine[]>([]);
     const [loading, setLoading] = useState(true);
@@ -501,6 +549,8 @@ export const Vms: React.FC = () => {
                         emptyTitle="No local VMs"
                         emptySubtitle="No virtual machines found on the local host."
                         onRowClick={(vm) => setSelectedVm({ vm, isOrchestrator: false })}
+                        columnVisibility={configLoaded ? localColVisibility : undefined}
+                        onColumnVisibilityChange={(v) => void setConfig(SLUG_LOCAL_COLS, v)}
                     />
                 ),
             });
@@ -520,13 +570,15 @@ export const Vms: React.FC = () => {
                         emptyTitle="No orchestrator VMs"
                         emptySubtitle="No virtual machines found on the orchestrator."
                         onRowClick={(vm) => setSelectedVm({ vm, isOrchestrator: true })}
+                        columnVisibility={configLoaded ? orchColVisibility : undefined}
+                        onColumnVisibilityChange={(v) => void setConfig(SLUG_ORCH_COLS, v)}
                     />
                 ),
             });
         }
 
         return result;
-    }, [orchestratorVms, localVms]);
+    }, [orchestratorVms, localVms, configLoaded, localColVisibility, orchColVisibility, setConfig]);
 
     return (
         <div className="relative flex h-full min-h-0">

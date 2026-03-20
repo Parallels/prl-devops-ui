@@ -2,6 +2,7 @@ import { apiService } from '../api';
 import {
   DevOpsRemoteHost,
   AddOrchestratorHostRequest,
+  DeployOrchestratorHostRequest,
   UpdateOrchestratorHostRequest
 } from '../../interfaces/devops';
 import { OrchestratorResource } from '@/interfaces/Orchestrator';
@@ -192,8 +193,29 @@ class OrchestratorService {
   }
 
   /**
+   * Deploy an orchestrator host via SSH (async operation)
+   *
+   * @param hostname - The hostname identifier for the target server
+   * @param request - SSH deploy configuration
+   * @throws ApiError
+   */
+  async deployOrchestratorHost(hostname: string, request: DeployOrchestratorHostRequest): Promise<void> {
+    try {
+      await apiService.post(
+        hostname,
+        '/api/v1/orchestrator/hosts/deploy',
+        request,
+        { errorPrefix: 'Failed to deploy orchestrator host' }
+      );
+    } catch (error) {
+      console.error('Failed to deploy orchestrator host:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get orchestrator vms
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @returns Array of orchestrator resources
    * @throws ApiError

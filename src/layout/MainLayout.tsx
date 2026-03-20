@@ -14,10 +14,12 @@ import { useSession } from '@/contexts/SessionContext';
 import { Claims, Roles } from '@/interfaces/tokenTypes';
 import { JobsProvider, useJobs } from '@/contexts/JobsContext';
 import { HostSettingsProvider } from '@/contexts/HostSettingsContext';
+import { UserConfigProvider } from '@/contexts/UserConfigContext';
 import { SystemSettingsProvider, useSystemSettings } from '@/contexts/SystemSettingsContext';
-import { useModuleView, MODULE_VIEW_NAMES } from '@/components/Header/ModuleViewSwitcher';
+import { useModuleView, MODULE_VIEW_NAMES } from '@/components/HostSwitcher/ModuleViewSwitcher';
 import { SettingsModal } from '@/components/Settings/SettingsModal';
 import { ToastManager } from '@/components/Toast/ToastManager';
+import { HostOfflineOverlay } from '@/components/HostOfflineOverlay';
 
 export interface MainLayoutProps {
   children?: React.ReactNode;
@@ -33,7 +35,6 @@ const LayoutModals: React.FC = () => {
     </>
   );
 };
-
 
 // Small animated badge for active jobs in the sidebar
 type JobBadgeTone = 'pending' | 'running' | 'error';
@@ -177,83 +178,162 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
     return 'pending';
   }, [activeCount, hasFailedWithMultipleActiveJobs, hasRunningJobs]);
 
-  const baseSideMenuItems = useMemo<SideMenuItem[]>(() => [
-    { slug: 'general', label: 'General', type: 'group' },
-    { groupName: 'general', slug: 'home', label: 'Home', path: '/', icon: 'Dashboard' },
-    {
-      groupName: 'general', slug: 'catalogs', label: 'Catalogs', path: '/catalogs', icon: 'Library',
-      guards: [{ type: 'claim', claim: Claims.LIST_CATALOG_MANIFEST }],
-      badge: unseenByType['catalog'] && !isCatalogRoute ? <ActiveTypeDot /> : undefined,
-    },
+  const baseSideMenuItems = useMemo<SideMenuItem[]>(
+    () => [
+      { slug: 'general', label: 'General', type: 'group' },
+      { groupName: 'general', slug: 'home', label: 'Home', path: '/', icon: 'Dashboard' },
+      {
+        groupName: 'general',
+        slug: 'catalogs',
+        label: 'Catalogs',
+        path: '/catalogs',
+        icon: 'Library',
+        guards: [{ type: 'claim', claim: Claims.LIST_CATALOG_MANIFEST }],
+        badge: unseenByType['catalog'] && !isCatalogRoute ? <ActiveTypeDot /> : undefined,
+      },
 
-    { slug: 'computing', label: 'Computing', type: 'group', hasDivider: true },
-    {
-      groupName: 'computing', slug: 'hosts', label: 'Hosts', path: '/hosts', icon: 'Host',
-      guards: [{ type: 'claim', claim: Claims.LIST_REVERSE_PROXY_HOSTS }, { type: 'module', module: 'orchestrator' }]
-    },
-    {
-      groupName: 'computing', slug: 'vms', label: 'VMs', path: '/vms', icon: 'VirtualMachine',
-      guards: [{ type: 'claim', claim: Claims.LIST_VM }],
-      badge: unseenByType['vm'] && !isVmRoute ? <ActiveTypeDot /> : undefined,
-    },
-    {
-      groupName: 'computing', slug: 'reverse-proxy', label: 'Reverse Proxy', path: '/reverse-proxy', icon: 'ReverseProxy',
-      guards: [{ type: 'claim', claim: Claims.LIST_REVERSE_PROXY_HOSTS }, { type: 'module', module: 'reverse_proxy' }]
-    },
+      { slug: 'computing', label: 'Computing', type: 'group', hasDivider: true },
+      {
+        groupName: 'computing',
+        slug: 'hosts',
+        label: 'Hosts',
+        path: '/hosts',
+        icon: 'Host',
+        guards: [
+          { type: 'claim', claim: Claims.LIST_REVERSE_PROXY_HOSTS },
+          { type: 'module', module: 'orchestrator' },
+        ],
+      },
+      {
+        groupName: 'computing',
+        slug: 'vms',
+        label: 'VMs',
+        path: '/vms',
+        icon: 'VirtualMachine',
+        guards: [{ type: 'claim', claim: Claims.LIST_VM }],
+        badge: unseenByType['vm'] && !isVmRoute ? <ActiveTypeDot /> : undefined,
+      },
+      {
+        groupName: 'computing',
+        slug: 'reverse-proxy',
+        label: 'Reverse Proxy',
+        path: '/reverse-proxy',
+        icon: 'ReverseProxy',
+        guards: [
+          { type: 'claim', claim: Claims.LIST_REVERSE_PROXY_HOSTS },
+          { type: 'module', module: 'reverse_proxy' },
+        ],
+      },
 
-    { slug: 'management', label: 'Management', type: 'group', hasDivider: true },
-    {
-      groupName: 'management', slug: 'users', label: 'Users', path: '/users', icon: 'Users',
-      guards: [{ type: 'claim', claim: Claims.LIST_USER }, { type: 'module', module: 'api' }]
-    },
-    {
-      groupName: 'management', slug: 'roles', label: 'Roles', path: '/roles', icon: 'Roles',
-      guards: [{ type: 'claim', claim: Claims.LIST_ROLE }, { type: 'module', module: 'api' }]
-    },
-    {
-      groupName: 'management', slug: 'claims', label: 'Claims', path: '/claims', icon: 'Claims',
-      guards: [{ type: 'claim', claim: Claims.LIST_CLAIM }, { type: 'module', module: 'api' }]
-    },
-    {
-      groupName: 'management', slug: 'api-keys', label: 'API Keys', path: '/api-keys', icon: 'KeyManagement',
-      guards: [{ type: 'claim', claim: Claims.LIST_API_KEY }, { type: 'module', module: 'api' }]
-    },
-    { groupName: 'management', slug: 'cache', label: 'Cache', path: '/cache', icon: 'Cache', guards: [{ type: 'anyModule', modules: ['api', 'cache'] }] },
-    {
-      groupName: 'management', slug: 'jobs', label: 'Jobs', path: '/jobs', icon: 'Jobs',
-      badge: activeCount > 0 ? <ActiveJobBadge count={activeCount} tone={jobsBadgeTone} /> : undefined,
-    },
-    { groupName: 'admin', slug: 'admin', label: 'Admin', type: 'group', hasDivider: true },
-    {
-      groupName: 'admin', slug: 'logs', label: 'Log Viewer', path: '/logs', icon: 'Log',
-      guards: [{ type: 'role', role: Roles.SUPER_USER }]
-    },
-    {
-      groupName: 'admin', slug: 'events', label: 'Events Hub', path: '/events', icon: 'Log',
-      guards: [{ type: 'role', role: Roles.SUPER_USER }]
-    },
-    { slug: 'demos', label: 'Demos', type: 'group', hasDivider: true },
-    {
-      groupName: 'demos', slug: 'ux-demo', label: 'UX Demo', path: '/ux-demo', icon: 'UX',
-      guards: [{ type: 'role', role: Roles.SUPER_USER }]
-    },
+      { slug: 'management', label: 'Management', type: 'group', hasDivider: true },
+      {
+        groupName: 'management',
+        slug: 'users',
+        label: 'Users',
+        path: '/users',
+        icon: 'Users',
+        guards: [
+          { type: 'claim', claim: Claims.LIST_USER },
+          { type: 'module', module: 'api' },
+        ],
+      },
+      {
+        groupName: 'management',
+        slug: 'roles',
+        label: 'Roles',
+        path: '/roles',
+        icon: 'Roles',
+        guards: [
+          { type: 'claim', claim: Claims.LIST_ROLE },
+          { type: 'module', module: 'api' },
+        ],
+      },
+      {
+        groupName: 'management',
+        slug: 'claims',
+        label: 'Claims',
+        path: '/claims',
+        icon: 'Claims',
+        guards: [
+          { type: 'claim', claim: Claims.LIST_CLAIM },
+          { type: 'module', module: 'api' },
+        ],
+      },
+      {
+        groupName: 'management',
+        slug: 'api-keys',
+        label: 'API Keys',
+        path: '/api-keys',
+        icon: 'KeyManagement',
+        guards: [
+          { type: 'claim', claim: Claims.LIST_API_KEY },
+          { type: 'module', module: 'api' },
+        ],
+      },
+      { groupName: 'management', slug: 'cache', label: 'Cache', path: '/cache', icon: 'Cache', guards: [{ type: 'anyModule', modules: ['api', 'cache'] }] },
+      {
+        groupName: 'management',
+        slug: 'jobs',
+        label: 'Jobs',
+        path: '/jobs',
+        icon: 'Jobs',
+        badge: activeCount > 0 ? <ActiveJobBadge count={activeCount} tone={jobsBadgeTone} /> : undefined,
+      },
+      { groupName: 'admin', slug: 'admin', label: 'Admin', type: 'group', hasDivider: true },
+      {
+        groupName: 'admin',
+        slug: 'logs',
+        label: 'Log Viewer',
+        path: '/logs',
+        icon: 'Log',
+        guards: [{ type: 'role', role: Roles.SUPER_USER }],
+      },
+      {
+        groupName: 'admin',
+        slug: 'events',
+        label: 'Events Hub',
+        path: '/events',
+        icon: 'Log',
+        guards: [{ type: 'role', role: Roles.SUPER_USER }],
+      },
+      { slug: 'demos', label: 'Demos', type: 'group', hasDivider: true },
+      {
+        groupName: 'demos',
+        slug: 'ux-demo',
+        label: 'UX Demo',
+        path: '/ux-demo',
+        icon: 'UX',
+        guards: [{ type: 'role', role: Roles.SUPER_USER }],
+      },
+    ],
+    [activeCount, jobsBadgeTone, unseenByType, isCatalogRoute, isVmRoute],
+  );
 
-  ], [activeCount, jobsBadgeTone, unseenByType, isCatalogRoute, isVmRoute]);
-
-  const guardEvaluator = useCallback((guards: SideMenuItemGuard[]): boolean => {
-    return guards.every((guard) => {
-      switch (guard.type) {
-        case 'claim': return hasClaim(guard.claim);
-        case 'anyClaim': return hasAnyClaim(guard.claims);
-        case 'allClaims': return hasAllClaims(guard.claims);
-        case 'role': return hasRole(guard.role);
-        case 'anyRole': return guard.roles.some((r) => hasRole(r));
-        case 'module': return hasModule(guard.module);
-        case 'anyModule': return guard.modules.some((m) => hasModule(m));
-        case 'custom': return guard.fn();
-      }
-    });
-  }, [hasClaim, hasRole, hasAnyClaim, hasAllClaims, hasModule]);
+  const guardEvaluator = useCallback(
+    (guards: SideMenuItemGuard[]): boolean => {
+      return guards.every((guard) => {
+        switch (guard.type) {
+          case 'claim':
+            return hasClaim(guard.claim);
+          case 'anyClaim':
+            return hasAnyClaim(guard.claims);
+          case 'allClaims':
+            return hasAllClaims(guard.claims);
+          case 'role':
+            return hasRole(guard.role);
+          case 'anyRole':
+            return guard.roles.some((r) => hasRole(r));
+          case 'module':
+            return hasModule(guard.module);
+          case 'anyModule':
+            return guard.modules.some((m) => hasModule(m));
+          case 'custom':
+            return guard.fn();
+        }
+      });
+    },
+    [hasClaim, hasRole, hasAnyClaim, hasAllClaims, hasModule],
+  );
 
   useEffect(() => {
     const path = location.pathname;
@@ -262,7 +342,6 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
     } else {
       setCurrentRoute('home');
     }
-
   }, [location.pathname]);
 
   const handleNavChange = (route: string) => {
@@ -287,10 +366,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
     };
   }, [setIsOverlay]);
 
-  const headerElement = useMemo(
-    () => <Header currentRoute={currentRoute} onNavChange={handleNavChange} />,
-    [currentRoute],
-  );
+  const headerElement = useMemo(() => <Header currentRoute={currentRoute} onNavChange={handleNavChange} />, [currentRoute]);
 
   const logoIconElement = (
     <div className="h-[28px] w-[28px] flex items-center justify-center">
@@ -326,7 +402,10 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
         >
           {children || <Outlet />}
         </SideMenuLayout>
-        <StatusBar />
+        <HostOfflineOverlay />
+        <div className="relative z-50">
+          <StatusBar />
+        </div>
       </div>
     );
   }
@@ -339,14 +418,15 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
           {headerElement}
           <LayoutModals />
           <div className="flex h-full min-w-[400px] flex-1 flex-col overflow-hidden">
-            <div className="flex-1 overflow-y-auto bg-white dark:bg-neutral-900">
-              {children || <Outlet />}
-            </div>
+            <div className="flex-1 overflow-y-auto bg-white dark:bg-neutral-900">{children || <Outlet />}</div>
           </div>
           {/* <LogPanel /> */}
         </main>
       </div>
-      <StatusBar />
+      <HostOfflineOverlay />
+      <div className="relative z-50">
+        <StatusBar />
+      </div>
     </div>
   );
 };
@@ -361,9 +441,11 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
               <LayoutProvider>
                 <SystemSettingsProvider>
                   <HostSettingsProvider>
-                    {/* <VMProvider> */}
-                    <MainLayoutContent {...props} />
-                    {/* </VMProvider> */}
+                    <UserConfigProvider>
+                      {/* <VMProvider> */}
+                      <MainLayoutContent {...props} />
+                      {/* </VMProvider> */}
+                    </UserConfigProvider>
                   </HostSettingsProvider>
                 </SystemSettingsProvider>
               </LayoutProvider>

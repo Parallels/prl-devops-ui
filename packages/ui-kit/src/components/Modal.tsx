@@ -89,6 +89,10 @@ export interface ModalProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "
   loadingTitle?: ReactNode;
   loadingLabel?: ReactNode;
   hideCloseButton?: boolean;
+  /** When provided, a back arrow button is shown on the left of the header. */
+  onBack?: () => void;
+  /** Tooltip for the back button. Defaults to "Go back". */
+  backTooltip?: string;
   initialFocusRef?: React.RefObject<HTMLElement>;
   ariaLabel?: string;
   role?: "dialog" | "alertdialog";
@@ -126,6 +130,8 @@ const Modal: React.FC<ModalProps> = ({
   loadingTitle,
   loadingLabel,
   hideCloseButton = false,
+  onBack,
+  backTooltip = "Go back",
   initialFocusRef,
   ariaLabel,
   role = "dialog",
@@ -329,6 +335,11 @@ const Modal: React.FC<ModalProps> = ({
         {...rest}
       >
         <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-neutral-200/70 pl-4 pr-3 py-4 dark:border-neutral-700/60">
+          {onBack && (
+            <div className="flex shrink-0 items-center self-center">
+              <IconButton icon="ChevronLeft" variant="ghost" color="slate" size="sm" tooltip={backTooltip} tooltipPosition="bottom" aria-label={backTooltip} onClick={onBack} />
+            </div>
+          )}
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex min-w-0 items-center gap-3">
               {icon && <div className="flex shrink-0 items-center justify-center text-neutral-600 dark:text-neutral-200">{renderIcon(icon, "sm")}</div>}

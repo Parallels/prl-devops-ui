@@ -6,6 +6,9 @@ interface ImportMetaEnv {
   readonly VITE_DEVOPS_PASSWORD: string
   readonly VITE_DEVOPS_EMAIL: string
   readonly VITE_DEV_PORT: string
+  readonly VITE_DEFAULT_HOST_URL: string
+  readonly VITE_DEFAULT_USERNAME: string
+  readonly VITE_DEFAULT_PASSWORD: string
 }
 
 interface ImportMeta {

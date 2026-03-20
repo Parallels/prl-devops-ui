@@ -115,5 +115,7 @@ export * from './components/Artifactory';
 export * from './components/Azure';
 export * from './components/Minio';
 export * from './components/Aws';
-
-
+export * from './components/Orchestrator';
+export * from './components/Podman';
+export * from './components/PodmanDesktop';
+export * from './components/Group';

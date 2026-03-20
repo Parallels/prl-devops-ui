@@ -24,6 +24,8 @@ export interface StatGraphTileProps extends Omit<StatTileProps, "body" | "progre
   showAxes?: boolean;
   showGrid?: boolean;
   showTooltip?: boolean;
+  /** Y-axis domain for sparkline. Defaults to [0, 'auto']. Use ['auto', 'auto'] for auto-scaling. */
+  yDomain?: [number | string, number | string];
 }
 
 // ── Portal tooltip (same approach as MultiProgressBar) ────────────────────────
@@ -89,6 +91,7 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
   showAxes = true,
   showGrid = true,
   showTooltip = true,
+  yDomain = [0, 'auto'],
   ...props
 }) => {
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -195,6 +198,7 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
         >
           <ResponsiveContainer width="100%" height={80}>
             <LineChart data={data}>
+              <YAxis domain={yDomain} hide />
               <Line
                 type="monotone"
                 dataKey={series[0].key}

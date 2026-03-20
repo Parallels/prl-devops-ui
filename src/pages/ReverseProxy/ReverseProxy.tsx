@@ -62,9 +62,14 @@ function ProxyHostLabel({ host }: { host: ReverseProxyHost }) {
 interface ReverseProxyProps {
     /** When provided, operations target an orchestrated host (Hosts page integration). */
     orchestratorHostId?: string;
+    /**
+     * When provided (e.g. from HostDetailPanel), these VMs are used directly and no
+     * independent fetch is made. When absent (standalone page), VMs are fetched.
+     */
+    availableVms?: VirtualMachine[];
 }
 
-export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }) => {
+export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId, availableVms: externalVms }) => {
     const { session, hasClaim } = useSession();
     const { themeColor } = useSystemSettings();
     const hostname = session?.hostname ?? '';
@@ -73,7 +78,8 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }
 
     const [config, setConfig] = useState<ReverseProxyConfig | null>(null);
     const [hosts, setHosts] = useState<ReverseProxyHost[]>([]);
-    const [availableVms, setAvailableVms] = useState<VirtualMachine[]>([]);
+    const [fetchedVms, setFetchedVms] = useState<VirtualMachine[]>([]);
+    const availableVms = externalVms ?? fetchedVms;
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedId, setSelectedId] = useState<string | undefined>();
@@ -105,11 +111,13 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId }
 
     useEffect(() => { void fetchAll(); }, [fetchAll]);
 
+    // Only fetch VMs when running standalone (no parent-supplied list).
     useEffect(() => {
+        if (externalVms) return;
         devopsService.machines.getVirtualMachines(hostname, !!orchestratorHostId)
-            .then(setAvailableVms)
-            .catch(() => setAvailableVms([]));
-    }, [hostname, orchestratorHostId]);
+            .then(setFetchedVms)
+            .catch(() => setFetchedVms([]));
+    }, [hostname, orchestratorHostId, externalVms]);
 
     const handleToggleEngine = useCallback(async (enabled: boolean) => {
         setToggling(true);

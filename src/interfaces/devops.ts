@@ -2,7 +2,7 @@
  * DevOps API related interfaces
  */
 
-import { VirtualMachine } from "./VirtualMachine";
+import { VirtualMachine } from './VirtualMachine';
 
 /**
  * Catalog manifest item from API
@@ -144,17 +144,28 @@ export interface DevOpsRemoteHost {
   devops_version?: string;
   description?: string;
   tags?: string[];
-  state: "healthy" | "unhealthy";
+  state: 'healthy' | 'unhealthy';
   parallels_desktop_version?: string;
   parallels_desktop_licensed?: boolean;
   has_websocket_events?: boolean;
   is_reverse_proxy_enabled?: boolean;
+  enabled_modules?: string[];
   resources?: DevOpsRemoteHostResource[];
   detailed_resources?: DevOpsRemoteHostResourceDetailed;
   vms?: VirtualMachine[];
+  cache_config?: CacheConfig;
+  cache_items?: DevOpsRemoteHostItem[];
   [key: string]: unknown;
 }
 
+export interface DevOpsRemoteHostItem {
+  catalog_id: string;
+  version: string;
+  architecture: string;
+  cache_size: number;
+  cache_type: string;
+  cached_date: string;
+}
 export interface DevOpsRemoteHostResourceDetailed {
   total_apple_vms?: number;
   system_reserved?: HardwareResourceStats;
@@ -274,12 +285,38 @@ export interface DevOpsRolesAndClaimsCreateRequest {
 export interface AddOrchestratorHostRequest {
   host: string;
   description?: string;
+  tags?: string[];
   authentication?: {
     username?: string;
     password?: string;
     api_key?: string;
   };
   [key: string]: unknown;
+}
+
+/**
+ * Deploy orchestrator host via SSH — async operation (POST /api/v1/orchestrator/hosts/deploy)
+ */
+export interface DeployOrchestratorHostRequest {
+  // SSH connection
+  ssh_host: string;
+  ssh_port?: string;
+  ssh_user: string;
+  ssh_password?: string;
+  ssh_key?: string;
+  ssh_insecure_host_key?: boolean;
+  sudo_password?: string;
+  // Agent identity in the orchestrator
+  host_name: string;
+  tags?: string[];
+  // Install options
+  root_password?: string;
+  enabled_modules?: string;
+  pd_version?: string;
+  agent_version?: string;
+  pre_release?: boolean;
+  agent_port?: string;
+  enrollment_token_ttl?: number;
 }
 
 /**
@@ -295,8 +332,6 @@ export interface UpdateOrchestratorHostRequest {
   };
   [key: string]: unknown;
 }
-
-
 
 /**
  * API Key entity
@@ -362,4 +397,21 @@ export interface VmCloneRequest {
  */
 export interface VmConfigureRequest {
   operations: VmOperation[];
+}
+
+export interface HostAddedEvent {
+  host_id: string;
+  host: string;
+  description?: string;
+}
+
+export interface HostRemovedEvent {
+  host_id: string;
+  host?: string;
+}
+
+export interface HostDeployedEvent {
+  host_id: string;
+  host?: string;
+  message?: string;
 }

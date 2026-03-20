@@ -12,14 +12,20 @@ import { HostConfig } from '@/interfaces/Host';
 import { getPasswordKey, getApiKeyKey } from '@/utils/secretKeys';
 import { LoginPrefill } from '@/pages/Login/Login';
 import { decodeToken } from '@/utils/tokenUtils';
-import { HostSwitcher } from './HostSwitcher';
-import { ModuleViewSwitcher } from './ModuleViewSwitcher';
+import { HostSwitcher } from '../HostSwitcher/HostSwitcher';
+import { ModuleViewSwitcher } from '../HostSwitcher/ModuleViewSwitcher';
+import { useLockedHost } from '@/contexts/LockedHostContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 // ─── Menu icons ───────────────────────────────────────────────────────────────
 
 const CogIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+    />
     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 );
@@ -73,19 +79,16 @@ export const Header: React.FC<HeaderProps> = () => {
   const config = useConfig();
   const { session, setSession, clearSession, hasModule } = useSession();
   const { theme, toggleTheme } = useTheme();
+  const { isLocked, hostUrl } = useLockedHost();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-
+  const { themeColor } = useSystemSettings();
   const isSettingsOpen = isModalOpen('settings');
   const isFeedbackOpen = isModalOpen('feedback');
 
   // Close on outside click
   useEffect(() => {
-    const userEmail = session?.tokenPayload?.email || session?.username || '';
-    const tokenPayload = session?.tokenPayload;
-    console.log('test', userEmail);
-    console.log('payload', tokenPayload);
     if (!isUserMenuOpen) return;
     const handle = (e: MouseEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
@@ -126,9 +129,7 @@ export const Header: React.FC<HeaderProps> = () => {
       let nextSecret = '';
 
       for (const host of otherHosts) {
-        const secretKey = host.authType === 'credentials'
-          ? getPasswordKey(host.hostname)
-          : getApiKeyKey(host.hostname);
+        const secretKey = host.authType === 'credentials' ? getPasswordKey(host.hostname) : getApiKeyKey(host.hostname);
         const secret = await config.getSecret(secretKey);
         if (secret) {
           nextHost = host;
@@ -151,7 +152,7 @@ export const Header: React.FC<HeaderProps> = () => {
 
         authService.currentHostname = nextHost.hostname;
         const token = authService.getToken(nextHost.hostname);
-        const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
+        const tokenPayload = token ? (decodeToken(token) ?? undefined) : undefined;
 
         setSession({
           serverUrl: nextHost.baseUrl,
@@ -168,14 +169,7 @@ export const Header: React.FC<HeaderProps> = () => {
       } else {
         // No auto-connectable host — send to the login page with the current
         // host pre-filled so the user doesn't have to re-type the server URL.
-        const prefill: LoginPrefill | undefined = currentHost
-          ? {
-              serverUrl: currentHost.baseUrl,
-              authType: currentHost.authType,
-              username: currentHost.username,
-              hostId: currentHost.id,
-            }
-          : undefined;
+        const prefill: LoginPrefill | undefined = currentHost ? { hostId: currentHost.id } : undefined;
 
         navigate('/login', { replace: true, state: prefill ? { prefill } : undefined });
       }
@@ -209,10 +203,14 @@ export const Header: React.FC<HeaderProps> = () => {
       <div className="flex w-full items-center px-4 py-4">
         {/* Left: host switcher + module view */}
         <div className="flex items-center gap-3">
-          {session && <HostSwitcher />}
-          {session && hasModule('host') && hasModule('orchestrator') && (
-            <ModuleViewSwitcher />
+          {session && !isLocked && <HostSwitcher color={themeColor} />}
+          {session && isLocked && (
+            <div className="flex items-center gap-2 rounded-md px-3 py-1.5 bg-neutral-100 dark:bg-neutral-700/60 text-sm font-medium text-neutral-700 dark:text-neutral-200">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
+              <span className="max-w-60 truncate">{hostUrl ?? session.hostname}</span>
+            </div>
           )}
+          {session && hasModule('host') && hasModule('orchestrator') && <ModuleViewSwitcher />}
         </div>
 
         <div className="flex flex-grow" />
@@ -275,19 +273,15 @@ export const Header: React.FC<HeaderProps> = () => {
                   <UserAvatar
                     user={{
                       username: session?.username,
-                      email: session?.username,
+                      email: userEmail,
                       avatarUrl: gravatarUrl,
                     }}
                     size={36}
                     variant="circle"
                   />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">
-                      {displayLabel}
-                    </p>
-                    <p className="truncate text-xs text-neutral-400 dark:text-neutral-500">
-                      {session?.hostname ?? ''}
-                    </p>
+                    <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">{displayLabel}</p>
+                    <p className="truncate text-xs text-neutral-400 dark:text-neutral-500">{session?.hostname ?? ''}</p>
                   </div>
                 </div>
 
@@ -297,22 +291,22 @@ export const Header: React.FC<HeaderProps> = () => {
                     onClick={handleSettings}
                     className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-700/60"
                   >
-                    <span className="text-neutral-400 dark:text-neutral-500"><CogIcon /></span>
+                    <span className="text-neutral-400 dark:text-neutral-500">
+                      <CogIcon />
+                    </span>
                     Settings
-                    {isSettingsOpen && (
-                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />
-                    )}
+                    {isSettingsOpen && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />}
                   </button>
 
                   <button
                     onClick={handleFeedback}
                     className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-700/60"
                   >
-                    <span className="text-neutral-400 dark:text-neutral-500"><FeedbackIcon /></span>
+                    <span className="text-neutral-400 dark:text-neutral-500">
+                      <FeedbackIcon />
+                    </span>
                     Send Feedback
-                    {isFeedbackOpen && (
-                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />
-                    )}
+                    {isFeedbackOpen && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />}
                   </button>
                 </div>
 
@@ -331,18 +325,10 @@ export const Header: React.FC<HeaderProps> = () => {
         </HeaderGroup>
 
         {/* Side panel actions (detail panel header actions) */}
-        {sidePanelActions && (
-          <HeaderGroup>
-            {sidePanelActions}
-          </HeaderGroup>
-        )}
+        {sidePanelActions && <HeaderGroup>{sidePanelActions}</HeaderGroup>}
 
         {/* Side item actions (per-item actions from the list/sidebar) */}
-        {sideItemActions && (
-          <HeaderGroup>
-            {sideItemActions}
-          </HeaderGroup>
-        )}
+        {sideItemActions && <HeaderGroup>{sideItemActions}</HeaderGroup>}
       </div>
     </header>
   );

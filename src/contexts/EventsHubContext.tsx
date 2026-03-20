@@ -25,8 +25,11 @@ export interface HostStatsPoint {
     ts: number;
     cpu_system_seconds: number;
     cpu_user_seconds: number;
+    cpu_percent: number;
     goroutines: number;
+    goroutines_smoothed: number;
     memory_bytes: number;
+    memory_alloc_bytes: number;
 }
 
 const SUBSCRIBED_TYPES = WS_EVENT_TYPES.split(',').map((s) => s.trim());
@@ -340,8 +343,11 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                             ts: entry.receivedAt,
                             cpu_system_seconds: body.stats.cpu_system_seconds ?? 0,
                             cpu_user_seconds: body.stats.cpu_user_seconds ?? 0,
+                            cpu_percent: body.stats.cpu_percent ?? 0,
                             goroutines: body.stats.goroutines ?? 0,
+                            goroutines_smoothed: body.stats.goroutines_smoothed ?? body.stats.goroutines ?? 0,
                             memory_bytes: body.stats.memory_bytes ?? 0,
+                            memory_alloc_bytes: body.stats.memory_alloc_bytes ?? body.stats.memory_bytes ?? 0,
                         },
                     });
                 }

@@ -6,7 +6,9 @@ import { type ThemeColor, getAlertColorClasses } from "../theme/Theme";
 export type AlertVariant = "subtle" | "solid" | "outline";
 
 export interface AlertProps extends React.HTMLAttributes<HTMLDivElement> {
+  // @deprecated Use color instead
   tone?: ThemeColor;
+  color?: ThemeColor;
   variant?: AlertVariant;
   title?: string;
   description?: string;
@@ -22,12 +24,14 @@ const defaultIcons: Partial<Record<ThemeColor, string>> = {
   success: "CheckCircle",
   warning: "Chat",
   danger: "Error",
+  theme: "Info",
 };
 
 const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
   (
     {
-      tone = "neutral",
+      tone,
+      color,
       variant = "subtle",
       title,
       description,
@@ -41,7 +45,8 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
     ref
   ) => {
     const renderIcon = useIconRenderer();
-    const tokens = getAlertColorClasses(tone);
+    const effectiveColor = color ?? tone ?? "neutral";
+    const tokens = getAlertColorClasses(effectiveColor);
     const base = classNames(
       "relative flex w-full gap-3 rounded-2xl border px-4 py-3 shadow-sm transition",
       variant === "subtle" && tokens.subtle,
@@ -50,7 +55,7 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
       className
     );
 
-    const resolvedIcon = icon === false ? null : icon ?? defaultIcons[tone];
+    const resolvedIcon = icon === false ? null : icon ?? defaultIcons[effectiveColor];
 
     return (
       <div ref={ref} className={base} role="alert" {...rest}>
