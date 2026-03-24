@@ -48,6 +48,10 @@ export interface TableColumn<T> {
   className?: string;
   headerClassName?: string;
   sticky?: 'left' | 'right';
+  /** When true, this column is excluded from user preference menus (hide/show, group-by, sticky). */
+  isActionsColumn?: boolean;
+  /** When true, the column starts hidden by default but can still be enabled from the Columns menu. */
+  defaultHidden?: boolean;
   /** When false, this column cannot be hidden via the column visibility toggle. Defaults to true. */
   hideable?: boolean;
   /** When false, this column will not appear in the group-by picker. Defaults to true. */
@@ -405,57 +409,103 @@ function getSelectedRowClass(color: ThemeColor): string {
 
 function getHighlightRowClass(color: ThemeColor): string {
   switch (resolveColor(color)) {
-    case 'blue':    return 'bg-blue-100 dark:bg-blue-500/20';
-    case 'green':   return 'bg-green-100 dark:bg-green-500/20';
-    case 'teal':    return 'bg-teal-100 dark:bg-teal-500/20';
-    case 'cyan':    return 'bg-cyan-100 dark:bg-cyan-500/20';
-    case 'indigo':  return 'bg-indigo-100 dark:bg-indigo-500/20';
-    case 'purple':  return 'bg-purple-100 dark:bg-purple-500/20';
-    case 'violet':  return 'bg-violet-100 dark:bg-violet-500/20';
-    case 'red':     return 'bg-red-100 dark:bg-red-500/20';
-    case 'orange':  return 'bg-orange-100 dark:bg-orange-500/20';
-    case 'amber':   return 'bg-amber-100 dark:bg-amber-500/20';
-    case 'yellow':  return 'bg-yellow-100 dark:bg-yellow-500/20';
-    case 'lime':    return 'bg-lime-100 dark:bg-lime-500/20';
-    case 'emerald': return 'bg-emerald-100 dark:bg-emerald-500/20';
-    case 'sky':     return 'bg-sky-100 dark:bg-sky-500/20';
-    case 'fuchsia': return 'bg-fuchsia-100 dark:bg-fuchsia-500/20';
-    case 'pink':    return 'bg-pink-100 dark:bg-pink-500/20';
-    case 'rose':    return 'bg-rose-100 dark:bg-rose-500/20';
-    case 'slate':   return 'bg-slate-100 dark:bg-slate-500/20';
-    case 'gray':    return 'bg-gray-100 dark:bg-gray-500/20';
-    case 'zinc':    return 'bg-zinc-100 dark:bg-zinc-500/20';
-    case 'neutral': return 'bg-neutral-100 dark:bg-neutral-700/50';
-    case 'stone':   return 'bg-stone-100 dark:bg-stone-500/20';
-    default:        return 'bg-blue-100 dark:bg-blue-500/20';
+    case 'blue':
+      return 'bg-blue-100 dark:bg-blue-500/20';
+    case 'green':
+      return 'bg-green-100 dark:bg-green-500/20';
+    case 'teal':
+      return 'bg-teal-100 dark:bg-teal-500/20';
+    case 'cyan':
+      return 'bg-cyan-100 dark:bg-cyan-500/20';
+    case 'indigo':
+      return 'bg-indigo-100 dark:bg-indigo-500/20';
+    case 'purple':
+      return 'bg-purple-100 dark:bg-purple-500/20';
+    case 'violet':
+      return 'bg-violet-100 dark:bg-violet-500/20';
+    case 'red':
+      return 'bg-red-100 dark:bg-red-500/20';
+    case 'orange':
+      return 'bg-orange-100 dark:bg-orange-500/20';
+    case 'amber':
+      return 'bg-amber-100 dark:bg-amber-500/20';
+    case 'yellow':
+      return 'bg-yellow-100 dark:bg-yellow-500/20';
+    case 'lime':
+      return 'bg-lime-100 dark:bg-lime-500/20';
+    case 'emerald':
+      return 'bg-emerald-100 dark:bg-emerald-500/20';
+    case 'sky':
+      return 'bg-sky-100 dark:bg-sky-500/20';
+    case 'fuchsia':
+      return 'bg-fuchsia-100 dark:bg-fuchsia-500/20';
+    case 'pink':
+      return 'bg-pink-100 dark:bg-pink-500/20';
+    case 'rose':
+      return 'bg-rose-100 dark:bg-rose-500/20';
+    case 'slate':
+      return 'bg-slate-100 dark:bg-slate-500/20';
+    case 'gray':
+      return 'bg-gray-100 dark:bg-gray-500/20';
+    case 'zinc':
+      return 'bg-zinc-100 dark:bg-zinc-500/20';
+    case 'neutral':
+      return 'bg-neutral-100 dark:bg-neutral-700/50';
+    case 'stone':
+      return 'bg-stone-100 dark:bg-stone-500/20';
+    default:
+      return 'bg-blue-100 dark:bg-blue-500/20';
   }
 }
 
 function getHighlightBorderClass(color: ThemeColor): string {
   switch (resolveColor(color)) {
-    case 'blue':    return 'border-l-blue-500';
-    case 'green':   return 'border-l-green-500';
-    case 'teal':    return 'border-l-teal-500';
-    case 'cyan':    return 'border-l-cyan-500';
-    case 'indigo':  return 'border-l-indigo-500';
-    case 'purple':  return 'border-l-purple-500';
-    case 'violet':  return 'border-l-violet-500';
-    case 'red':     return 'border-l-red-500';
-    case 'orange':  return 'border-l-orange-500';
-    case 'amber':   return 'border-l-amber-500';
-    case 'yellow':  return 'border-l-yellow-500';
-    case 'lime':    return 'border-l-lime-500';
-    case 'emerald': return 'border-l-emerald-500';
-    case 'sky':     return 'border-l-sky-500';
-    case 'fuchsia': return 'border-l-fuchsia-500';
-    case 'pink':    return 'border-l-pink-500';
-    case 'rose':    return 'border-l-rose-500';
-    case 'slate':   return 'border-l-slate-500';
-    case 'gray':    return 'border-l-gray-500';
-    case 'zinc':    return 'border-l-zinc-500';
-    case 'neutral': return 'border-l-neutral-500';
-    case 'stone':   return 'border-l-stone-500';
-    default:        return 'border-l-blue-500';
+    case 'blue':
+      return 'border-l-blue-500';
+    case 'green':
+      return 'border-l-green-500';
+    case 'teal':
+      return 'border-l-teal-500';
+    case 'cyan':
+      return 'border-l-cyan-500';
+    case 'indigo':
+      return 'border-l-indigo-500';
+    case 'purple':
+      return 'border-l-purple-500';
+    case 'violet':
+      return 'border-l-violet-500';
+    case 'red':
+      return 'border-l-red-500';
+    case 'orange':
+      return 'border-l-orange-500';
+    case 'amber':
+      return 'border-l-amber-500';
+    case 'yellow':
+      return 'border-l-yellow-500';
+    case 'lime':
+      return 'border-l-lime-500';
+    case 'emerald':
+      return 'border-l-emerald-500';
+    case 'sky':
+      return 'border-l-sky-500';
+    case 'fuchsia':
+      return 'border-l-fuchsia-500';
+    case 'pink':
+      return 'border-l-pink-500';
+    case 'rose':
+      return 'border-l-rose-500';
+    case 'slate':
+      return 'border-l-slate-500';
+    case 'gray':
+      return 'border-l-gray-500';
+    case 'zinc':
+      return 'border-l-zinc-500';
+    case 'neutral':
+      return 'border-l-neutral-500';
+    case 'stone':
+      return 'border-l-stone-500';
+    default:
+      return 'border-l-blue-500';
   }
 }
 
@@ -637,6 +687,14 @@ function TableComponent<T>({
   onTableSettingsChange,
   color = 'blue',
 }: TableProps<T>) {
+  const getDefaultColumnVisibility = (column: TableColumn<T>) => {
+    if (column.hideable === false) {
+      return true;
+    }
+
+    return column.defaultHidden !== true;
+  };
+
   const showViewToggle = !!columns?.length && !!panelItem;
   const defaultViewResolved: 'table' | 'panel' = tableSettings?.activeView ?? defaultView ?? (showViewToggle ? 'table' : panelItem ? 'panel' : 'table');
   const [activeView, setActiveView] = useState<'table' | 'panel'>(defaultViewResolved);
@@ -649,7 +707,9 @@ function TableComponent<T>({
   const [colVisibility, setColVisibility] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     const source = tableSettings?.columnVisibility ?? columnVisibilityProp;
-    for (const col of columns ?? []) init[col.id] = source?.[col.id] ?? true;
+    for (const col of columns ?? []) {
+      init[col.id] = source?.[col.id] ?? getDefaultColumnVisibility(col);
+    }
     return init;
   });
 
@@ -659,7 +719,9 @@ function TableComponent<T>({
     if (!source) return;
     setColVisibility((prev) => {
       const next = { ...prev };
-      for (const col of columns ?? []) next[col.id] = source[col.id] ?? prev[col.id] ?? true;
+      for (const col of columns ?? []) {
+        next[col.id] = source[col.id] ?? prev[col.id] ?? getDefaultColumnVisibility(col);
+      }
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -939,13 +1001,14 @@ function TableComponent<T>({
 
   // ── Column helpers ───────────────────────────────────────────────────────────
   const effectiveColumns = columns ?? [];
+  const menuColumns = effectiveColumns.filter((col) => !col.isActionsColumn);
 
   // User-configurable grouping is only shown when groupable=true and no code-defined groupBy
-  const isUserGroupable = groupable === true && !groupBy && effectiveColumns.length > 0;
+  const isUserGroupable = groupable === true && !groupBy && menuColumns.some((col) => col.groupable !== false);
 
   // The grouped column is always hidden from the rendered table
   const visibleColumns = effectiveColumns.filter((col) => colVisibility[col.id] !== false && col.id !== resolvedGroupBy);
-  const hasHideableColumns = effectiveColumns.some((col) => col.hideable !== false);
+  const hasHideableColumns = menuColumns.some((col) => col.hideable !== false);
 
   // ── Ordered visible columns ──────────────────────────────────────────────────
   // When columns are pinned (user-configured or code-defined), they are moved to
@@ -1048,8 +1111,7 @@ function TableComponent<T>({
   // ── Effective per-column stickiness (column-defined + user-configured) ───────
   // User config takes precedence over the column-defined sticky value, so users
   // can override or clear a code-defined pin at runtime.
-  const getEffectiveSticky = (col: TableColumn<T>): 'left' | 'right' | undefined =>
-    internalStickyColumns[col.id] ?? col.sticky ?? undefined;
+  const getEffectiveSticky = (col: TableColumn<T>): 'left' | 'right' | undefined => internalStickyColumns[col.id] ?? col.sticky ?? undefined;
 
   // ── Sticky-right column offsets ──────────────────────────────────────────────
   // When multiple columns are pinned to the right (via sticky:'right',
@@ -1065,10 +1127,7 @@ function TableComponent<T>({
       const isSticky = effective === 'right' || (stickyActions && i === orderedVisibleColumns.length - 1);
       if (!isSticky) continue;
       offsets[col.id] = cumulative;
-      const w =
-        internalColWidths[col.id] ??
-        (typeof col.width === 'number' ? col.width : undefined) ??
-        (typeof col.minWidth === 'number' ? col.minWidth : undefined);
+      const w = internalColWidths[col.id] ?? (typeof col.width === 'number' ? col.width : undefined) ?? (typeof col.minWidth === 'number' ? col.minWidth : undefined);
       if (w !== undefined) cumulative += w;
     }
     return offsets;
@@ -1162,12 +1221,14 @@ function TableComponent<T>({
                 // right position is set via inline style when offset > 0
                 isStickyRight && !rightOffset && 'right-0',
                 (isStickyLeft || isStickyRight) && 'z-10',
-                (isStickyLeft || isStickyRight) && (
-                  isSelected ? getSelectedRowClass(color)
-                  : isHighlighted ? getHighlightRowClass(color)
-                  : striped && originalIndex % 2 === 1 ? 'bg-neutral-100 dark:bg-neutral-800/40'
-                  : 'bg-white dark:bg-neutral-900'
-                ),
+                (isStickyLeft || isStickyRight) &&
+                  (isSelected
+                    ? getSelectedRowClass(color)
+                    : isHighlighted
+                      ? getHighlightRowClass(color)
+                      : striped && originalIndex % 2 === 1
+                        ? 'bg-neutral-100 dark:bg-neutral-800/40'
+                        : 'bg-white dark:bg-neutral-900'),
                 // Apply hover background to sticky cells when row is hovered
                 (isStickyLeft || isStickyRight) && !isHighlighted && hoverable && 'group-hover:bg-neutral-200/60 dark:group-hover:bg-neutral-700/40',
                 (isStickyLeft || isStickyRight) && isHighlighted && hoverable && 'group-hover:brightness-95',
@@ -1180,9 +1241,7 @@ function TableComponent<T>({
                 column.className,
               )}
               style={{
-                ...(tdResizeWidth
-                  ? { width: tdResizeWidth, minWidth: tdResizeWidth, maxWidth: tdResizeWidth }
-                  : applyWidthStyle(column.width, column.minWidth, column.maxWidth)),
+                ...(tdResizeWidth ? { width: tdResizeWidth, minWidth: tdResizeWidth, maxWidth: tdResizeWidth } : applyWidthStyle(column.width, column.minWidth, column.maxWidth)),
                 ...(isStickyRight && rightOffset !== undefined ? { right: rightOffset } : {}),
               }}
             >
@@ -1198,17 +1257,7 @@ function TableComponent<T>({
                   isGroupedSubRow && colIndex === 0 && 'pl-2',
                 )}
               >
-                {isTextCell ? (
-                  <TruncatedText
-                    text={String(cellValue)}
-                    as="span"
-                    delay={2000}
-                    noWrapper
-                    className="min-w-0 flex-1"
-                  />
-                ) : (
-                  cellValue
-                )}
+                {isTextCell ? <TruncatedText text={String(cellValue)} as="span" delay={2000} noWrapper className="min-w-0 flex-1" /> : cellValue}
               </div>
             </td>
           );
@@ -1289,7 +1338,7 @@ function TableComponent<T>({
                     <div className="absolute right-0 top-full z-50 mt-1 min-w-[200px] rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
                       <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500 border-b border-neutral-100 dark:border-neutral-800">Columns</div>
                       <div className="py-1 max-h-64 overflow-y-auto">
-                        {effectiveColumns.map((col) => {
+                        {menuColumns.map((col) => {
                           const hideable = col.hideable !== false;
                           const visible = colVisibility[col.id] !== false;
                           const label = typeof col.header === 'string' ? col.header : col.id;
@@ -1325,7 +1374,9 @@ function TableComponent<T>({
                           size="xs"
                           onClick={() => {
                             const reset: Record<string, boolean> = {};
-                            for (const col of effectiveColumns) reset[col.id] = true;
+                            for (const col of effectiveColumns) {
+                              reset[col.id] = getDefaultColumnVisibility(col);
+                            }
                             setColVisibility(reset);
                             onColumnVisibilityChange?.(reset);
                             onTableSettingsChange?.({ ...settingsSnapshotRef.current, columnVisibility: reset });
@@ -1394,7 +1445,7 @@ function TableComponent<T>({
                           />
                           <span className="italic text-neutral-400 dark:text-neutral-500">None</span>
                         </label>
-                        {effectiveColumns
+                        {menuColumns
                           .filter((col) => col.groupable !== false)
                           .map((col) => (
                             <label key={col.id} className="flex items-center gap-2.5 px-3 py-1.5 text-sm select-none cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
@@ -1481,7 +1532,7 @@ function TableComponent<T>({
 
                       {/* Column list */}
                       <div className="py-1 max-h-64 overflow-y-auto">
-                        {effectiveColumns.map((col) => {
+                        {menuColumns.map((col) => {
                           const label = getColumnLabel(col);
                           const current = internalStickyColumns[col.id] ?? null;
                           return (
@@ -1528,162 +1579,153 @@ function TableComponent<T>({
         {activeView === 'table' && visibleColumns.length > 0 && (
           <div className={classNames('relative', fullHeight && 'flex-1 min-h-0')}>
             <div
-              className={classNames(
-                'overflow-x-auto relative',
-                fullHeight ? 'h-full overflow-y-auto' : '',
-                !fullHeight && maxHeight && 'overflow-y-auto',
-              )}
+              className={classNames('overflow-x-auto relative', fullHeight ? 'h-full overflow-y-auto' : '', !fullHeight && maxHeight && 'overflow-y-auto')}
               style={!fullHeight ? scrollContainerStyle : undefined}
             >
-                  <table className={tableClasses} style={useFixedLayout ? { tableLayout: 'fixed', width: '100%' } : undefined}>
-                    {/* Colgroup drives precise column widths in fixed layout */}
-                    {useFixedLayout && (
-                      <colgroup>
-                        {showGroupExpandCol && <col style={{ width: '2.5rem' }} />}
-                        {resolvedGroupBy && !showGroupExpandCol && <col style={{ width: '1rem' }} />}
-                        {orderedVisibleColumns.map((col) => {
-                          const resizedW = internalColWidths[col.id];
-                          if (resizedW) return <col key={col.id} style={{ width: `${resizedW}px`, minWidth: `${resizedW}px` }} />;
-                          // For non-resized columns, honour width/minWidth so fixed layout can't squeeze them below their declared minimum
-                          const declaredW = col.width !== undefined ? (typeof col.width === 'number' ? col.width : col.width) : undefined;
-                          const declaredMin = col.minWidth !== undefined ? (typeof col.minWidth === 'number' ? col.minWidth : col.minWidth) : undefined;
-                          const colW = declaredW ?? declaredMin;
-                          return (
-                            <col
-                              key={col.id}
-                              style={colW !== undefined ? { width: typeof colW === 'number' ? `${colW}px` : colW, minWidth: typeof colW === 'number' ? `${colW}px` : colW } : undefined}
-                            />
-                          );
-                        })}
-                      </colgroup>
+              <table className={tableClasses} style={useFixedLayout ? { tableLayout: 'fixed', width: '100%' } : undefined}>
+                {/* Colgroup drives precise column widths in fixed layout */}
+                {useFixedLayout && (
+                  <colgroup>
+                    {showGroupExpandCol && <col style={{ width: '2.5rem' }} />}
+                    {resolvedGroupBy && !showGroupExpandCol && <col style={{ width: '1rem' }} />}
+                    {orderedVisibleColumns.map((col) => {
+                      const resizedW = internalColWidths[col.id];
+                      if (resizedW) return <col key={col.id} style={{ width: `${resizedW}px`, minWidth: `${resizedW}px` }} />;
+                      // For non-resized columns, honour width/minWidth so fixed layout can't squeeze them below their declared minimum
+                      const declaredW = col.width !== undefined ? (typeof col.width === 'number' ? col.width : col.width) : undefined;
+                      const declaredMin = col.minWidth !== undefined ? (typeof col.minWidth === 'number' ? col.minWidth : col.minWidth) : undefined;
+                      const colW = declaredW ?? declaredMin;
+                      return (
+                        <col key={col.id} style={colW !== undefined ? { width: typeof colW === 'number' ? `${colW}px` : colW, minWidth: typeof colW === 'number' ? `${colW}px` : colW } : undefined} />
+                      );
+                    })}
+                  </colgroup>
+                )}
+                <thead>
+                  <tr className={classNames(headerToneClasses, 'border-b dark:border-opacity-60')}>
+                    {/* Extra leading th for expand/collapse when grouping with group headers */}
+                    {showGroupExpandCol && (
+                      <th scope="col" className={classNames(headerToneClasses, stickyHeader && 'sticky top-0', stickyHeader ? 'z-20' : '', 'w-10 pl-3 pr-1')} aria-hidden="true" />
                     )}
-                    <thead>
-                      <tr className={classNames(headerToneClasses, 'border-b dark:border-opacity-60')}>
-                        {/* Extra leading th for expand/collapse when grouping with group headers */}
-                        {showGroupExpandCol && (
-                          <th scope="col" className={classNames(headerToneClasses, stickyHeader && 'sticky top-0', stickyHeader ? 'z-20' : '', 'w-10 pl-3 pr-1')} aria-hidden="true" />
-                        )}
-                        {/* Indent spacer th for grouped mode without group headers */}
-                        {resolvedGroupBy && !showGroupExpandCol && <th scope="col" className="w-4" aria-hidden="true" />}
-                        {orderedVisibleColumns.map((column, colIndex) => {
-                          const isSorted = resolvedSort?.columnId === column.id;
-                          const sortDirection = isSorted ? resolvedSort?.direction : undefined;
+                    {/* Indent spacer th for grouped mode without group headers */}
+                    {resolvedGroupBy && !showGroupExpandCol && <th scope="col" className="w-4" aria-hidden="true" />}
+                    {orderedVisibleColumns.map((column, colIndex) => {
+                      const isSorted = resolvedSort?.columnId === column.id;
+                      const sortDirection = isSorted ? resolvedSort?.direction : undefined;
 
-                          const isResizable = resizableColumns && column.resizable !== false;
-                          const resizeWidth = internalColWidths[column.id];
-                          const isStickyLeft = column.sticky === 'left';
-                          const isStickyRight = column.sticky === 'right' || (stickyActions && colIndex === visibleColumns.length - 1);
-                          const rightOffset = isStickyRight ? rightStickyOffsets[column.id] : undefined;
+                      const isResizable = resizableColumns && column.resizable !== false;
+                      const resizeWidth = internalColWidths[column.id];
+                      const isStickyLeft = column.sticky === 'left';
+                      const isStickyRight = column.sticky === 'right' || (stickyActions && colIndex === visibleColumns.length - 1);
+                      const rightOffset = isStickyRight ? rightStickyOffsets[column.id] : undefined;
 
-                          return (
-                            <th
-                              key={column.id}
-                              ref={(el) => {
-                                thRefs.current[column.id] = el;
+                      return (
+                        <th
+                          key={column.id}
+                          ref={(el) => {
+                            thRefs.current[column.id] = el;
+                          }}
+                          scope="col"
+                          className={classNames(
+                            headerBaseClasses,
+                            headerToneClasses,
+                            cellPadding,
+                            stickyHeader && 'sticky top-0',
+                            (isStickyLeft || isStickyRight) && 'sticky',
+                            isStickyLeft && 'left-0',
+                            // right position is set via inline style when offset > 0
+                            isStickyRight && !rightOffset && 'right-0',
+                            stickyHeader && (isStickyLeft || isStickyRight) ? 'z-30' : stickyHeader ? 'z-20' : isStickyLeft || isStickyRight ? 'z-10' : '',
+                            getCellAlignment(column.align),
+                            'overflow-hidden',
+                            isResizable && 'relative',
+                            isStickyRight && 'border-l border-neutral-200 dark:border-neutral-700',
+                            column.headerClassName,
+                          )}
+                          style={{
+                            ...(resizeWidth ? { width: resizeWidth, minWidth: resizeWidth, maxWidth: resizeWidth } : applyWidthStyle(column.width, column.minWidth, column.maxWidth)),
+                            ...(isStickyRight && rightOffset !== undefined ? { right: rightOffset } : {}),
+                          }}
+                          aria-sort={sortDirection ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+                          title={column.tooltip}
+                        >
+                          <div className={classNames('flex items-center gap-1 min-w-0', column.align === 'right' ? 'justify-end' : column.align === 'center' ? 'justify-center' : 'justify-start')}>
+                            <span className="truncate min-w-0 flex-1">{column.header}</span>
+                            {column.sortable ? (
+                              <IconButton
+                                icon={sortDirection ? sortIconMap[sortDirection] : sortIconMap.default}
+                                size="xs"
+                                variant="icon"
+                                color={isSorted ? color : 'slate'}
+                                rounded="md"
+                                accent={false}
+                                tooltip={sortDirection === 'asc' ? 'Sort descending' : sortDirection === 'desc' ? 'Clear sort' : 'Sort ascending'}
+                                tooltipPosition="bottom"
+                                className={classNames('ml-1 flex-shrink-0', !isSorted && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
+                                onClick={() => handleSortToggle(column)}
+                                aria-label="Toggle sort"
+                              />
+                            ) : null}
+                          </div>
+                          {/* Resize handle */}
+                          {isResizable && (
+                            <div
+                              role="separator"
+                              aria-hidden="true"
+                              className="group/rh absolute inset-y-0 right-0 z-10 flex w-2 cursor-col-resize select-none items-center justify-center"
+                              onMouseDown={(e) => {
+                                const minW = column.minWidth !== undefined ? (typeof column.minWidth === 'number' ? column.minWidth : parseInt(column.minWidth, 10)) : 48;
+                                handleResizeStart(e, column.id, Math.max(48, isNaN(minW) ? 48 : minW));
                               }}
-                              scope="col"
-                              className={classNames(
-                                headerBaseClasses,
-                                headerToneClasses,
-                                cellPadding,
-                                stickyHeader && 'sticky top-0',
-                                (isStickyLeft || isStickyRight) && 'sticky',
-                                isStickyLeft && 'left-0',
-                                // right position is set via inline style when offset > 0
-                                isStickyRight && !rightOffset && 'right-0',
-                                stickyHeader && (isStickyLeft || isStickyRight) ? 'z-30' : stickyHeader ? 'z-20' : (isStickyLeft || isStickyRight) ? 'z-10' : '',
-                                getCellAlignment(column.align),
-                                'overflow-hidden',
-                                isResizable && 'relative',
-                                isStickyRight && 'border-l border-neutral-200 dark:border-neutral-700',
-                                column.headerClassName,
-                              )}
-                              style={{
-                                ...(resizeWidth
-                                  ? { width: resizeWidth, minWidth: resizeWidth, maxWidth: resizeWidth }
-                                  : applyWidthStyle(column.width, column.minWidth, column.maxWidth)),
-                                ...(isStickyRight && rightOffset !== undefined ? { right: rightOffset } : {}),
-                              }}
-                              aria-sort={sortDirection ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                              title={column.tooltip}
                             >
-                              <div className={classNames('flex items-center gap-1 min-w-0', column.align === 'right' ? 'justify-end' : column.align === 'center' ? 'justify-center' : 'justify-start')}>
-                                <span className="truncate min-w-0 flex-1">{column.header}</span>
-                                {column.sortable ? (
-                                  <IconButton
-                                    icon={sortDirection ? sortIconMap[sortDirection] : sortIconMap.default}
-                                    size="xs"
-                                    variant="icon"
-                                    color={isSorted ? color : 'slate'}
-                                    rounded="md"
-                                    accent={false}
-                                    tooltip={sortDirection === 'asc' ? 'Sort descending' : sortDirection === 'desc' ? 'Clear sort' : 'Sort ascending'}
-                                    tooltipPosition="bottom"
-                                    className={classNames('ml-1 flex-shrink-0', !isSorted && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
-                                    onClick={() => handleSortToggle(column)}
-                                    aria-label="Toggle sort"
-                                  />
-                                ) : null}
-                              </div>
-                              {/* Resize handle */}
-                              {isResizable && (
-                                <div
-                                  role="separator"
-                                  aria-hidden="true"
-                                  className="group/rh absolute inset-y-0 right-0 z-10 flex w-2 cursor-col-resize select-none items-center justify-center"
-                                  onMouseDown={(e) => {
-                                    const minW = column.minWidth !== undefined ? (typeof column.minWidth === 'number' ? column.minWidth : parseInt(column.minWidth, 10)) : 48;
-                                    handleResizeStart(e, column.id, Math.max(48, isNaN(minW) ? 48 : minW));
-                                  }}
+                              <div className="h-1/2 w-px bg-neutral-300 transition-colors group-hover/rh:bg-neutral-500 dark:bg-neutral-600 dark:group-hover/rh:bg-neutral-400" />
+                            </div>
+                          )}
+                        </th>
+                      );
+                    })}
+                  </tr>
+                </thead>
+                <tbody className={tbodyClasses}>
+                  {/* ── Grouped rendering ─────────────────────────────── */}
+                  {groupedData
+                    ? hasRows
+                      ? groupedData.map((group) => {
+                          const isExpanded = expandedGroups[group.key] !== false;
+                          return (
+                            <React.Fragment key={`group-${group.key}`}>
+                              {/* Group header row */}
+                              {resolvedShowGroupHeader && (
+                                <tr
+                                  className="cursor-pointer select-none border-b border-neutral-100 bg-neutral-50 transition-colors duration-150 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800/40 dark:hover:bg-neutral-700/50"
+                                  onClick={() => toggleGroup(group.key)}
                                 >
-                                  <div className="h-1/2 w-px bg-neutral-300 transition-colors group-hover/rh:bg-neutral-500 dark:bg-neutral-600 dark:group-hover/rh:bg-neutral-400" />
-                                </div>
+                                  <td colSpan={visibleColumns.length + 1} className={classNames('py-2', sidePaddingTokens.left)}>
+                                    <div className="flex items-center gap-2">
+                                      <span className={classNames('inline-flex text-neutral-400 dark:text-neutral-500')}>
+                                        <ChevronSvg expanded={isExpanded} />
+                                      </span>
+                                      <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+                                        {group.display || <span className="italic text-neutral-400 dark:text-neutral-500">empty</span>}
+                                      </span>
+                                      <Badge count={group.rows.length} tone={color as PanelTone} />
+                                    </div>
+                                  </td>
+                                </tr>
                               )}
-                            </th>
+                              {/* Sub-rows — hidden when collapsed */}
+                              {(isExpanded || !resolvedShowGroupHeader) && group.rows.map(({ row, originalIndex }) => renderRow(row, originalIndex, true))}
+                            </React.Fragment>
                           );
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody className={tbodyClasses}>
-                      {/* ── Grouped rendering ─────────────────────────────── */}
-                      {groupedData
-                        ? hasRows
-                          ? groupedData.map((group) => {
-                              const isExpanded = expandedGroups[group.key] !== false;
-                              return (
-                                <React.Fragment key={`group-${group.key}`}>
-                                  {/* Group header row */}
-                                  {resolvedShowGroupHeader && (
-                                    <tr
-                                      className="cursor-pointer select-none border-b border-neutral-100 bg-neutral-50 transition-colors duration-150 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800/40 dark:hover:bg-neutral-700/50"
-                                      onClick={() => toggleGroup(group.key)}
-                                    >
-                                      <td colSpan={visibleColumns.length + 1} className={classNames('py-2', sidePaddingTokens.left)}>
-                                        <div className="flex items-center gap-2">
-                                          <span className={classNames('inline-flex text-neutral-400 dark:text-neutral-500')}>
-                                            <ChevronSvg expanded={isExpanded} />
-                                          </span>
-                                          <span className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-                                            {group.display || <span className="italic text-neutral-400 dark:text-neutral-500">empty</span>}
-                                          </span>
-                                          <Badge count={group.rows.length} tone={color as PanelTone} />
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  )}
-                                  {/* Sub-rows — hidden when collapsed */}
-                                  {(isExpanded || !resolvedShowGroupHeader) && group.rows.map(({ row, originalIndex }) => renderRow(row, originalIndex, true))}
-                                </React.Fragment>
-                              );
-                            })
-                          : renderEmptyState()
-                        : /* ── Flat (ungrouped) rendering ──────────────────── */
-                          hasRows
-                          ? sortedData.map((row, rowIndex) => renderRow(row, rowIndex, false))
-                          : renderEmptyState()}
-                    </tbody>
-                  </table>
-                  {loading && <Loader overlay variant={loaderType} label={loadingMessage} progress={loaderProgress} className="rounded-none" />}
+                        })
+                      : renderEmptyState()
+                    : /* ── Flat (ungrouped) rendering ──────────────────── */
+                      hasRows
+                      ? sortedData.map((row, rowIndex) => renderRow(row, rowIndex, false))
+                      : renderEmptyState()}
+                </tbody>
+              </table>
+              {loading && <Loader overlay variant={loaderType} label={loadingMessage} progress={loaderProgress} className="rounded-none" />}
             </div>
           </div>
         )}

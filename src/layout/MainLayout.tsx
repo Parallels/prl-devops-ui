@@ -22,6 +22,7 @@ import { ToastManager } from '@/components/Toast/ToastManager';
 import { HostOfflineOverlay } from '@/components/HostOfflineOverlay';
 import { HighlightProvider, useHighlight, type HighlightState } from '@/contexts/HighlightContext';
 import { drainUnseenMessages } from '@/utils/messageQueue';
+import { resolveJobOutcome } from '@/utils/jobOutcomeResolver';
 
 export interface MainLayoutProps {
   children?: React.ReactNode;
@@ -44,8 +45,8 @@ type JobBadgeTone = 'pending' | 'running' | 'error';
 
 const jobBadgeColorMap: Record<JobBadgeTone, { ping: string; dot: string; text: string }> = {
   pending: { ping: 'bg-amber-400', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
-  running: { ping: 'bg-blue-400',  dot: 'bg-blue-500',  text: 'text-blue-600 dark:text-blue-400' },
-  error:   { ping: 'bg-red-400',   dot: 'bg-red-500',   text: 'text-red-600 dark:text-red-400' },
+  running: { ping: 'bg-blue-400', dot: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400' },
+  error: { ping: 'bg-red-400', dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
 };
 
 const ActiveJobBadge: React.FC<{ count: number; tone: JobBadgeTone }> = ({ count, tone }) => {
@@ -64,9 +65,9 @@ const ActiveJobBadge: React.FC<{ count: number; tone: JobBadgeTone }> = ({ count
 // ── Highlight badge (Catalogs / VMs / Hosts nav items) ────────────────────
 
 const highlightBadgeColors: Record<HighlightState, { ping: string; dot: string; text: string }> = {
-  error:   { ping: 'bg-red-400',     dot: 'bg-red-500',     text: 'text-red-600 dark:text-red-400' },
-  warning: { ping: 'bg-amber-400',   dot: 'bg-amber-500',   text: 'text-amber-600 dark:text-amber-400' },
-  info:    { ping: 'bg-blue-400',    dot: 'bg-blue-500',    text: 'text-blue-600 dark:text-blue-400' },
+  error: { ping: 'bg-red-400', dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
+  warning: { ping: 'bg-amber-400', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+  info: { ping: 'bg-blue-400', dot: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400' },
   success: { ping: 'bg-emerald-400', dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
 };
 
@@ -82,34 +83,10 @@ const HighlightBadge: React.FC<{ menuItemId: string }> = ({ menuItemId }) => {
         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${colors.ping}`} />
         <span className={`relative inline-flex rounded-full h-2 w-2 ${colors.dot}`} />
       </span>
-      {info.count > 1 && (
-        <span className={`text-[10px] font-bold tabular-nums ${colors.text}`}>{info.count}</span>
-      )}
+      {info.count > 1 && <span className={`text-[10px] font-bold tabular-nums ${colors.text}`}>{info.count}</span>}
     </span>
   );
 };
-
-// ── Job target resolver ────────────────────────────────────────────────────
-
-function resolveJobTarget(
-  jobType: string,
-  jobOperation?: string,
-  resultRecordType?: string,
-): { pageId: string; menuItemId: string; isItemTarget: boolean } | null {
-  const t = (resultRecordType ?? jobType).toLowerCase();
-  const op = jobOperation?.toLowerCase();
-  if (t === 'orchestrator_host' || (t === 'orchestrator' && op === 'deploy')) {
-    return { pageId: 'hosts', menuItemId: 'hosts', isItemTarget: true };
-  }
-  if (t === 'catalog' || t === 'packer' || t === 'packer_template') {
-    return { pageId: 'catalogs', menuItemId: 'catalogs', isItemTarget: false };
-  }
-  if (t === 'vm' || t === 'machine' || t === 'machines') {
-    return { pageId: 'vms', menuItemId: 'vms', isItemTarget: false };
-  }
-  return null;
-}
-
 
 const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
   const { isOverlay, setIsOverlay } = useLayout();
@@ -145,16 +122,21 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
       if (!job) continue;
 
       const highlightState: HighlightState = raw.message === 'JOB_FAILED' ? 'error' : 'success';
-      const target = resolveJobTarget(job.job_type ?? '', job.job_operation, job.result_record_type);
-      if (!target) continue;
+      const outcome = resolveJobOutcome({
+        message: raw.message,
+        job_type: job.job_type,
+        job_operation: job.job_operation,
+        result_record_id: job.result_record_id,
+        result_record_type: job.result_record_type,
+        result: raw.body?.result,
+      });
+      if (!outcome.highlight) continue;
 
       addHighlight({
-        pageId: target.pageId,
-        menuItemId: target.menuItemId,
-        // For item-level targets (e.g. a deployed host), use result_record_id as itemId.
-        // For record-level targets (e.g. a VM created by a job), use it as recordId.
-        itemId: target.isItemTarget ? (job.result_record_id ?? undefined) : undefined,
-        recordId: job.result_record_id ?? undefined,
+        pageId: outcome.highlight.pageId,
+        menuItemId: outcome.highlight.menuItemId,
+        itemId: outcome.highlight.itemId,
+        recordId: outcome.highlight.recordId,
         state: highlightState,
       });
     }

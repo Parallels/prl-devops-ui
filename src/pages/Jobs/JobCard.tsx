@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import {
   ArrowRight,
+  Button,
   Calendar,
   CheckCircle,
   ConfirmModal,
@@ -16,8 +17,11 @@ import {
   normalizeDataSizeUnit,
   type ConnectionFlowItem,
 } from '@prl/ui-kit';
+import { useNavigate } from 'react-router-dom';
 import type { Job, JobStep } from '@/interfaces/Jobs';
 import { useJobs } from '@/contexts/JobsContext';
+import { useHighlight } from '@/contexts/HighlightContext';
+import { resolveJobOutcome } from '@/utils/jobOutcomeResolver';
 import { stateToTone, jobTypeIcon, formatTimestamp, titleCase, stepName, joinNames, formatEta, parseEtaToSeconds, TONE_ICON_BG } from './jobsUtils';
 
 interface JobCardProps {
@@ -124,11 +128,13 @@ const JobProgress: React.FC<{ job: Job }> = ({ job }) => {
 // ── JobCard ───────────────────────────────────────────────────────────────────
 
 export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) => {
+  const navigate = useNavigate();
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHighlighted, setIsHighlighted] = useState(highlighted);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const { deleteJob } = useJobs();
+  const { addHighlight } = useHighlight();
 
   useEffect(() => {
     if (!highlighted) return;
@@ -153,6 +159,30 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
   const isActive = job.state === 'running' || job.state === 'pending' || isInit;
   const isFailed = job.state === 'failed';
   const hasSteps = !isInit && (job.steps?.length ?? 0) > 0;
+  const outcome = resolveJobOutcome({
+    message: job.state === 'failed' ? 'JOB_FAILED' : job.state === 'completed' ? 'JOB_COMPLETED' : 'JOB_UPDATED',
+    job_type: job.job_type,
+    job_operation: job.job_operation,
+    result_record_id: job.result_record_id,
+    result_record_type: job.result_record_type,
+    result: job.result,
+  });
+
+  const handleNavigateToOutcome = () => {
+    if (!outcome.deepLink) return;
+
+    if (outcome.highlight) {
+      addHighlight({
+        pageId: outcome.highlight.pageId,
+        menuItemId: outcome.highlight.menuItemId,
+        itemId: outcome.highlight.itemId,
+        recordId: outcome.highlight.recordId,
+        state: isFailed ? 'error' : 'success',
+      });
+    }
+
+    navigate(outcome.deepLink.path, { state: outcome.deepLink.state });
+  };
 
   // Use the first running step's message (or name) as the active subtitle
   // const runningStep = job.steps?.find(s => s.state === 'running');
@@ -162,11 +192,11 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
 
   return (
     <div ref={cardRef} className={classNames('rounded-xl transition-shadow duration-700', isHighlighted && 'ring-2 ring-blue-500/60 dark:ring-blue-400/50')}>
-      <Panel variant="glass" padding="sm" tone={tone}>
+      <Panel variant="glass" padding="sm" color="white" borderColor={tone}>
         {/* Header */}
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           {/* Type icon */}
-          <div className={classNames('w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0', TONE_ICON_BG[tone] ?? TONE_ICON_BG.neutral)}>{jobTypeIcon(job.job_type)}</div>
+          <div className={classNames('w-9 h-9 rounded-lg flex items-center justify-center shrink-0', TONE_ICON_BG[tone] ?? TONE_ICON_BG.neutral)}>{jobTypeIcon(job.job_type)}</div>
 
           {/* Title + active step */}
           <div className="flex-1 min-w-0">
@@ -179,15 +209,10 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
               </Pill>
             </div>
             {job.message && <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">{job.message}</p>}
-            {/* {!job.message && activeMessage && isActive && (
-                            <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">
-                                {activeMessage}
-                            </p>
-                        )} */}
           </div>
 
           {/* Overall % badge (active + progress > 0 only) */}
-          {isActive && job.progress > 0 && <span className="text-sm font-mono font-bold text-neutral-500 flex-shrink-0 tabular-nums">{job.progress}%</span>}
+          {isActive && job.progress > 0 && <span className="text-sm font-mono font-bold text-neutral-500 shrink-0 tabular-nums">{job.progress}%</span>}
         </div>
 
         {/* Step pipeline — shown when steps are present */}
@@ -203,8 +228,8 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
         {/* Result */}
         {job.result && (
           <div className="px-4 pb-3 flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400">
-            <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-            <span className="translate-y-[1px]">{job.result}</span>
+            <CheckCircle className="w-5 h-5 mt-0.5 shrink-0" />
+            <span className="translate-y-px">{job.result}</span>
           </div>
         )}
 
@@ -213,6 +238,15 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
           <Panel variant="tonal" color="rose" padding="xs" tone="rose" corner="rounded-sm">
             <span className="text-sm">{job.error}</span>
           </Panel>
+        )}
+
+        {/* Finished job deeplink */}
+        {!isActive && outcome.deepLink && (
+          <div className="px-4 pb-3">
+            <Button variant="soft" color={isFailed ? 'rose' : 'blue'} size="xs" leadingIcon="ArrowRight" onClick={handleNavigateToOutcome}>
+              View {outcome.deepLink.label}
+            </Button>
+          </div>
         )}
 
         {/* Footer */}
@@ -234,7 +268,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-neutral-300 dark:text-neutral-600 truncate max-w-[140px]">{job.id}</span>
+            <span className="text-[10px] font-mono text-neutral-300 dark:text-neutral-600 truncate max-w-35">{job.id}</span>
             {!isActive && <IconButton icon="Trash" variant="ghost" color="rose" size="xs" aria-label="Delete job" onClick={() => setConfirmDelete(true)} />}
           </div>
         </div>

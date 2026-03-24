@@ -43,6 +43,7 @@ export interface SplitViewItem {
   actions?: React.ReactNode;
   /** Extra content rendered below the item row when it is the active selection */
   subContent?: React.ReactNode;
+  tags?: string[];
   /** When true, renders the item with an intense accent background and a pulsing dot to signal new content */
   highlight?: boolean;
 }
@@ -55,6 +56,11 @@ export interface SplitViewHeaderDetails {
   description?: React.ReactNode;
   /** Right-aligned tag/badge area. Accepts any React node(s). */
   tags?: React.ReactNode;
+  /**
+   * Custom body content rendered as the Panel children.
+   * When provided, it overrides title/subtitle/description/tags content.
+   */
+  headerBody?: React.ReactNode;
   tone?: ThemeColor;
   variant?: PanelVariant;
   /** Alias for `variant` */
@@ -532,7 +538,8 @@ const SplitView: React.FC<SplitViewProps> = ({
     const detailsVariant = headerDetails?.variant ?? headerDetails?.variants ?? 'subtle';
     const detailsDecoration = headerDetails?.decoration ?? headerDetails?.decorations ?? 'none';
     const detailsTone = headerDetails?.tone ?? 'neutral';
-    const hasHeaderDetailsContent = Boolean(headerDetails?.title || headerDetails?.subtitle || headerDetails?.description || headerDetails?.tags);
+    const hasCustomHeaderBody = headerDetails?.headerBody !== undefined && headerDetails?.headerBody !== null;
+    const hasHeaderDetailsContent = Boolean(hasCustomHeaderBody || headerDetails?.title || headerDetails?.subtitle || headerDetails?.description || headerDetails?.tags);
     const isDetailsBordered = headerDetails?.bordered ?? true;
 
     return (
@@ -561,14 +568,18 @@ const SplitView: React.FC<SplitViewProps> = ({
               padding="none"
               className={classNames('w-full shadow-none px-3 py-4', headerDetails.className)}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  {headerDetails.title && <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:text-neutral-400">{headerDetails.title}</div>}
-                  {headerDetails.subtitle && <div className="mt-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">{headerDetails.subtitle}</div>}
-                  {headerDetails.description && <div className="mt-1 text-[12px] text-neutral-600 dark:text-neutral-400">{headerDetails.description}</div>}
+              {hasCustomHeaderBody ? (
+                headerDetails.headerBody
+              ) : (
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    {headerDetails.title && <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:text-neutral-400">{headerDetails.title}</div>}
+                    {headerDetails.subtitle && <div className="mt-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">{headerDetails.subtitle}</div>}
+                    {headerDetails.description && <div className="mt-1 text-[12px] text-neutral-600 dark:text-neutral-400">{headerDetails.description}</div>}
+                  </div>
+                  {headerDetails.tags && <div className="flex items-center justify-end gap-2 flex-wrap">{headerDetails.tags}</div>}
                 </div>
-                {headerDetails.tags && <div className="flex items-center justify-end gap-2 flex-wrap">{headerDetails.tags}</div>}
-              </div>
+              )}
             </Panel>
           </div>
         )}

@@ -409,9 +409,23 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
     }
   }, []);
 
+  const markAsRead = useCallback((id: string, channel: string) => {
+    dispatch({ type: 'MARK_AS_READ', id, channel });
+    // Also update service
+    notificationService.markAsRead(id);
+  }, []);
+
   const addNotification = useCallback((notification: Notification) => {
     dispatch({ type: 'ADD_NOTIFICATION', notification });
     if (notification.showAsToast && !notification.alreadyShownToast) {
+      const toastActions = notification.actions?.map((action) => ({
+        ...action,
+        onClick: () => {
+          markAsRead(notification.id, notification.channel);
+          action.onClick?.();
+        },
+      }));
+
       toastService.showToast({
         id: notification.id,
         message: notification.message,
@@ -420,10 +434,10 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
         autoClose: notification.autoClose,
         autoCloseDuration: notification.autoCloseDuration,
         dismissible: notification.dismissible,
-        actions: notification.actions,
+        actions: toastActions,
       });
     }
-  }, []);
+  }, [markAsRead]);
 
   const updateNotification = useCallback((notification: Notification) => {
     dispatch({ type: 'UPDATE_NOTIFICATION', notification });
@@ -431,12 +445,6 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
 
   const deleteNotification = useCallback((id: string, channel: string) => {
     dispatch({ type: 'DELETE_NOTIFICATION', id, channel });
-  }, []);
-
-  const markAsRead = useCallback((id: string, channel: string) => {
-    dispatch({ type: 'MARK_AS_READ', id, channel });
-    // Also update service
-    notificationService.markAsRead(id);
   }, []);
 
   const markAllAsRead = useCallback((channel?: string) => {
