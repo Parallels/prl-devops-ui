@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
+  ApplyConfirmModal,
   Button,
   CustomIcon,
   DeleteConfirmModal,
@@ -22,16 +23,27 @@ import { useEventsHub } from '@/contexts/EventsHubContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { Claims } from '@/interfaces/tokenTypes';
 import { HostDetailPanel } from './HostDetailPanel';
-import { AddHostModal } from './AddHostModal';
+import { AddHostModal } from './AddHostModal/index';
 import { devopsService } from '@/services/devops';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { OsIcon } from '@/utils/virtualMachine';
 import { useNavigateTo } from '@/hooks/useNavigateTo';
 import type { HostsDeepLinkState } from '@/types/deepLink';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
-import { getStateTone, parseHostAddedBody, parseHostDeployedBody, parseHostRemovedBody, parseVmReferenceBody, parseVmStateChangeBody, parseVmUptimeChangeBody, sortVirtualMachines, upsertVirtualMachine } from '@/utils/vmUtils';
+import {
+  getStateTone,
+  parseHostAddedBody,
+  parseHostDeployedBody,
+  parseHostRemovedBody,
+  parseVmReferenceBody,
+  parseVmStateChangeBody,
+  parseVmUptimeChangeBody,
+  sortVirtualMachines,
+  upsertVirtualMachine,
+} from '@/utils/vmUtils';
 import { drainUnseenMessages } from '@/utils/messageQueue';
 import { PageHeaderIcon } from '@/components/PageHeader';
+import { set } from 'date-fns';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -84,6 +96,7 @@ export const Hosts: React.FC = () => {
   const deepLinkConsumedRef = useRef(false);
   const lastOrchestratorEventIdRef = useRef<string | null>(null);
   const lastPdfmEventIdRef = useRef<string | null>(null);
+  const lastJobManagerEventIdRef = useRef<string | null>(null);
   const pendingVmFetchesRef = useRef<Set<string>>(new Set());
 
   const [hosts, setHosts] = useState<DevOpsRemoteHost[]>([]);
@@ -93,15 +106,21 @@ export const Hosts: React.FC = () => {
 
   const [keyToDelete, setKeyToDelete] = useState<DevOpsRemoteHost | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [keyToDisable, setKeyToDisable] = useState<DevOpsRemoteHost | null>(null);
+  const [keyToEnable, setKeyToEnable] = useState<DevOpsRemoteHost | null>(null);
+  const [disabling, setDisabling] = useState(false);
+  const [enabling, setEnabling] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [deployNotification, setDeployNotification] = useState<string | null>(null);
+  const [highlightedHostIds, setHighlightedHostIds] = useState<Set<string>>(new Set());
 
   async function mapRemoteHost(h: DevOpsRemoteHost): Promise<DevOpsRemoteHost> {
     let hostVms: VirtualMachine[] = [];
     if (h.state == 'healthy') {
       const data = await devopsService.orchestrator.getOrchestratorVMs(session?.hostname ?? '', h.id ?? '');
-      hostVms = sortVirtualMachines(data ?? []);
+      const unique = [...new Map((data ?? []).map((vm) => [vm.ID, vm])).values()];
+      hostVms = sortVirtualMachines(unique);
     }
     return {
       ...h,
@@ -340,6 +359,34 @@ export const Hosts: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerMessages['pdfm']]);
 
+  // ── Job completion — highlight newly deployed hosts ──────────────────────
+  useEffect(() => {
+    const msgs = containerMessages['job_manager'];
+    const unseen = drainUnseenMessages(msgs, lastJobManagerEventIdRef, 'all');
+    if (unseen.length === 0) return;
+
+    for (const msg of unseen) {
+      const { raw } = msg;
+      if (raw.message !== 'JOB_COMPLETED') continue;
+
+      const job = raw.body as { job_type?: string; job_operation?: string; result_record_id?: string; result_record_type?: string } | undefined;
+      if (!job?.result_record_id) continue;
+
+      // Match either by result_record_type (completion payload) or by job_type+job_operation (full job payload)
+      const isOrchestratorDeploy =
+        job.result_record_type?.toLowerCase() === 'orchestrator_host' ||
+        (job.job_type?.toLowerCase() === 'orchestrator' && job.job_operation?.toLowerCase() === 'deploy');
+      if (!isOrchestratorDeploy) continue;
+
+      setHighlightedHostIds((prev) => {
+        const next = new Set(prev);
+        next.add(job.result_record_id!);
+        return next;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerMessages['job_manager']]);
+
   // Consume deep-link state once hosts have loaded
   useEffect(() => {
     if (deepLinkConsumedRef.current || loading || !deepLink?.selectHostId) return;
@@ -351,23 +398,47 @@ export const Hosts: React.FC = () => {
 
   const handlePause = useCallback(
     (host: DevOpsRemoteHost) => {
+      setDisabling(true);
+      setKeyToDisable(null);
       void devopsService.orchestrator
         .disableOrchestratorHost(session?.hostname ?? '', host.id ?? '')
-        .then(() => void fetchHosts())
-        .catch((err) => setError(err?.message ?? 'Failed to disable host'));
+        .then(() => {
+          setDisabling(false);
+          void fetchHosts();
+        })
+        .catch((err) => {
+          setDisabling(false);
+          setError(err?.message ?? 'Failed to disable host');
+        });
     },
     [session?.hostname, fetchHosts],
   );
 
   const handleEnable = useCallback(
     (host: DevOpsRemoteHost) => {
+      setEnabling(true);
+      setKeyToEnable(null);
       void devopsService.orchestrator
         .enableOrchestratorHost(session?.hostname ?? '', host.id ?? '')
-        .then(() => void fetchHosts())
-        .catch((err) => setError(err?.message ?? 'Failed to enable host'));
+        .then(() => {
+          setEnabling(false);
+          void fetchHosts();
+        })
+        .catch((err) => {
+          setEnabling(false);
+          setError(err?.message ?? 'Failed to enable host');
+        });
     },
     [session?.hostname, fetchHosts],
   );
+
+  const handleEnableDisableCallback = useCallback((host: DevOpsRemoteHost) => {
+    if (host.enabled === false) {
+      setKeyToEnable(host);
+    } else {
+      setKeyToDisable(host);
+    }
+  }, []);
 
   const handleRemoveCallback = useCallback((host: DevOpsRemoteHost) => {
     setKeyToDelete(host);
@@ -402,7 +473,8 @@ export const Hosts: React.FC = () => {
         label: <HostItemLabel host={host} />,
         subtitle: HostSubtitleLabel({ host }),
         icon: 'Host' as const,
-        panel: <HostDetailPanel host={host} onPause={handlePause} onRemove={handleRemoveCallback} onEnable={handleEnable} />,
+        highlight: highlightedHostIds.has(host.id ?? ''),
+        panel: <HostDetailPanel host={host} />,
         subContent:
           host.vms && host.vms.length > 0 ? (
             <div className="border-t border-gray-100 dark:border-gray-800">
@@ -433,7 +505,7 @@ export const Hosts: React.FC = () => {
             </div>
           ) : undefined,
       })),
-    [hosts, handlePause, handleRemove],
+    [hosts, handlePause, handleRemove, highlightedHostIds],
   );
 
   return (
@@ -442,7 +514,15 @@ export const Hosts: React.FC = () => {
         className="flex-1 min-w-0"
         items={items}
         value={selectedId}
-        onChange={(id) => setSelectedId(id)}
+        onChange={(id) => {
+          setSelectedId(id);
+          setHighlightedHostIds((prev) => {
+            if (!prev.has(id)) return prev;
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+        }}
         loading={loading}
         error={error ?? undefined}
         onRetry={() => void fetchHosts()}
@@ -497,15 +577,31 @@ export const Hosts: React.FC = () => {
                   tags: (
                     <>
                       {host.enabled ? (
-                        <Button variant="solid" color="amber" size="sm" aria-label="Disable Host" onClick={() => handlePause(host)} leadingIcon={<Pause />}>
+                        <Button
+                          tooltip="This will disable the Host"
+                          variant="solid"
+                          color="amber"
+                          size="sm"
+                          aria-label="Disable Host"
+                          onClick={() => handleEnableDisableCallback(host)}
+                          leadingIcon={<Pause />}
+                        >
                           Disable
                         </Button>
                       ) : (
-                        <Button variant="solid" color="emerald" size="sm" aria-label="Enable Host" onClick={() => handleEnable(host)} leadingIcon={<Run />}>
+                        <Button
+                          tooltip="This will enable the Host"
+                          variant="solid"
+                          color="emerald"
+                          size="sm"
+                          aria-label="Enable Host"
+                          onClick={() => handleEnableDisableCallback(host)}
+                          leadingIcon={<Run />}
+                        >
                           Enable
                         </Button>
                       )}
-                      <Button variant="solid" color="rose" size="sm" aria-label="Remove Host" onClick={() => handleRemoveCallback(host)} leadingIcon={<Trash />}>
+                      <Button tooltip="This will remove the Host" variant="solid" color="rose" size="sm" aria-label="Remove Host" onClick={() => handleRemoveCallback(host)} leadingIcon={<Trash />}>
                         Remove
                       </Button>
                     </>
@@ -541,6 +637,43 @@ export const Hosts: React.FC = () => {
       >
         <p className="text-sm text-neutral-500 dark:text-neutral-400">This action is irreversible. Any applications using this host will immediately lose access.</p>
       </DeleteConfirmModal>
+      <ApplyConfirmModal
+        isOpen={!!keyToDisable}
+        onClose={() => setKeyToDisable(null)}
+        onConfirm={() => {
+          if (keyToDisable) {
+            void handlePause(keyToDisable);
+          }
+        }}
+        title="Disable Host"
+        icon="Pause"
+        confirmLabel={disabling ? 'Disabling…' : 'Disable'}
+        isConfirmDisabled={disabling}
+        confirmValue={keyToDisable?.description ?? keyToDisable?.host ?? ''}
+        confirmValueLabel="host name"
+        size="md"
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          This will temporarily disable the host in the orchestrator. Any resources or virtual machines associated with this host will become inaccessible via the orchestrator until it is enabled
+          again.
+        </p>
+      </ApplyConfirmModal>
+      <ApplyConfirmModal
+        isOpen={!!keyToEnable}
+        onClose={() => setKeyToEnable(null)}
+        onConfirm={() => keyToEnable && void handleEnable(keyToEnable)}
+        title="Enable Host"
+        icon="Run"
+        confirmLabel={enabling ? 'Enabling…' : 'Enable'}
+        isConfirmDisabled={enabling}
+        confirmValue={keyToEnable?.description ?? keyToEnable?.host ?? ''}
+        confirmValueLabel="host name"
+        size="md"
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">
+          This will enable the host in the orchestrator. Any resources or virtual machines associated with this host will now be accessible via the orchestrator.
+        </p>
+      </ApplyConfirmModal>
     </div>
   );
 };

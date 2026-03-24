@@ -9,7 +9,7 @@ import Loader from './Loader';
 import IconButton from './IconButton';
 import SearchBar from './SearchBar';
 import HelpButton, { type HelpButtonProps } from './HelpButton';
-import Panel, { type PanelDecoration, type PanelTone, type PanelVariant } from './Panel';
+import Panel, { type PanelDecoration, type PanelVariant } from './Panel';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -43,6 +43,8 @@ export interface SplitViewItem {
   actions?: React.ReactNode;
   /** Extra content rendered below the item row when it is the active selection */
   subContent?: React.ReactNode;
+  /** When true, renders the item with an intense accent background and a pulsing dot to signal new content */
+  highlight?: boolean;
 }
 
 export type SplitViewHeaderSlot<T> = T | ((activeItem: SplitViewItem) => T);
@@ -296,6 +298,44 @@ const activeColors: Record<ThemeColor, ActiveColorTokens> = {
   parallels: { bg: 'bg-red-50 dark:bg-red-900/30', border: 'border-l-red-600', text: 'text-red-900 dark:text-red-100', subtitle: 'text-red-600 dark:text-red-400', resizer: 'bg-red-400' },
 };
 
+type HighlightTokens = { bg: string; dot: string };
+
+const neutralHighlight: HighlightTokens = { bg: 'bg-neutral-100 dark:bg-neutral-700/50', dot: 'bg-neutral-500' };
+
+// All class names are written as full strings so Tailwind's JIT scanner can detect them.
+const highlightColors: Record<ThemeColor, HighlightTokens> = {
+  red: { bg: 'bg-red-100 dark:bg-red-900/50', dot: 'bg-red-500' },
+  orange: { bg: 'bg-orange-100 dark:bg-orange-900/50', dot: 'bg-orange-500' },
+  amber: { bg: 'bg-amber-100 dark:bg-amber-900/50', dot: 'bg-amber-500' },
+  yellow: { bg: 'bg-yellow-100 dark:bg-yellow-900/50', dot: 'bg-yellow-500' },
+  lime: { bg: 'bg-lime-100 dark:bg-lime-900/50', dot: 'bg-lime-500' },
+  green: { bg: 'bg-green-100 dark:bg-green-900/50', dot: 'bg-green-500' },
+  emerald: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', dot: 'bg-emerald-500' },
+  teal: { bg: 'bg-teal-100 dark:bg-teal-900/50', dot: 'bg-teal-500' },
+  cyan: { bg: 'bg-cyan-100 dark:bg-cyan-900/50', dot: 'bg-cyan-500' },
+  sky: { bg: 'bg-sky-100 dark:bg-sky-900/50', dot: 'bg-sky-500' },
+  blue: { bg: 'bg-blue-100 dark:bg-blue-900/50', dot: 'bg-blue-500' },
+  indigo: { bg: 'bg-indigo-100 dark:bg-indigo-900/50', dot: 'bg-indigo-500' },
+  violet: { bg: 'bg-violet-100 dark:bg-violet-900/50', dot: 'bg-violet-500' },
+  purple: { bg: 'bg-purple-100 dark:bg-purple-900/50', dot: 'bg-purple-500' },
+  fuchsia: { bg: 'bg-fuchsia-100 dark:bg-fuchsia-900/50', dot: 'bg-fuchsia-500' },
+  pink: { bg: 'bg-pink-100 dark:bg-pink-900/50', dot: 'bg-pink-500' },
+  rose: { bg: 'bg-rose-100 dark:bg-rose-900/50', dot: 'bg-rose-500' },
+  slate: { bg: 'bg-slate-100 dark:bg-slate-800/50', dot: 'bg-slate-500' },
+  gray: { bg: 'bg-gray-100 dark:bg-gray-800/50', dot: 'bg-gray-500' },
+  zinc: { bg: 'bg-zinc-100 dark:bg-zinc-800/50', dot: 'bg-zinc-500' },
+  neutral: neutralHighlight,
+  stone: neutralHighlight,
+  white: neutralHighlight,
+  brand: { bg: 'bg-blue-100 dark:bg-blue-900/50', dot: 'bg-blue-500' },
+  info: { bg: 'bg-sky-100 dark:bg-sky-900/50', dot: 'bg-sky-500' },
+  success: { bg: 'bg-emerald-100 dark:bg-emerald-900/50', dot: 'bg-emerald-500' },
+  warning: { bg: 'bg-amber-100 dark:bg-amber-900/50', dot: 'bg-amber-500' },
+  danger: { bg: 'bg-rose-100 dark:bg-rose-900/50', dot: 'bg-rose-500' },
+  theme: neutralHighlight,
+  parallels: { bg: 'bg-red-100 dark:bg-red-900/50', dot: 'bg-red-500' },
+};
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -418,6 +458,7 @@ const SplitView: React.FC<SplitViewProps> = ({
 
   const tokens = sizeTokens[size];
   const accent = activeColors[color];
+  const highlightAccent = highlightColors[color];
   const resizerColor = accent.resizer;
 
   const handleSelect = (item: SplitViewItem) => {
@@ -499,7 +540,7 @@ const SplitView: React.FC<SplitViewProps> = ({
         <div className="flex items-center gap-3 px-4 py-3">
           {icon && <div className="shrink-0">{icon}</div>}
           <div className="flex-1 min-w-0">
-            <h2 className="flex items-center text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate">
+            <h2 className="flex items-center gap-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate">
               <span>{title}</span>
               {helper && <HelpButton {...helper} />}
             </h2>
@@ -512,7 +553,14 @@ const SplitView: React.FC<SplitViewProps> = ({
         {bottomActions && <div className="flex items-center justify-end gap-2 px-4 pb-3">{bottomActions}</div>}
         {headerDetails && hasHeaderDetailsContent && (
           <div className={classNames(isDetailsBordered && 'border-t border-b border-neutral-200 dark:border-neutral-700')}>
-            <Panel variant="subtle" tone={detailsTone} decoration={detailsDecoration} corner="none" padding="none" className={classNames('w-full shadow-none px-3 py-4', headerDetails.className)}>
+            <Panel
+              variant={detailsVariant}
+              tone={detailsTone}
+              decoration={detailsDecoration}
+              corner="none"
+              padding="none"
+              className={classNames('w-full shadow-none px-3 py-4', headerDetails.className)}
+            >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   {headerDetails.title && <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-neutral-500 dark:text-neutral-400">{headerDetails.title}</div>}
@@ -555,7 +603,7 @@ const SplitView: React.FC<SplitViewProps> = ({
     }
     if (error) {
       return (
-        <div className="absolute inset-0 z-20 flex items-center justify-center rounded-[inherit] bg-white/60 backdrop-blur-md p-6 dark:bg-neutral-900/50">
+        <div className="absolute inset-0 z-40 flex items-center justify-center rounded-[inherit] bg-white/60 backdrop-blur-md p-6 dark:bg-neutral-900/50">
           {errorState ?? (
             <EmptyState
               icon="Error"
@@ -671,20 +719,25 @@ const SplitView: React.FC<SplitViewProps> = ({
                           'group/item w-full text-left border-l-3 transition-all duration-150 outline-none cursor-default',
                           item.disabled && 'opacity-50 cursor-not-allowed pointer-events-none',
                           tokens.item,
-                          isActive ? classNames(accent.bg, accent.border, 'border-l-[3px]') : 'border-l-[3px] border-l-transparent hover:bg-gray-100/80 dark:hover:bg-gray-800/60',
+                          isActive
+                            ? classNames(accent.bg, accent.border, 'border-l-[3px]')
+                            : item.highlight
+                              ? classNames(highlightAccent.bg, accent.border, 'border-l-[3px]')
+                              : 'border-l-[3px] border-l-transparent hover:bg-gray-100/80 dark:hover:bg-gray-800/60',
                         )}
                       >
                         <div className="flex items-start gap-2">
                           {/* Item content */}
                           <div className="flex-1 min-w-0">
-                            <div className={classNames('flex gap-2 font-semibold leading-tight', tokens.label, isActive ? accent.text : 'text-gray-900 dark:text-gray-100')}>
+                            <div className={classNames('flex gap-2 font-semibold leading-tight', tokens.label, isActive || item.highlight ? accent.text : 'text-gray-900 dark:text-gray-100')}>
                               {item.icon && (
                                 <div className="flex items-start">
                                   <CustomIcon icon={item.icon} className={classNames('shrink-0', iconSizeClasses[size])} />
                                 </div>
                               )}
-                              <div className="flex items-center w-full">
+                              <div className="flex items-center w-full gap-1.5">
                                 <span className="truncate">{item.label}</span>
+                                {item.highlight && <span className={classNames('h-2 w-2 shrink-0 rounded-full', highlightAccent.dot, !isActive && 'animate-pulse')} />}
                               </div>
                             </div>
                             {item.subtitle && (

@@ -135,6 +135,7 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
     hoverable = false,
     autoConnectorState = false,
     animateCompleted = false,
+    fullWidthConnectors = false,
 }) => {
     const isDark = useIsDark();
 
@@ -300,6 +301,7 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
 
     const outerClass = classNames(
         autoScale ? 'relative w-full' : 'flex items-start',
+        !autoScale && fullWidthConnectors && 'w-full',
         !autoScale && allowScroll && 'overflow-auto max-w-full',
         needsScroll && 'overflow-x-auto',
         !autoScale && !allowScroll && !needsScroll && 'overflow-hidden',
@@ -314,7 +316,7 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
     const content = (
         <div
             ref={contentRef}
-            className="relative flex items-start"
+            className={classNames('relative flex items-start', fullWidthConnectors && 'w-full')}
             style={contentStyle}
         >
             {groups.map((group, gi) => {
@@ -430,13 +432,14 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
                                 rightAnchorTones={rightAnchorTones}
                                 rightAnchorStates={rightAnchorStates}
                                 animateCompleted={cAnimateCompleted}
+                                fullWidth={fullWidthConnectors}
                             />
                         )}
 
                         {/* Column or parallel group — wrapped in a ref div for bypass arc measurement */}
                         <div
                             ref={el => { groupDivRefs.current[gi] = el; }}
-                            className={itemWidth ? 'flex-shrink-0' : 'flex-1 min-w-0'}
+                            className={(itemWidth || fullWidthConnectors) ? 'flex-shrink-0' : 'flex-1 min-w-0'}
                             style={itemWidth
                                 ? { width: typeof itemWidth === 'number' ? `${itemWidth}px` : itemWidth }
                                 : undefined}

@@ -4,7 +4,8 @@ import { type IconSize } from "../types/Icon";
 import { useIconRenderer } from "../contexts/IconContext";
 import { getButtonColorClasses, getButtonBaseClasses, getButtonHoverClasses, getButtonActiveClasses, getButtonActiveHoverClasses, type ThemeColor } from "../theme/Theme";
 import { iconAccentHover, iconAccentRing } from "../theme/ButtonTypes";
-import Tooltip, { type TooltipPosition } from "./Tooltip";
+import TooltipWrapper from "./TooltipWrapper";
+import type { TooltipPosition } from "./Tooltip";
 
 export type ButtonColor = ThemeColor;
 export type ButtonVariant = "solid" | "soft" | "outline" | "ghost" | "link" | "clear" | "icon";
@@ -184,9 +185,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     if (tooltip) {
       return (
-        <Tooltip text={tooltip} position={tooltipPosition} wrapperClassName={fullWidth ? "w-full" : undefined}>
+        <TooltipWrapper text={tooltip} position={tooltipPosition}>
           {button}
-        </Tooltip>
+        </TooltipWrapper>
       );
     }
 

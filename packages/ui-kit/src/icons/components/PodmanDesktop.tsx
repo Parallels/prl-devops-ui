@@ -19,9 +19,9 @@ export const PodmanDesktop = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
       <path
         d="m506.13 211.68c3.379-1.689 7.355-1.689 10.734 0l290.5 145.25c4.065 2.033 6.633 6.188 6.633 10.733v287.67c0 4.545-2.568 8.7-6.633 10.733l-290.5 145.25c-3.379 1.689-7.355 1.689-10.734 0l-290.5-145.25c-4.065-2.033-6.633-6.188-6.633-10.733v-287.67c0-4.545 2.568-8.7 6.633-10.733z"
         stroke="url(#paint3_linear_1_2)"
-        stroke-linecap="square"
-        stroke-linejoin="round"
-        stroke-width="32"
+        strokeLinecap="square"
+        strokeLinejoin="round"
+        strokeWidth="32"
         style={{ stroke: 'url(#paint3_linear_1_2)' }}
       />
     </g>

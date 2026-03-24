@@ -82,7 +82,7 @@ const ActiveTypeDot: React.FC = () => (
 const isActiveState = (state: string): boolean => state === 'pending' || state === 'running';
 const isTerminalState = (state: string): boolean => state === 'completed' || state === 'failed';
 
-const toSideMenuType = (jobType: string): 'catalog' | 'vm' | undefined => {
+const toSideMenuType = (jobType: string, jobOperation?: string): 'catalog' | 'vm' | 'host' | undefined => {
   switch (jobType.toLowerCase()) {
     case 'catalog':
     case 'packer':
@@ -92,6 +92,8 @@ const toSideMenuType = (jobType: string): 'catalog' | 'vm' | undefined => {
     case 'machine':
     case 'machines':
       return 'vm';
+    case 'orchestrator':
+      return jobOperation?.toLowerCase() === 'deploy' ? 'host' : undefined;
     default:
       return undefined;
   }
@@ -127,7 +129,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
       }
 
       if (isActiveState(previousState) && isTerminalState(job.state)) {
-        const menuType = toSideMenuType(job.job_type);
+        const menuType = toSideMenuType(job.job_type, job.job_operation);
         if (menuType) completedTypes.add(menuType);
       }
     }
@@ -163,7 +165,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
   useEffect(() => {
     // Clear the indicator when the user visits the corresponding section
     const path = location.pathname;
-    const visitedType = path.startsWith('/catalogs') ? 'catalog' : path.startsWith('/vms') ? 'vm' : undefined;
+    const visitedType = path.startsWith('/catalogs') ? 'catalog' : path.startsWith('/vms') ? 'vm' : path.startsWith('/hosts') ? 'host' : undefined;
     if (visitedType && unseenByType[visitedType]) {
       setUnseenByType((prev) => ({ ...prev, [visitedType]: false }));
     }
@@ -171,6 +173,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
 
   const isCatalogRoute = location.pathname.startsWith('/catalogs');
   const isVmRoute = location.pathname.startsWith('/vms');
+  const isHostRoute = location.pathname.startsWith('/hosts');
   const hasRunningJobs = useMemo(() => jobs.some((job) => job.state === 'running'), [jobs]);
   const jobsBadgeTone = useMemo<JobBadgeTone>(() => {
     if (hasFailedWithMultipleActiveJobs && activeCount > 0) return 'error';
@@ -203,6 +206,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
           { type: 'claim', claim: Claims.LIST_REVERSE_PROXY_HOSTS },
           { type: 'module', module: 'orchestrator' },
         ],
+        badge: unseenByType['host'] && !isHostRoute ? <ActiveTypeDot /> : undefined,
       },
       {
         groupName: 'computing',
@@ -306,7 +310,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
         guards: [{ type: 'role', role: Roles.SUPER_USER }],
       },
     ],
-    [activeCount, jobsBadgeTone, unseenByType, isCatalogRoute, isVmRoute],
+    [activeCount, jobsBadgeTone, unseenByType, isCatalogRoute, isVmRoute, isHostRoute],
   );
 
   const guardEvaluator = useCallback(

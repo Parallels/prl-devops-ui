@@ -85,7 +85,7 @@ export { default as UserAvatar, type UserAvatarProps, type UserAvatarUser } from
 export { default as Accordion, type AccordionProps, type AccordionItem } from "./Accordion";
 export { default as Tabs, type TabsProps, type TabItem, type TabItemAction } from "./Tabs";
 export { default as MarkdownEditor } from "./MarkdownEditor";
-export { default as Modal, type ModalProps, ModalActions, ConfirmModal, DeleteConfirmModal, type DeleteConfirmModalProps } from "./Modal";
+export { default as Modal, type ModalProps, ModalActions, ConfirmModal, DeleteConfirmModal, type DeleteConfirmModalProps, ApplyConfirmModal, type ApplyConfirmModalProps } from "./Modal";
 export {
   default as SideMenu,
   type SideMenuProps,
@@ -120,7 +120,7 @@ export { default as StatGoalTile, type StatGoalTileProps } from "./StatGoalTile"
 export { default as StatGraphTile, type StatGraphTileProps, type StatGraphSeries } from "./StatGraphTile";
 export { default as StatTile, type StatTileProps } from "./StatTile";
 export { default as Stepper, type StepperProps, type Step } from "./Stepper";
-export { default as Table, type TableProps, type TableColumn, type TableSortState, type TablePaginationState, type Column } from "./Table";
+export { default as Table, type TableProps, type TableColumn, type TableSortState, type TablePaginationState, type TableSettings, type Column } from "./Table";
 export { default as VariablePicker } from "./VariablePicker";
 export { default as KeyValueArrayField, type KeyValueArrayFieldProps } from "./KeyValueArrayField";
 export { default as ApiErrorState, type ApiErrorStateProps } from "./ApiErrorState";

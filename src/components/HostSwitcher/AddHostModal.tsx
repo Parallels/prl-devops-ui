@@ -4,7 +4,7 @@ import type { OnboardingStep } from '../../pages/Onboarding/Panels';
 import { AddHostConnectForm, type ConnectFormHandle, type ConnectFormState } from './AddHostConnectForm';
 import { AddSshDeployHostForm, type SshDeployFormHandle, type SshDeployFormState } from './AddHostSshDeployForm';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
-import { ArrowRight, CustomIcon, Panel, ThemeColor } from '@prl/ui-kit';
+import { ArrowRight, CustomIcon, Hero, Panel, ThemeColor } from '@prl/ui-kit';
 import { isTauri } from '../../pages/Onboarding/Panels/helpers';
 
 // ── Option picker ─────────────────────────────────────────────────────────────
@@ -37,16 +37,15 @@ export const AddHostOptionPicker: React.FC<AddHostOptionPickerProps> = ({ onSele
   const cards = options ? OPTION_CARDS.filter((c) => options.includes(c.id)) : OPTION_CARDS;
   const cols = cards.length === 2 ? 'grid-cols-2' : 'grid-cols-3';
   return (
-    <div>
-      <div className="text-center mb-5">
-        <p className="text-base font-semibold text-neutral-900 dark:text-neutral-100">How would you like to set up your host?</p>
-      </div>
+    <div className="flex flex-col gap-5">
+      <Hero padding="xs" tone={color} icon="Host" title="New Host" subtitle="How would you like to set up your host?" />
       <div className={`grid ${cols} gap-3`}>
         {cards.map((card) => (
           <Panel
             hoverColor={color}
             borderColor={color}
             hoverShadow={true}
+            backgroundColor="white"
             key={card.id}
             variant="glass"
             onClick={() => onSelect(card.id)}
@@ -128,28 +127,17 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
   };
 
   // ── Dynamic title ───────────────────────────────────────────────────────────
-  const title =
-    step === 'pick' ? 'Add Host'
-    : step === 'connect' ? 'Connect to an Existing Host'
-    : (SSH_PHASE_TITLES[sshState.phase] ?? 'Auto-Deploy via SSH');
+  const title = step === 'pick' ? 'Add Host' : step === 'connect' ? 'Connect to an Existing Host' : (SSH_PHASE_TITLES[sshState.phase] ?? 'Auto-Deploy via SSH');
 
   // ── Dynamic back button ─────────────────────────────────────────────────────
-  const handleBack =
-    step === 'connect' && !connectState.isSubmitting ? () => setStep('pick')
-    : step === 'ssh' && sshState.phase === 'configure' ? () => setStep('pick')
-    : undefined;
+  const handleBack = step === 'connect' && !connectState.isSubmitting ? () => setStep('pick') : step === 'ssh' && sshState.phase === 'configure' ? () => setStep('pick') : undefined;
 
   // ── Dynamic footer actions ──────────────────────────────────────────────────
   let actions: React.ReactNode = undefined;
 
   if (step === 'connect') {
     actions = (
-      <Button
-        variant="solid"
-        color={themeColor}
-        disabled={connectState.isSubmitting || !connectState.canSubmit}
-        onClick={() => connectFormRef.current?.submit()}
-      >
+      <Button variant="solid" color={themeColor} disabled={connectState.isSubmitting || !connectState.canSubmit} onClick={() => connectFormRef.current?.submit()}>
         {connectState.isSubmitting ? `Connecting… (${connectState.elapsedSeconds}s)` : 'Save and Continue'}
       </Button>
     );
@@ -158,13 +146,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
 
     if (phase === 'configure') {
       actions = (
-        <Button
-          variant="solid"
-          color={themeColor}
-          disabled={!canDeploy}
-          onClick={() => sshFormRef.current?.deploy()}
-          trailingIcon="ArrowRight"
-        >
+        <Button variant="solid" color={themeColor} disabled={!canDeploy} onClick={() => sshFormRef.current?.deploy()} trailingIcon="ArrowRight">
           {isTauri() ? 'Deploy' : "I've Run the Script — Start Waiting"}
         </Button>
       );
@@ -202,24 +184,9 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
     >
       {step === 'pick' && <AddHostOptionPicker options={['connect', 'ssh']} onSelect={setStep} color={themeColor} />}
 
-      {step === 'connect' && (
-        <AddHostConnectForm
-          ref={connectFormRef}
-          color={themeColor}
-          onConnected={handleConnected}
-          onStateChange={setConnectState}
-        />
-      )}
+      {step === 'connect' && <AddHostConnectForm ref={connectFormRef} color={themeColor} onConnected={handleConnected} onStateChange={setConnectState} />}
 
-      {step === 'ssh' && (
-        <AddSshDeployHostForm
-          ref={sshFormRef}
-          color={themeColor}
-          onBack={() => setStep('pick')}
-          onConnected={handleConnected}
-          onStateChange={setSshState}
-        />
-      )}
+      {step === 'ssh' && <AddSshDeployHostForm ref={sshFormRef} color={themeColor} onBack={() => setStep('pick')} onConnected={handleConnected} onStateChange={setSshState} />}
     </Modal>
   );
 };

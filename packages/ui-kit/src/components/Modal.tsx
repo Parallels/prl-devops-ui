@@ -372,7 +372,7 @@ const Modal: React.FC<ModalProps> = ({
             id={bodyId}
             className={classNames(
               "relative flex-1 min-h-0 overflow-y-auto px-6 py-5",
-              "scrollbar-thin scrollbar-thumb-neutral-300 scrollbar-track-transparent dark:scrollbar-thumb-neutral-700",
+              "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:hover:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-track]:bg-transparent",
               bodyClassName,
               loading && "pointer-events-none",
             )}
@@ -510,16 +510,91 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   );
 };
 
+interface ApplyConfirmModalProps extends Omit<ConfirmModalProps, "confirmLabel" | "confirmVariant" | "confirmColor"> {
+  /** The exact string the user must type to enable the apply button. */
+  confirmValue: string;
+  /** Human-readable label shown in the instruction, e.g. "key name". Default: "name" */
+  confirmValueLabel?: string;
+  confirmLabel?: ReactNode;
+}
+
+const ApplyConfirmModal: React.FC<ApplyConfirmModalProps> = ({
+  confirmValue,
+  confirmValueLabel = "name",
+  confirmLabel = "Apply",
+  onConfirm,
+  onClose,
+  isConfirmDisabled,
+  children,
+  cancelLabel = "Cancel",
+  cancelButtonProps,
+  confirmButtonProps,
+  ...props
+}) => {
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const isMatch = inputValue === confirmValue;
+
+  useEffect(() => {
+    if (!props.isOpen) setInputValue("");
+  }, [props.isOpen]);
+
+  return (
+    <Modal
+      {...props}
+      onClose={onClose}
+      role="alertdialog"
+      initialFocusRef={inputRef as React.RefObject<HTMLElement>}
+      footer={
+        <ModalActions>
+          <Button variant="soft" color="slate" onClick={onClose} {...cancelButtonProps}>
+            {cancelLabel}
+          </Button>
+          <Button
+            variant="solid"
+            color="brand"
+            onClick={onConfirm}
+            disabled={!isMatch || isConfirmDisabled}
+            {...confirmButtonProps}
+          >
+            {confirmLabel}
+          </Button>
+        </ModalActions>
+      }
+    >
+      {children}
+      <div className="flex flex-col gap-2 pt-1">
+        <label className="text-sm text-neutral-600 dark:text-neutral-400">
+          Type the {confirmValueLabel} <span className="font-mono font-semibold text-neutral-800 dark:text-neutral-200">{confirmValue}</span> to confirm:
+        </label>
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && isMatch && !isConfirmDisabled) onConfirm(); }}
+          placeholder={confirmValue}
+          className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm font-mono text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-400/30"
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
+    </Modal>
+  );
+};
+
 type ModalComponentType = typeof Modal & {
   Actions: typeof ModalActions;
   Confirm: typeof ConfirmModal;
   DeleteConfirm: typeof DeleteConfirmModal;
+  ApplyConfirm: typeof ApplyConfirmModal;
 };
 
 (Modal as ModalComponentType).Actions = ModalActions;
 (Modal as ModalComponentType).Confirm = ConfirmModal;
 (Modal as ModalComponentType).DeleteConfirm = DeleteConfirmModal;
+(Modal as ModalComponentType).ApplyConfirm = ApplyConfirmModal;
 
-export { ModalActions, ConfirmModal, DeleteConfirmModal };
-export type { ModalActionsProps, DeleteConfirmModalProps };
+export { ModalActions, ConfirmModal, DeleteConfirmModal, ApplyConfirmModal };
+export type { ModalActionsProps, DeleteConfirmModalProps, ApplyConfirmModalProps };
 export default Modal as ModalComponentType;

@@ -25,6 +25,8 @@ interface DownloadCatalogVmModalProps {
   managerId?: string;
   hasHostModule?: boolean;
   hasOrchestratorModule?: boolean;
+  /** When set, hides the target toggle and locks the download target. */
+  forcedTarget?: 'host' | 'orchestrator';
   onClose: () => void;
   onSubmit: () => void;
   onFormChange: (next: DownloadVmFormData) => void;
@@ -46,12 +48,13 @@ export const DownloadCatalogVmModal: React.FC<DownloadCatalogVmModalProps> = ({
   managerId,
   hasHostModule = false,
   hasOrchestratorModule = false,
+  forcedTarget,
   onClose,
   onSubmit,
   onFormChange,
 }) => {
   const { themeColor } = useSystemSettings();
-  const showTargetSelector = hasHostModule && hasOrchestratorModule;
+  const showTargetSelector = !forcedTarget && hasHostModule && hasOrchestratorModule;
 
   return (
     <Modal

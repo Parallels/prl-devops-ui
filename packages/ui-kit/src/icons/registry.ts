@@ -120,6 +120,8 @@ import { Orchestrator } from './components/Orchestrator';
 import { Podman } from './components/Podman';
 import { PodmanDesktop } from './components/PodmanDesktop';
 import { Group } from './components/Group';
+import { Pin } from './components/Pin';
+import { Database } from './components/Database';
 
 export type IconName =
   | 'Add'
@@ -242,7 +244,9 @@ export type IconName =
   | 'Orchestrator'
   | 'Podman'
   | 'PodmanDesktop'
-  | 'Group';
+  | 'Group'
+  | 'Pin'
+  | 'Database';
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
   Add: Add,
@@ -366,4 +370,6 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
   Podman: Podman,
   PodmanDesktop: PodmanDesktop,
   Group: Group,
+  Pin: Pin,
+  Database: Database,
 };

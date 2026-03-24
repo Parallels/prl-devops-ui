@@ -119,3 +119,5 @@ export * from './components/Orchestrator';
 export * from './components/Podman';
 export * from './components/PodmanDesktop';
 export * from './components/Group';
+export * from './components/Database';
+export * from './components/Pin';

@@ -21,7 +21,7 @@ export function CachePanel({ hostname, hostId, isOrchestrator = false }: CachePa
     const [itemToDelete, setItemToDelete] = useState<{ type: 'all' } | { type: 'manifest', key: string, catalogId?: string, version?: string, name: string } | null>(null);
     const [deleting, setDeleting] = useState<string | null>(null);
 
-    const manifests = (data?.manifests ?? []) as CatalogCacheManifestItem[];
+    const manifests = [...new Map((data?.manifests ?? []).map((m) => [m.id, m])).values()] as CatalogCacheManifestItem[];
     const totalSize = data?.total_size ?? 0;
     const cachePath = manifests[0]?.cache_local_path;
     const cacheType = manifests[0]?.cache_type;

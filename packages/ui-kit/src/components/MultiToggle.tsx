@@ -222,7 +222,7 @@ const sizeTokens: Record<
     gap: 'gap-1.5',
     label: 'text-sm',
     icon: 'h-5 w-5',
-    paddingY: 'py-1',
+    paddingY: 'py-0.5',
   },
   lg: {
     track: 'h-11 text-base',
@@ -231,7 +231,7 @@ const sizeTokens: Record<
     gap: 'gap-2',
     label: 'text-base',
     icon: 'h-6 w-6',
-    paddingY: 'py-1',
+    paddingY: 'py-0.5',
   },
 };
 
@@ -301,6 +301,21 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
               : rounded === 'xl'
                 ? 'rounded-xl'
                 : 'rounded-full';
+
+  // Inner indicator is inset by p-0.5 (2px), so use one step smaller radius
+  // to preserve consistent visual gap between track edge and indicator corners.
+  const indicatorRounded =
+    rounded === 'none' || rounded === 'xs'
+      ? ''
+      : rounded === 'sm'
+        ? 'rounded-xs'
+        : rounded === 'md'
+          ? 'rounded-sm'
+          : rounded === 'lg'
+            ? 'rounded-md'
+            : rounded === 'xl'
+              ? 'rounded-lg'
+              : 'rounded-full';
 
   const optionCount = options.length ?? 0;
   const activeIndex = Math.max(
@@ -476,7 +491,7 @@ const MultiToggle: React.FC<MultiToggleProps> = ({
         <span
           className={classNames(
             'h-full w-full',
-            controlRounded,
+            indicatorRounded,
             variant === 'solid' && 'bg-white dark:bg-neutral-800 shadow-sm',
             variant === 'soft' && variantTokens.softIndicator,
             variant === 'theme' && colorStyles.indicator,

@@ -10,7 +10,7 @@ const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy
 // during short spikes without losing intermediate events.
 const DEFAULT_LIMIT = 2000;
 const HOST_STATS_LIMIT = 60; // ~1 min of data at 1-second intervals
-const HOST_LOGS_LIMIT = 100;
+const HOST_LOGS_LIMIT = 1000;
 const REVERSE_PROXY_LIMIT = 100;
 
 export interface HostLogEntry {
@@ -135,6 +135,7 @@ function hostStatsReducer(state: HostStatsState, action: HostStatsAction): HostS
 type HostLogsState = Record<string, HostLogEntry[]>;
 type HostLogsAction =
     | { type: 'ADD_LOG'; hostId: string; entry: HostLogEntry }
+    | { type: 'CLEAR_HOST'; hostId: string }
     | { type: 'CLEAR_ALL' };
 
 function hostLogsReducer(state: HostLogsState, action: HostLogsAction): HostLogsState {
@@ -147,6 +148,8 @@ function hostLogsReducer(state: HostLogsState, action: HostLogsAction): HostLogs
                 [action.hostId]: next.length > HOST_LOGS_LIMIT ? next.slice(-HOST_LOGS_LIMIT) : next,
             };
         }
+        case 'CLEAR_HOST':
+            return { ...state, [action.hostId]: [] };
         case 'CLEAR_ALL':
             return {};
     }
@@ -238,8 +241,10 @@ interface EventsHubContextType {
     connectionState: WebSocketState;
     /** Per-host rolling buffers of HOST_STATS_UPDATE data points (newest last). */
     hostStats: Record<string, HostStatsPoint[]>;
-    /** Per-host rolling buffers of the last 100 HOST_LOGS_UPDATE lines (oldest first). */
+    /** Per-host rolling buffers of the last 1000 HOST_LOGS_UPDATE lines (oldest first). */
     hostLogs: Record<string, HostLogEntry[]>;
+    /** Clear the log buffer for a specific host. */
+    clearHostLogs: (hostId: string) => void;
     /** Per-reverse-proxy-host rolling buffers of the last 100 reverse proxy events (oldest first). */
     reverseProxyEvents: Record<string, ReverseProxyEventEntry[]>;
 }
@@ -451,6 +456,10 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         dispatch({ type: 'CLEAR_ALL' });
     }, []);
 
+    const clearHostLogs = useCallback((hostId: string) => {
+        dispatchHostLogs({ type: 'CLEAR_HOST', hostId });
+    }, []);
+
     const value = useMemo<EventsHubContextType>(() => ({
         containerMessages,
         allMessages,
@@ -465,8 +474,9 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         connectionState,
         hostStats,
         hostLogs,
+        clearHostLogs,
         reverseProxyEvents,
-    }), [containerMessages, allMessages, containerLimits, setContainerLimit, clearContainer, clearAllContainers, connectionState, hostStats, hostLogs, reverseProxyEvents]);
+    }), [containerMessages, allMessages, containerLimits, setContainerLimit, clearContainer, clearAllContainers, connectionState, hostStats, hostLogs, clearHostLogs, reverseProxyEvents]);
 
     return (
         <EventsHubContext.Provider value={value}>

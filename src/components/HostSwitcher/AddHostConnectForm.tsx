@@ -242,14 +242,16 @@ export const AddHostConnectForm = forwardRef<ConnectFormHandle, AddHostConnectFo
             />
           </FormField>
 
-          <Toggle
-            label="Use API Key"
-            description={authType === 'api_key' ? 'Authenticate with an API key' : 'Authenticate with username and password'}
-            checked={authType === 'api_key'}
-            onChange={(e) => setAuthType(e.target.checked ? 'api_key' : 'credentials')}
-            size="sm"
-            color={color}
-          />
+          <div className="pl-1.5 ">
+            <Toggle
+              label="Use API Key"
+              description={authType === 'api_key' ? 'Authenticate with an API key' : 'Authenticate with username and password'}
+              checked={authType === 'api_key'}
+              onChange={(e) => setAuthType(e.target.checked ? 'api_key' : 'credentials')}
+              size="sm"
+              color={color}
+            />
+          </div>
 
           {authType === 'credentials' && (
             <div className="grid grid-cols-2 gap-3">
@@ -284,15 +286,16 @@ export const AddHostConnectForm = forwardRef<ConnectFormHandle, AddHostConnectFo
               <PasswordInput tone={color} value={apiKey} onChange={(e) => setApiKey(e.target.value)} onBlur={() => handleBlur('apiKey')} required placeholder="Enter your API key" autoComplete="off" />
             </FormField>
           )}
-
-          <Toggle
-            label="Keep me logged in"
-            description={keepLoggedIn ? 'Credentials will be stored securely' : 'You will need to re-enter credentials on next launch'}
-            checked={keepLoggedIn}
-            onChange={(e) => setKeepLoggedIn(e.target.checked)}
-            size="sm"
-            color={color}
-          />
+          <div className="pl-1.5 ">
+            <Toggle
+              label="Keep me logged in"
+              description={keepLoggedIn ? 'Credentials will be stored securely' : 'You will need to re-enter credentials on next launch'}
+              checked={keepLoggedIn}
+              onChange={(e) => setKeepLoggedIn(e.target.checked)}
+              size="sm"
+              color={color}
+            />
+          </div>
         </Panel>
       </form>
 

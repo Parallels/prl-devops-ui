@@ -24,9 +24,9 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host }) => {
 
   const tabItems = [
     { id: 'overview', label: 'Overview', panel: <OverviewTab host={host} /> },
-    ...(isHealthy(host) && host.enabled_modules?.includes('cache') ? [{ id: 'cache', label: 'Cache', panel: <CacheTab host={host} /> }] : []),
-    ...(isHealthy(host) ? [{ id: 'performance', label: 'Performance', panel: <PerformanceTab host={host} /> }] : []),
-    ...(host.enabled_modules?.includes('reverse_proxy')
+    ...(isHealthy(host) && host.enabled && host.enabled_modules?.includes('cache') ? [{ id: 'cache', label: 'Cache', panel: <CacheTab host={host} /> }] : []),
+    ...(isHealthy(host) && host.enabled ? [{ id: 'performance', label: 'Performance', panel: <PerformanceTab host={host} /> }] : []),
+    ...(isHealthy(host) && host.enabled && host.enabled_modules?.includes('reverse_proxy')
       ? [
           {
             id: 'reverse-proxy',
@@ -37,8 +37,19 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host }) => {
         ]
       : []),
     { id: 'settings', label: 'Settings', panel: <SettingsTab host={host} /> },
-    ...(isHealthy(host) ? [{ id: 'logs', label: 'Logs', panel: <LogsTab host={host} /> }] : []),
+    ...(isHealthy(host) && host.enabled ? [{ id: 'logs', label: 'Logs', panel: <LogsTab host={host} /> }] : []),
   ];
+
+  if (!host.enabled) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <p className="text-lg font-medium text-gray-900 dark:text-gray-100">Host is disabled</p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">Enable the host to view details and access features.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0">

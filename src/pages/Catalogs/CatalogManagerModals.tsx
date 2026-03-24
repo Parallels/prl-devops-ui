@@ -39,7 +39,7 @@ export const CatalogManagerEditorModal: React.FC<CatalogManagerEditorModalProps>
       size="lg"
     >
       <div className="space-y-3">
-        <Panel color={themeColor} variant="glass" padding="xs">
+        <Panel backgroundColor="white" variant="glass" padding="xs">
           <FormLayout columns={2} gap="sm">
             <FormField label="Catalog Name" required width="full" helpText="Display name shown in the catalog source list.">
               <Input tone={themeColor} placeholder="e.g. Shared QA Catalog" value={managerForm.name} onChange={(e) => onFormChange({ ...managerForm, name: e.target.value })} />
@@ -51,7 +51,7 @@ export const CatalogManagerEditorModal: React.FC<CatalogManagerEditorModalProps>
           </FormLayout>
         </Panel>
 
-        <Panel color={themeColor} variant="glass" padding="xs">
+        <Panel backgroundColor="white" variant="glass" padding="xs">
           <FormLayout columns={2} gap="sm">
             <FormField label="Authentication Method" width="full">
               <Select
@@ -86,7 +86,7 @@ export const CatalogManagerEditorModal: React.FC<CatalogManagerEditorModalProps>
           </FormLayout>
         </Panel>
 
-        <Panel color={themeColor} variant="glass" padding="xs">
+        <Panel backgroundColor="white" variant="glass" padding="xs">
           <FormLayout columns={1} gap="sm">
             <FormField label="Required Claims" width="full" helpText="Comma-separated list of claims required to use this manager.">
               <Input

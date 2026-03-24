@@ -210,6 +210,13 @@ export interface ConnectionFlowProps {
     /** Extra content to render to the right of the entire flow (e.g. an expand toggle) */
     rightAction?: React.ReactNode;
     /**
+     * When true, connectors stretch to fill all remaining width instead of using a fixed
+     * pixel size. Card columns collapse to their natural content width. The connector icon
+     * is always positioned at the exact midpoint of the expanded connector.
+     * Default: false
+     */
+    fullWidthConnectors?: boolean;
+    /**
      * When true, all cards in the flow show a hover lift effect.
      * Default: false
      */

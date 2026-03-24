@@ -4,7 +4,7 @@ import Button, { type ButtonProps } from './Button';
 import Loader, { type LoaderProps } from './Loader';
 import { getPanelToneStyles, resolveColor, type ThemeColor } from '../theme/Theme';
 
-export type PanelVariant = 'elevated' | 'outlined' | 'subtle' | 'tonal' | 'default' | 'glass';
+export type PanelVariant = 'elevated' | 'outlined' | 'subtle' | 'tonal' | 'default' | 'glass' | 'simple';
 export type PanelTone = ThemeColor;
 export type PanelDecoration = 'none' | 'gradient' | 'shapes' | 'both';
 export type PanelMediaPlacement = 'top' | 'start' | 'end' | 'overlay';
@@ -72,6 +72,11 @@ export interface PanelProps extends Omit<React.HTMLAttributes<HTMLElement>, 'tit
    * Override the default background color.
    */
   backgroundColor?: ThemeColor;
+  /**
+   * controls if the panel body should be scrollable
+   * @default true
+   */
+  scrollable?: boolean;
 }
 
 const variantBaseStyles: Record<PanelVariant, string> = {
@@ -81,9 +86,10 @@ const variantBaseStyles: Record<PanelVariant, string> = {
   tonal: 'text-neutral-900 shadow-sm ring-1 ring-transparent dark:text-neutral-100 dark:ring-white/5',
   default: 'bg-white/80 backdrop-blur-xl text-neutral-900 shadow-2xl ring-1 ring-transparent dark:text-neutral-100 dark:ring-white/5',
   glass: 'backdrop-blur-xl text-neutral-900 ring-1 ring-transparent dark:text-neutral-100 dark:ring-white/5',
+  simple: 'text-neutral-900  ring-transparent dark:text-neutral-100 dark:ring-white/5',
 };
 
-const paddingStyles: Record<PanelPadding, string> = {
+export const paddingStyles: Record<PanelPadding, string> = {
   none: 'p-0',
   xs: 'p-2 sm:p-3',
   sm: 'p-4 sm:p-5',
@@ -154,6 +160,7 @@ const Panel: React.FC<PanelProps> = ({
   hoverColor,
   borderColor,
   backgroundColor,
+  scrollable = true,
   ...rest
 }) => {
   const palette = getPanelToneStyles(tone);
@@ -167,16 +174,17 @@ const Panel: React.FC<PanelProps> = ({
   const effectiveBorderClass = borderPalette?.border;
 
   const bgPalette = backgroundColor ? getPanelToneStyles(backgroundColor) : undefined;
-  
+
   const effectiveBgClass = (() => {
     if (!backgroundColor) return undefined;
     if (backgroundColor === 'white') return 'bg-white dark:bg-neutral-900';
     if (bgPalette) {
-       if (variant === 'glass') return bgPalette.glassBg;
-       if (variant === 'subtle') return bgPalette.subtleBg;
-       if (variant === 'tonal') return bgPalette.tonalBg;
-       // For elevated/outlined, we might want to apply the subtle background
-       return bgPalette.tonalBg;
+      if (variant === 'glass') return bgPalette.glassBg;
+      if (variant === 'subtle') return bgPalette.subtleBg;
+      if (variant === 'simple') return bgPalette.tonalBg;
+      if (variant === 'tonal') return bgPalette.tonalBg;
+      // For elevated/outlined, we might want to apply the subtle background
+      return bgPalette.tonalBg;
     }
     return undefined;
   })();
@@ -209,12 +217,9 @@ const Panel: React.FC<PanelProps> = ({
       case 'default':
         return classNames(variantBaseStyles.default, effectiveBorderClass ?? 'border border-white/40');
       case 'glass':
-        return classNames(
-          variantBaseStyles.glass,
-          'border',
-          effectiveBorderClass ?? colorPalette.glassBorder,
-          effectiveBgClass ?? palette.glassBg,
-        );
+        return classNames(variantBaseStyles.glass, 'border', effectiveBorderClass ?? colorPalette.glassBorder, effectiveBgClass ?? palette.glassBg);
+      case 'simple':
+        return classNames(variantBaseStyles.simple, effectiveBgClass ?? palette.tonalBg, effectiveBorderClass);
       case 'elevated':
         return classNames(
           !effectiveBgClass && variantBaseStyles.elevated,
@@ -276,7 +281,20 @@ const Panel: React.FC<PanelProps> = ({
     </div>
   ) : null;
 
-  const bodySection = bodyContent ? <div className={`${flexBody ? 'flex-1 flex flex-col w-full ' : ''}min-h-0 flex-1 overflow-auto ${padding === 'none' ? '' : 'pr-1'}`}>{bodyContent}</div> : null;
+  const bodySection = bodyContent ? (
+    <div
+      className={classNames(
+        flexBody ? 'flex-1 flex flex-col w-full' : '',
+        'min-h-0 flex-1',
+        scrollable
+          ? 'overflow-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:hover:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-track]:bg-transparent'
+          : '',
+        padding === 'none' ? '' : 'pr-1',
+      )}
+    >
+      {bodyContent}
+    </div>
+  ) : null;
 
   const actionsSection =
     actions && actions.length > 0 ? (
@@ -329,7 +347,7 @@ const Panel: React.FC<PanelProps> = ({
   return (
     <section
       className={classNames(
-        'relative flex w-full min-h-0 flex-col overflow-hidden',
+        'relative flex w-full min-h-0 flex-col overflow-hidden shrink-0',
         variantClasses,
         paddingStyles[padding],
         cornerStyles[corner],

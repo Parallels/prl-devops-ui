@@ -16,6 +16,7 @@ import { HostSwitcher } from '../HostSwitcher/HostSwitcher';
 import { ModuleViewSwitcher } from '../HostSwitcher/ModuleViewSwitcher';
 import { useLockedHost } from '@/contexts/LockedHostContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { useEventsHub } from '@/contexts/EventsHubContext';
 
 // ─── Menu icons ───────────────────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ export const Header: React.FC<HeaderProps> = () => {
   const { session, setSession, clearSession, hasModule } = useSession();
   const { theme, toggleTheme } = useTheme();
   const { isLocked, hostUrl } = useLockedHost();
+  const { isConnected } = useEventsHub();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -210,10 +212,10 @@ export const Header: React.FC<HeaderProps> = () => {
               <span className="max-w-60 truncate">{hostUrl ?? session.hostname}</span>
             </div>
           )}
-          {session && hasModule('host') && hasModule('orchestrator') && <ModuleViewSwitcher />}
+          {session && isConnected && hasModule('host') && hasModule('orchestrator') && <ModuleViewSwitcher />}
         </div>
 
-        <div className="flex flex-grow" />
+        <div className="flex grow" />
 
         {/* Theme toggle */}
         <HeaderGroup>
@@ -267,7 +269,7 @@ export const Header: React.FC<HeaderProps> = () => {
 
             {/* Dropdown menu */}
             {isUserMenuOpen && (
-              <div className="absolute right-0 top-full z-[200] mt-2 w-56 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-800">
+              <div className="absolute right-0 top-full z-200 mt-2 w-56 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-2xl dark:border-neutral-700 dark:bg-neutral-800">
                 {/* User info header */}
                 <div className="flex items-center gap-3 border-b border-neutral-100 px-4 py-3 dark:border-neutral-700">
                   <UserAvatar

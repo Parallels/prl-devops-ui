@@ -1,5 +1,22 @@
 import React, { useCallback, useMemo } from 'react';
-import { Artifactory, Aws, Azure, Button, DropdownButton, EmptyState, Folder, Library, Minio, Panel, Pill, Table, TruncatedText, type DropdownButtonOption, type TableColumn } from '@prl/ui-kit';
+import {
+  Artifactory,
+  Aws,
+  Azure,
+  Button,
+  DropdownButton,
+  EmptyState,
+  Folder,
+  Library,
+  Minio,
+  Panel,
+  Pill,
+  Table,
+  TruncatedText,
+  type DropdownButtonOption,
+  type TableColumn,
+  type TableSettings,
+} from '@prl/ui-kit';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { useUserConfig } from '@/contexts/UserConfigContext';
 import { type CatalogManifestItem, type CatalogRow } from './CatalogModels';
@@ -94,10 +111,7 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
   const { themeColor } = useSystemSettings();
   const { isLoaded, getConfig, setConfig } = useUserConfig();
 
-  const savedColumnVisibility = getConfig<Record<string, boolean>>(slug(sourceId, 'columns'), {});
-  const savedGroupBy = getConfig<string | null>(slug(sourceId, 'groupby'), null);
-  const savedColumnWidths = getConfig<Record<string, number>>(slug(sourceId, 'widths'), {});
-  const savedView = getConfig<'table' | 'panel'>(slug(sourceId, 'view'), 'panel');
+  const savedSettings = getConfig<TableSettings>(slug(sourceId, 'settings'), { activeView: 'panel', groupBy: 'title' });
 
   // ── Flat rows: one entry per individual catalog item (version × arch) ─────────
   const flatRows = useMemo<CatalogFlatRow[]>(() => items.flatMap((manifest) => manifest.versions.flatMap((version) => version.items.map((leaf) => ({ manifest, row: leaf.row })))), [items]);
@@ -109,13 +123,7 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
     return map;
   }, [items]);
 
-  const handleColumnVisibilityChange = useCallback((v: Record<string, boolean>) => setConfig(slug(sourceId, 'columns'), v), [setConfig, sourceId]);
-
-  const handleGroupByChange = useCallback((col: string | null) => setConfig(slug(sourceId, 'groupby'), col), [setConfig, sourceId]);
-
-  const handleColumnWidthChange = useCallback((w: Record<string, number>) => setConfig(slug(sourceId, 'widths'), w), [setConfig, sourceId]);
-
-  const handleViewChange = useCallback((v: 'table' | 'panel') => setConfig(slug(sourceId, 'view'), v), [setConfig, sourceId]);
+  const handleSettingsChange = useCallback((settings: TableSettings) => setConfig(slug(sourceId, 'settings'), settings), [setConfig, sourceId]);
 
   // ── Columns ───────────────────────────────────────────────────────────────────
   const columns = useMemo((): TableColumn<CatalogFlatRow>[] => {
@@ -134,11 +142,13 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
         align: 'left',
         accessor: (flat) => flat.manifest.source.title,
         sortable: true,
+        minWidth: 120,
       },
       {
         id: 'provider',
         header: 'Provider',
         align: 'center',
+        minWidth: 110,
         render: (flat) => {
           const providerType = flat.row.provider?.type ?? flat.manifest.provider?.type;
           return providerType ? (
@@ -222,6 +232,7 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
         id: 'tags',
         header: 'Tags',
         align: 'center',
+        minWidth: 100,
         render: (flat) =>
           flat.row.tagsList.length > 0 ? (
             <div className="flex gap-1">
@@ -492,6 +503,17 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
     );
   }
 
+  const renderEmptyState = () => (
+    <EmptyState
+      disableBorder
+      size="md"
+      icon="Library"
+      title={query ? 'No matching catalog items' : 'No catalog items available'}
+      subtitle={query ? 'Try a different search query.' : 'This source does not contain catalog items yet.'}
+      tone="neutral"
+    />
+  );
+
   // ── Table ─────────────────────────────────────────────────────────────────────
   return (
     <Table<CatalogFlatRow>
@@ -507,29 +529,15 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
       fullHeight
       stickyHeader
       onRowClick={(flat) => onSelectItem(flat.manifest)}
-      columnVisibility={savedColumnVisibility}
-      onColumnVisibilityChange={handleColumnVisibilityChange}
       resizableColumns
-      columnWidths={savedColumnWidths}
-      onColumnWidthChange={handleColumnWidthChange}
       groupable
       panelMinItemWidth="400px"
       panelGap={12}
-      defaultGroupBy={savedGroupBy ?? 'title'}
-      onGroupByChange={handleGroupByChange}
+      stickyActions
       loading={loading && flatRows.length > 0}
-      emptyState={
-        <EmptyState
-          disableBorder
-          size="md"
-          icon="Library"
-          title={query ? 'No matching catalog items' : 'No catalog items available'}
-          subtitle={query ? 'Try a different search query.' : 'This source does not contain catalog items yet.'}
-          tone="neutral"
-        />
-      }
-      defaultView={savedView}
-      onViewChange={handleViewChange}
+      emptyState={!loading && renderEmptyState()}
+      tableSettings={savedSettings}
+      onTableSettingsChange={handleSettingsChange}
       panelItem={renderCard}
       panelDeduplicateBy={(flat) => flat.manifest.id}
     />

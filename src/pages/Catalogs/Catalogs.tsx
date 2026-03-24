@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, Pill, SearchBar, SidePanel, SplitView, Tabs, type SplitViewItem } from '@prl/ui-kit';
+import { useLocation } from 'react-router-dom';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { CatalogManager } from '@/interfaces/CatalogManager';
@@ -11,8 +12,9 @@ import { CatalogDetailContent, CatalogVersionsContent } from './CatalogDetailPan
 import { CatalogManagerEditorModal, DeleteCatalogManagerModal } from './CatalogManagerModals';
 import { UploadCatalogModal } from './CatalogUploadModal';
 import { DownloadCatalogVmModal, DownloadVmFormData } from './CatalogVmModals';
-import { CatalogManagersPanel, CatalogSourcePanel, type CatalogSourceStats } from './CatalogPanels';
+import { CatalogSourcePanel, type CatalogSourceStats } from './CatalogPanels';
 import { CatalogManifestItem, CatalogRow, CatalogSource, defaultManagerForm, managerToForm, normalizeForDirtyCheck, toManagerRequest } from './CatalogModels';
+import type { CatalogsDeepLinkState } from '@/types/deepLink';
 
 interface SelectedCatalogItem {
   source: CatalogSource;
@@ -45,6 +47,8 @@ const formatCount = (value: number, singular: string, plural: string): string =>
 export const Catalogs: React.FC = () => {
   const { session, hasModule, hasClaim } = useSession();
   const { themeColor } = useSystemSettings();
+  const location = useLocation();
+  const deepLink = location.state as CatalogsDeepLinkState | null;
   const hostname = session?.hostname ?? '';
   const sessionUserId = session?.tokenPayload?.uid ?? '';
 
@@ -58,8 +62,6 @@ export const Catalogs: React.FC = () => {
   const [sourceStats, setSourceStats] = useState<Record<string, CatalogSourceStats>>({});
   const [catalogReloadToken, setCatalogReloadToken] = useState(0);
 
-  const [isManagingManagers, setIsManagingManagers] = useState(false);
-  const [managerSearch, setManagerSearch] = useState('');
   const [selectedCatalogItem, setSelectedCatalogItem] = useState<SelectedCatalogItem | null>(null);
   const [activeDetailTab, setActiveDetailTab] = useState<'details' | 'versions'>('details');
 
@@ -78,6 +80,7 @@ export const Catalogs: React.FC = () => {
   const [downloadVmForm, setDownloadVmForm] = useState<DownloadVmFormData>(defaultDownloadVmForm);
   const [downloadVmError, setDownloadVmError] = useState<string | null>(null);
   const [downloadVmLoading, setDownloadVmLoading] = useState(false);
+  const [downloadTarget, setDownloadTarget] = useState<'host' | 'orchestrator' | undefined>(deepLink?.downloadTarget);
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -297,16 +300,17 @@ export const Catalogs: React.FC = () => {
         path: '',
         cpu: item.row.specs.cpu ?? '',
         memory: item.row.specs.memory ?? '',
-        target: 'host',
+        target: downloadTarget ?? 'host',
       });
     },
-    [session?.tokenPayload?.username],
+    [downloadTarget],
   );
 
   const closeDownloadVmModal = useCallback(() => {
     setDownloadVmModalItem(null);
     setDownloadVmError(null);
     setDownloadVmLoading(false);
+    setDownloadTarget(undefined);
   }, []);
 
   const handleDownloadVm = useCallback(async () => {
@@ -480,8 +484,8 @@ export const Catalogs: React.FC = () => {
         value={selectedSourceId}
         onChange={(id) => {
           setSelectedSourceId(id);
-          setIsManagingManagers(false);
           setSelectedCatalogItem(null);
+          setDownloadTarget(undefined);
         }}
         loading={loadingSources}
         error={sourcesError ?? undefined}
@@ -673,6 +677,7 @@ export const Catalogs: React.FC = () => {
         managerId={downloadVmModalItem?.source.managerId}
         hasHostModule={hasHostModule}
         hasOrchestratorModule={hasOrchestratorModule}
+        forcedTarget={downloadTarget}
         onClose={closeDownloadVmModal}
         onSubmit={() => void handleDownloadVm()}
         onFormChange={setDownloadVmForm}

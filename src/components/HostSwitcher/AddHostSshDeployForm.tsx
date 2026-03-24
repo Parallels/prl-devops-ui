@@ -331,17 +331,18 @@ export const AddSshDeployHostForm = forwardRef<SshDeployFormHandle, AddSshDeploy
               </FormField>
             </div>
           </div>
-
-          <Toggle
-            color={color}
-            size="sm"
-            label="Use different password for sudo"
-            checked={useDifferentSudo}
-            onChange={(e) => {
-              setUseDifferentSudo(e.target.checked);
-              if (!e.target.checked) setSudoPassword('');
-            }}
-          />
+          <div className="pl-1.5 ">
+            <Toggle
+              color={color}
+              size="sm"
+              label="Use different password for sudo"
+              checked={useDifferentSudo}
+              onChange={(e) => {
+                setUseDifferentSudo(e.target.checked);
+                if (!e.target.checked) setSudoPassword('');
+              }}
+            />
+          </div>
           {useDifferentSudo && (
             <FormField label="Sudo Password" width="full">
               <PasswordInput tone={color} value={sudoPassword} onChange={(e) => setSudoPassword(e.target.value)} placeholder="Sudo password on remote server" autoComplete="off" />

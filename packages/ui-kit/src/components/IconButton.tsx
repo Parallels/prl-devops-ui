@@ -6,7 +6,8 @@ import { useIconRenderer } from "../contexts/IconContext";
 import { getButtonColorClasses } from "../theme/Theme";
 import { iconAccentHover, iconAccentRing } from "../theme/ButtonTypes";
 import type { IconSize } from "../types/Icon";
-import Tooltip, { type TooltipPosition } from "./Tooltip";
+import TooltipWrapper from "./TooltipWrapper";
+import type { TooltipPosition } from "./Tooltip";
 
 type IconButtonRounded = "md" | "lg" | "xl" | "full";
 
@@ -136,9 +137,9 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
 
     if (tooltip) {
       return (
-        <Tooltip text={tooltip} position={tooltipPosition}>
+        <TooltipWrapper text={tooltip} position={tooltipPosition}>
           {button}
-        </Tooltip>
+        </TooltipWrapper>
       );
     }
 

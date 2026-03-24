@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import classNames from 'classnames';
 import { formatLogTime } from '@prl/ui-kit';
 import { useEventsHub } from '@/contexts/EventsHubContext';
 import { CustomIcon } from '@/controls';
-import { normalizeLevel, LEVEL_ORDER, LEVEL_META, levelMeta } from '@/utils/logUtils';
+import { normalizeLevel, LEVEL_META, levelMeta } from '@/utils/logUtils';
+import { LogViewer } from '@/components/LogViewer';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -14,16 +15,18 @@ interface LogMessage {
     time: string;
 }
 
+type LogTarget = 'global' | string; // 'global' or a hostId
+
 // ---------------------------------------------------------------------------
-// Main Logs page
+// Global log viewer (system_logs container)
 // ---------------------------------------------------------------------------
-export const Logs: React.FC = () => {
-    const { containerMessages, clearContainer } = useEventsHub();
-    const [autoScroll, setAutoScroll] = useState(true);
-    const [filterLevel, setFilterLevel] = useState<string>('');
-    const [search, setSearch] = useState<string>('');
-    const listRef = useRef<HTMLDivElement>(null);
-    const isProgrammaticRef = useRef(false);
+const GlobalLogViewer: React.FC<{ onClear: () => void }> = ({ onClear }) => {
+    const { containerMessages } = useEventsHub();
+    const [autoScroll, setAutoScroll] = React.useState(true);
+    const [filterLevel, setFilterLevel] = React.useState('');
+    const [search, setSearch] = React.useState('');
+    const listRef = React.useRef<HTMLDivElement>(null);
+    const isProgrammaticRef = React.useRef(false);
 
     const logMessages = useMemo(() => {
         return (containerMessages['system_logs'] ?? [])
@@ -43,14 +46,11 @@ export const Logs: React.FC = () => {
     const filtered = useMemo(() => {
         let result = logMessages;
         if (filterLevel) {
-            const minOrder = LEVEL_ORDER[filterLevel]!;
-            result = result.filter((m) =>
-                m._level !== '' && (LEVEL_ORDER[m._level] ?? -1) >= minOrder
-            );
+            result = result.filter((m) => m._level === filterLevel);
         }
         if (search.trim()) {
             let rx: RegExp | null = null;
-            try { rx = new RegExp(search.trim(), 'i'); } catch { /* fall back to literal */ }
+            try { rx = new RegExp(search.trim(), 'i'); } catch { /* literal fallback */ }
             result = result.filter((m) => {
                 const msg = m._body?.message ?? '';
                 return rx ? rx.test(msg) : msg.toLowerCase().includes(search.trim().toLowerCase());
@@ -59,15 +59,12 @@ export const Logs: React.FC = () => {
         return result;
     }, [logMessages, filterLevel, search]);
 
-    // Re-enable auto-scroll and reset to top synchronously on every filter change.
-    // The auto-scroll effect below then immediately takes over and scrolls to bottom.
-    useLayoutEffect(() => {
+    React.useLayoutEffect(() => {
         setAutoScroll(true);
         if (listRef.current) listRef.current.scrollTop = 0;
     }, [filterLevel, search]);
 
-    // Scroll to bottom whenever filtered list changes and auto-scroll is on
-    useEffect(() => {
+    React.useEffect(() => {
         if (autoScroll && listRef.current) {
             isProgrammaticRef.current = true;
             listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -75,22 +72,12 @@ export const Logs: React.FC = () => {
         }
     }, [filtered, autoScroll]);
 
-    // contentKey forces full remount of the content area on every filter change,
-    // guaranteeing no stale DOM nodes linger between filter states.
     const contentKey = `${filterLevel}:${search}:${filtered.length === 0 ? 'empty' : 'has'}`;
-
-    const handleClear = useCallback(() => {
-        clearContainer('system_logs');
-    }, [clearContainer]);
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-neutral-950">
-
-            {/* ── Toolbar ─────────────────────────────────────────────── */}
+            {/* Toolbar */}
             <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 flex-shrink-0">
-                <CustomIcon icon="Log" className="h-4 w-4 text-neutral-400 dark:text-neutral-500 shrink-0" />
-
-                {/* Search */}
                 <div className="relative flex-1">
                     <CustomIcon icon="Search" className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
                     <input
@@ -107,8 +94,6 @@ export const Logs: React.FC = () => {
                         </button>
                     )}
                 </div>
-
-                {/* Level filter */}
                 <select
                     value={filterLevel}
                     onChange={(e) => setFilterLevel(e.target.value)}
@@ -116,11 +101,9 @@ export const Logs: React.FC = () => {
                 >
                     <option value="">All</option>
                     {(['debug', 'info', 'warn', 'error', 'fatal'] as const).map((l) => (
-                        <option key={l} value={l}>≥ {LEVEL_META[l].label}</option>
+                        <option key={l} value={l}>{LEVEL_META[l].label}</option>
                     ))}
                 </select>
-
-                {/* Auto-scroll toggle */}
                 <button
                     type="button"
                     onClick={() => setAutoScroll((v) => !v)}
@@ -132,22 +115,17 @@ export const Logs: React.FC = () => {
                     )}
                     title="Toggle auto-scroll"
                 >↓</button>
-
-                {/* Clear */}
                 <button
                     type="button"
-                    onClick={handleClear}
+                    onClick={onClear}
                     disabled={logMessages.length === 0}
                     className="px-2 py-1 rounded text-xs font-mono border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 hover:border-rose-400 dark:hover:border-rose-500/40 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Clear logs"
                 >✕</button>
             </div>
 
-            {/* ── Log lines ───────────────────────────────────────────── */}
-            <div
-                ref={listRef}
-                className="flex-1 min-h-0 overflow-y-auto px-3 py-2 font-mono text-xs leading-5"
-            >
+            {/* Log lines */}
+            <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2 font-mono text-xs leading-5">
                 <div key={contentKey}>
                     {filtered.length === 0 ? (
                         <p className="text-neutral-400 dark:text-neutral-600 py-4 text-center">
@@ -169,10 +147,65 @@ export const Logs: React.FC = () => {
                 </div>
             </div>
 
-            {/* ── Footer ──────────────────────────────────────────────── */}
+            {/* Footer */}
             <div className="flex items-center justify-between px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 flex-shrink-0">
                 <span>{filtered.length} / {logMessages.length} lines</span>
                 <span>{logMessages.length > 0 ? `${logMessages.length} buffered` : 'no logs'}</span>
+            </div>
+        </div>
+    );
+};
+
+// ---------------------------------------------------------------------------
+// Main Logs page
+// ---------------------------------------------------------------------------
+export const Logs: React.FC = () => {
+    const { clearContainer, hostLogs, clearHostLogs } = useEventsHub();
+    const [target, setTarget] = useState<LogTarget>('global');
+
+    // Build target list: global + any host that has buffered logs
+    const hostIds = useMemo(() => Object.keys(hostLogs).filter((id) => hostLogs[id].length > 0), [hostLogs]);
+
+    const handleClear = useCallback(() => {
+        if (target === 'global') {
+            clearContainer('system_logs');
+        } else {
+            clearHostLogs(target);
+        }
+    }, [target, clearContainer, clearHostLogs]);
+
+    const targetLogs = target !== 'global' ? (hostLogs[target] ?? []) : [];
+
+    return (
+        <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            {/* ── Target selector bar ─────────────────────────────────── */}
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 flex-shrink-0">
+                <CustomIcon icon="Log" className="h-4 w-4 text-neutral-400 dark:text-neutral-500 shrink-0" />
+                <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400 uppercase tracking-wider shrink-0">Source</span>
+                <select
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value as LogTarget)}
+                    className="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded px-2 py-1 text-xs font-mono text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50"
+                >
+                    <option value="global">Global</option>
+                    {hostIds.map((id) => (
+                        <option key={id} value={id}>{id}</option>
+                    ))}
+                </select>
+            </div>
+
+            {/* ── Log content ─────────────────────────────────────────── */}
+            <div className="flex-1 min-h-0">
+                {target === 'global' ? (
+                    <GlobalLogViewer onClear={handleClear} />
+                ) : (
+                    <LogViewer
+                        key={target}
+                        logs={targetLogs}
+                        configSlug={`logs::${target}::config`}
+                        onClear={handleClear}
+                    />
+                )}
             </div>
         </div>
     );

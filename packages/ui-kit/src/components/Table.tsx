@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import { Loader, IconButton, Button, Select, Badge, type PanelTone } from '.';
 import type { ThemeColor } from '../theme';
 import type { IconName } from '../icons/registry';
+import TruncatedText from './TruncatedText';
 
 type SortDirection = 'asc' | 'desc';
 
@@ -17,6 +18,16 @@ export interface TablePaginationState {
   total: number;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
+}
+
+/** Unified snapshot of all user-configurable table preferences. */
+export interface TableSettings {
+  columnVisibility?: Record<string, boolean>;
+  columnWidths?: Record<string, number>;
+  activeView?: 'table' | 'panel';
+  groupBy?: string | null;
+  showGroupHeader?: boolean;
+  stickyColumns?: Record<string, 'left' | 'right'>;
 }
 
 type AccessorFn<T> = (row: T, index: number) => React.ReactNode;
@@ -65,6 +76,7 @@ type GroupEntry<T> = {
 export interface TableProps<T> {
   columns?: TableColumn<T>[];
   data: T[];
+  selectedItems?: T[];
   rowKey?: (row: T, index: number) => string | number;
   variant?: TableVariant;
   tone?: PanelTone;
@@ -74,6 +86,12 @@ export interface TableProps<T> {
   noBorders?: boolean;
   hoverable?: boolean;
   stickyHeader?: boolean;
+  /**
+   * When true, the last column is pinned to the right edge and stays visible
+   * while the other columns scroll horizontally. A left border separator is
+   * added automatically to distinguish it from the scrolling content.
+   */
+  stickyActions?: boolean;
   loading?: boolean;
   loadingMessage?: string;
   loaderType?: 'spinner' | 'progress';
@@ -88,6 +106,8 @@ export interface TableProps<T> {
   maxHeight?: string | number;
   onRowClick?: (row: T, index: number) => void;
   rowClassName?: (row: T, index: number) => string;
+  /** When provided and returns true for a row, that row is rendered with an intense accent background and a pulsing left-border indicator to signal new/updated content. */
+  rowHighlight?: (row: T, index: number) => boolean;
   className?: string;
   tableClassName?: string;
   bodyClassName?: string;
@@ -168,6 +188,32 @@ export interface TableProps<T> {
   defaultGroupExpanded?: boolean;
   /** Called when the user changes the group column (null = no grouping). Use for persistence. */
   onGroupByChange?: (columnId: string | null) => void;
+  // ── User sticky columns ──────────────────────────────────────────────────────
+  /**
+   * When true, a sticky-column picker is shown in the header bar letting the
+   * user pin individual columns to the left or right at runtime.
+   */
+  userStickyColumns?: boolean;
+  /**
+   * Initial user-configured sticky map (`columnId → 'left' | 'right'`).
+   * Pass the persisted value here on mount to restore previous state.
+   */
+  defaultStickyColumns?: Record<string, 'left' | 'right'>;
+  /** Called when the user changes column stickiness. Use for persistence. */
+  onStickyColumnsChange?: (config: Record<string, 'left' | 'right'>) => void;
+  /**
+   * Unified table settings snapshot. Fields here take precedence over the
+   * individual initial-value props (`columnVisibility`, `columnWidths`,
+   * `defaultView`, `defaultGroupBy`, `defaultStickyColumns`).
+   * Pass a previously persisted value to restore all settings on mount.
+   */
+  tableSettings?: TableSettings;
+  /**
+   * Called whenever any user-configurable table setting changes (visibility,
+   * widths, view, group-by, sticky columns). Use a single handler to persist
+   * the full settings object instead of wiring up all individual callbacks.
+   */
+  onTableSettingsChange?: (settings: TableSettings) => void;
 }
 
 const resolveColor = (color: ThemeColor): string => {
@@ -204,58 +250,212 @@ const getToneHeaderClasses = (tone: ThemeColor): string => {
 /** Returns a static `bg-*-500` class for the active-group indicator dot. */
 function getDotColorClass(color: ThemeColor): string {
   switch (resolveColor(color)) {
-    case 'blue':    return 'bg-blue-500';
-    case 'green':   return 'bg-green-500';
-    case 'teal':    return 'bg-teal-500';
-    case 'cyan':    return 'bg-cyan-500';
-    case 'indigo':  return 'bg-indigo-500';
-    case 'purple':  return 'bg-purple-500';
-    case 'violet':  return 'bg-violet-500';
-    case 'red':     return 'bg-red-500';
-    case 'orange':  return 'bg-orange-500';
-    case 'amber':   return 'bg-amber-500';
-    case 'yellow':  return 'bg-yellow-500';
-    case 'lime':    return 'bg-lime-500';
-    case 'emerald': return 'bg-emerald-500';
-    case 'sky':     return 'bg-sky-500';
-    case 'fuchsia': return 'bg-fuchsia-500';
-    case 'pink':    return 'bg-pink-500';
-    case 'rose':    return 'bg-rose-500';
-    case 'slate':   return 'bg-slate-500';
-    case 'gray':    return 'bg-gray-500';
-    case 'zinc':    return 'bg-zinc-500';
-    case 'neutral': return 'bg-neutral-500';
-    case 'stone':   return 'bg-stone-500';
-    default:        return 'bg-blue-500';
+    case 'blue':
+      return 'bg-blue-500';
+    case 'green':
+      return 'bg-green-500';
+    case 'teal':
+      return 'bg-teal-500';
+    case 'cyan':
+      return 'bg-cyan-500';
+    case 'indigo':
+      return 'bg-indigo-500';
+    case 'purple':
+      return 'bg-purple-500';
+    case 'violet':
+      return 'bg-violet-500';
+    case 'red':
+      return 'bg-red-500';
+    case 'orange':
+      return 'bg-orange-500';
+    case 'amber':
+      return 'bg-amber-500';
+    case 'yellow':
+      return 'bg-yellow-500';
+    case 'lime':
+      return 'bg-lime-500';
+    case 'emerald':
+      return 'bg-emerald-500';
+    case 'sky':
+      return 'bg-sky-500';
+    case 'fuchsia':
+      return 'bg-fuchsia-500';
+    case 'pink':
+      return 'bg-pink-500';
+    case 'rose':
+      return 'bg-rose-500';
+    case 'slate':
+      return 'bg-slate-500';
+    case 'gray':
+      return 'bg-gray-500';
+    case 'zinc':
+      return 'bg-zinc-500';
+    case 'neutral':
+      return 'bg-neutral-500';
+    case 'stone':
+      return 'bg-stone-500';
+    default:
+      return 'bg-blue-500';
   }
 }
 
 /** Returns static `accent-*` classes for native checkbox/radio inputs. */
 function getAccentClass(color: ThemeColor): string {
   switch (resolveColor(color)) {
-    case 'blue':    return 'accent-blue-600 dark:accent-blue-400';
-    case 'green':   return 'accent-green-600 dark:accent-green-400';
-    case 'teal':    return 'accent-teal-600 dark:accent-teal-400';
-    case 'cyan':    return 'accent-cyan-600 dark:accent-cyan-400';
-    case 'indigo':  return 'accent-indigo-600 dark:accent-indigo-400';
-    case 'purple':  return 'accent-purple-600 dark:accent-purple-400';
-    case 'violet':  return 'accent-violet-600 dark:accent-violet-400';
-    case 'red':     return 'accent-red-600 dark:accent-red-400';
-    case 'orange':  return 'accent-orange-600 dark:accent-orange-400';
-    case 'amber':   return 'accent-amber-600 dark:accent-amber-400';
-    case 'yellow':  return 'accent-yellow-600 dark:accent-yellow-400';
-    case 'lime':    return 'accent-lime-600 dark:accent-lime-400';
-    case 'emerald': return 'accent-emerald-600 dark:accent-emerald-400';
-    case 'sky':     return 'accent-sky-600 dark:accent-sky-400';
-    case 'fuchsia': return 'accent-fuchsia-600 dark:accent-fuchsia-400';
-    case 'pink':    return 'accent-pink-600 dark:accent-pink-400';
-    case 'rose':    return 'accent-rose-600 dark:accent-rose-400';
-    case 'slate':   return 'accent-slate-600 dark:accent-slate-400';
-    case 'gray':    return 'accent-gray-600 dark:accent-gray-400';
-    case 'zinc':    return 'accent-zinc-600 dark:accent-zinc-400';
-    case 'neutral': return 'accent-neutral-700 dark:accent-neutral-300';
-    case 'stone':   return 'accent-stone-600 dark:accent-stone-400';
-    default:        return 'accent-blue-600 dark:accent-blue-400';
+    case 'blue':
+      return 'accent-blue-600 dark:accent-blue-400';
+    case 'green':
+      return 'accent-green-600 dark:accent-green-400';
+    case 'teal':
+      return 'accent-teal-600 dark:accent-teal-400';
+    case 'cyan':
+      return 'accent-cyan-600 dark:accent-cyan-400';
+    case 'indigo':
+      return 'accent-indigo-600 dark:accent-indigo-400';
+    case 'purple':
+      return 'accent-purple-600 dark:accent-purple-400';
+    case 'violet':
+      return 'accent-violet-600 dark:accent-violet-400';
+    case 'red':
+      return 'accent-red-600 dark:accent-red-400';
+    case 'orange':
+      return 'accent-orange-600 dark:accent-orange-400';
+    case 'amber':
+      return 'accent-amber-600 dark:accent-amber-400';
+    case 'yellow':
+      return 'accent-yellow-600 dark:accent-yellow-400';
+    case 'lime':
+      return 'accent-lime-600 dark:accent-lime-400';
+    case 'emerald':
+      return 'accent-emerald-600 dark:accent-emerald-400';
+    case 'sky':
+      return 'accent-sky-600 dark:accent-sky-400';
+    case 'fuchsia':
+      return 'accent-fuchsia-600 dark:accent-fuchsia-400';
+    case 'pink':
+      return 'accent-pink-600 dark:accent-pink-400';
+    case 'rose':
+      return 'accent-rose-600 dark:accent-rose-400';
+    case 'slate':
+      return 'accent-slate-600 dark:accent-slate-400';
+    case 'gray':
+      return 'accent-gray-600 dark:accent-gray-400';
+    case 'zinc':
+      return 'accent-zinc-600 dark:accent-zinc-400';
+    case 'neutral':
+      return 'accent-neutral-700 dark:accent-neutral-300';
+    case 'stone':
+      return 'accent-stone-600 dark:accent-stone-400';
+    default:
+      return 'accent-blue-600 dark:accent-blue-400';
+  }
+}
+
+/** Returns a static `bg-*-50` class for the selected row background. */
+function getSelectedRowClass(color: ThemeColor): string {
+  switch (resolveColor(color)) {
+    case 'blue':
+      return 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-800';
+    case 'green':
+      return 'bg-green-50 dark:bg-green-500/10 border-green-200 dark:border-green-800';
+    case 'teal':
+      return 'bg-teal-50 dark:bg-teal-500/10 border-teal-200 dark:border-teal-800';
+    case 'cyan':
+      return 'bg-cyan-50 dark:bg-cyan-500/10 border-cyan-200 dark:border-cyan-800';
+    case 'indigo':
+      return 'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-800';
+    case 'purple':
+      return 'bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-800';
+    case 'violet':
+      return 'bg-violet-50 dark:bg-violet-500/10 border-violet-200 dark:border-violet-800';
+    case 'red':
+      return 'bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-800';
+    case 'orange':
+      return 'bg-orange-50 dark:bg-orange-500/10 border-orange-200 dark:border-orange-800';
+    case 'amber':
+      return 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-800';
+    case 'yellow':
+      return 'bg-yellow-50 dark:bg-yellow-500/10 border-yellow-200 dark:border-yellow-800';
+    case 'lime':
+      return 'bg-lime-50 dark:bg-lime-500/10 border-lime-200 dark:border-lime-800';
+    case 'emerald':
+      return 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-800';
+    case 'sky':
+      return 'bg-sky-50 dark:bg-sky-500/10 border-sky-200 dark:border-sky-800';
+    case 'fuchsia':
+      return 'bg-fuchsia-50 dark:bg-fuchsia-500/10 border-fuchsia-200 dark:border-fuchsia-800';
+    case 'pink':
+      return 'bg-pink-50 dark:bg-pink-500/10 border-pink-200 dark:border-pink-800';
+    case 'rose':
+      return 'bg-rose-50 dark:bg-rose-500/10 border-rose-200 dark:border-rose-800';
+    case 'slate':
+      return 'bg-slate-50 dark:bg-slate-500/10 border-slate-200 dark:border-slate-800';
+    case 'gray':
+      return 'bg-gray-50 dark:bg-gray-500/10 border-gray-200 dark:border-gray-800';
+    case 'zinc':
+      return 'bg-zinc-50 dark:bg-zinc-500/10 border-zinc-200 dark:border-zinc-800';
+    case 'neutral':
+      return 'bg-neutral-100 dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700';
+    case 'stone':
+      return 'bg-stone-50 dark:bg-stone-500/10 border-stone-200 dark:border-stone-800';
+    default:
+      return 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-800';
+  }
+}
+
+function getHighlightRowClass(color: ThemeColor): string {
+  switch (resolveColor(color)) {
+    case 'blue':    return 'bg-blue-100 dark:bg-blue-500/20';
+    case 'green':   return 'bg-green-100 dark:bg-green-500/20';
+    case 'teal':    return 'bg-teal-100 dark:bg-teal-500/20';
+    case 'cyan':    return 'bg-cyan-100 dark:bg-cyan-500/20';
+    case 'indigo':  return 'bg-indigo-100 dark:bg-indigo-500/20';
+    case 'purple':  return 'bg-purple-100 dark:bg-purple-500/20';
+    case 'violet':  return 'bg-violet-100 dark:bg-violet-500/20';
+    case 'red':     return 'bg-red-100 dark:bg-red-500/20';
+    case 'orange':  return 'bg-orange-100 dark:bg-orange-500/20';
+    case 'amber':   return 'bg-amber-100 dark:bg-amber-500/20';
+    case 'yellow':  return 'bg-yellow-100 dark:bg-yellow-500/20';
+    case 'lime':    return 'bg-lime-100 dark:bg-lime-500/20';
+    case 'emerald': return 'bg-emerald-100 dark:bg-emerald-500/20';
+    case 'sky':     return 'bg-sky-100 dark:bg-sky-500/20';
+    case 'fuchsia': return 'bg-fuchsia-100 dark:bg-fuchsia-500/20';
+    case 'pink':    return 'bg-pink-100 dark:bg-pink-500/20';
+    case 'rose':    return 'bg-rose-100 dark:bg-rose-500/20';
+    case 'slate':   return 'bg-slate-100 dark:bg-slate-500/20';
+    case 'gray':    return 'bg-gray-100 dark:bg-gray-500/20';
+    case 'zinc':    return 'bg-zinc-100 dark:bg-zinc-500/20';
+    case 'neutral': return 'bg-neutral-100 dark:bg-neutral-700/50';
+    case 'stone':   return 'bg-stone-100 dark:bg-stone-500/20';
+    default:        return 'bg-blue-100 dark:bg-blue-500/20';
+  }
+}
+
+function getHighlightBorderClass(color: ThemeColor): string {
+  switch (resolveColor(color)) {
+    case 'blue':    return 'border-l-blue-500';
+    case 'green':   return 'border-l-green-500';
+    case 'teal':    return 'border-l-teal-500';
+    case 'cyan':    return 'border-l-cyan-500';
+    case 'indigo':  return 'border-l-indigo-500';
+    case 'purple':  return 'border-l-purple-500';
+    case 'violet':  return 'border-l-violet-500';
+    case 'red':     return 'border-l-red-500';
+    case 'orange':  return 'border-l-orange-500';
+    case 'amber':   return 'border-l-amber-500';
+    case 'yellow':  return 'border-l-yellow-500';
+    case 'lime':    return 'border-l-lime-500';
+    case 'emerald': return 'border-l-emerald-500';
+    case 'sky':     return 'border-l-sky-500';
+    case 'fuchsia': return 'border-l-fuchsia-500';
+    case 'pink':    return 'border-l-pink-500';
+    case 'rose':    return 'border-l-rose-500';
+    case 'slate':   return 'border-l-slate-500';
+    case 'gray':    return 'border-l-gray-500';
+    case 'zinc':    return 'border-l-zinc-500';
+    case 'neutral': return 'border-l-neutral-500';
+    case 'stone':   return 'border-l-stone-500';
+    default:        return 'border-l-blue-500';
   }
 }
 
@@ -379,6 +579,7 @@ function ChevronSvg({ expanded }: { expanded: boolean }) {
 function TableComponent<T>({
   columns,
   data,
+  selectedItems,
   rowKey,
   variant = 'default',
   tone = 'neutral',
@@ -386,6 +587,7 @@ function TableComponent<T>({
   noBorders = false,
   hoverable = true,
   stickyHeader = false,
+  stickyActions = false,
   loading = false,
   loadingMessage,
   loaderType = 'spinner',
@@ -399,6 +601,7 @@ function TableComponent<T>({
   maxHeight,
   onRowClick,
   rowClassName,
+  rowHighlight,
   className,
   tableClassName,
   bodyClassName,
@@ -427,10 +630,15 @@ function TableComponent<T>({
   showGroupHeader,
   defaultGroupExpanded,
   onGroupByChange,
+  userStickyColumns,
+  defaultStickyColumns,
+  onStickyColumnsChange,
+  tableSettings,
+  onTableSettingsChange,
   color = 'blue',
 }: TableProps<T>) {
   const showViewToggle = !!columns?.length && !!panelItem;
-  const defaultViewResolved: 'table' | 'panel' = defaultView ?? (showViewToggle ? 'table' : panelItem ? 'panel' : 'table');
+  const defaultViewResolved: 'table' | 'panel' = tableSettings?.activeView ?? defaultView ?? (showViewToggle ? 'table' : panelItem ? 'panel' : 'table');
   const [activeView, setActiveView] = useState<'table' | 'panel'>(defaultViewResolved);
 
   const [internalSort, setInternalSort] = useState<TableSortState | null>(defaultSort ?? null);
@@ -440,20 +648,22 @@ function TableComponent<T>({
   // ── Column visibility ────────────────────────────────────────────────────────
   const [colVisibility, setColVisibility] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
-    for (const col of columns ?? []) init[col.id] = columnVisibilityProp?.[col.id] ?? true;
+    const source = tableSettings?.columnVisibility ?? columnVisibilityProp;
+    for (const col of columns ?? []) init[col.id] = source?.[col.id] ?? true;
     return init;
   });
 
   // Sync when the columnVisibility prop changes (e.g. after loading saved config)
   useEffect(() => {
-    if (!columnVisibilityProp) return;
+    const source = tableSettings?.columnVisibility ?? columnVisibilityProp;
+    if (!source) return;
     setColVisibility((prev) => {
       const next = { ...prev };
-      for (const col of columns ?? []) next[col.id] = columnVisibilityProp[col.id] ?? prev[col.id] ?? true;
+      for (const col of columns ?? []) next[col.id] = source[col.id] ?? prev[col.id] ?? true;
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnVisibilityProp]);
+  }, [columnVisibilityProp, tableSettings?.columnVisibility]);
 
   const [colPanelOpen, setColPanelOpen] = useState(false);
   const colPanelRef = useRef<HTMLDivElement>(null);
@@ -461,8 +671,9 @@ function TableComponent<T>({
   // ── Column resize ─────────────────────────────────────────────────────────────
   const [internalColWidths, setInternalColWidths] = useState<Record<string, number>>(() => {
     const init: Record<string, number> = {};
-    if (columnWidthsProp) {
-      Object.assign(init, columnWidthsProp);
+    const widthSource = tableSettings?.columnWidths ?? columnWidthsProp;
+    if (widthSource) {
+      Object.assign(init, widthSource);
     } else {
       for (const col of columns ?? []) {
         if (typeof col.width === 'number') {
@@ -477,10 +688,11 @@ function TableComponent<T>({
 
   // Sync when columnWidths prop changes (e.g. after loading saved config)
   useEffect(() => {
-    if (!columnWidthsProp) return;
-    setInternalColWidths((prev) => ({ ...prev, ...columnWidthsProp }));
+    const widthSource = tableSettings?.columnWidths ?? columnWidthsProp;
+    if (!widthSource) return;
+    setInternalColWidths((prev) => ({ ...prev, ...widthSource }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [columnWidthsProp]);
+  }, [columnWidthsProp, tableSettings?.columnWidths]);
 
   // refs: one per <th> for DOM measurement, plus transient resize state
   const thRefs = useRef<Record<string, HTMLTableCellElement | null>>({});
@@ -527,6 +739,7 @@ function TableComponent<T>({
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
       onColumnWidthChange?.(widthsDuringResizeRef.current);
+      onTableSettingsChange?.({ ...settingsSnapshotRef.current, columnWidths: widthsDuringResizeRef.current });
       resizingRef.current = null;
     };
 
@@ -540,15 +753,71 @@ function TableComponent<T>({
   // so column widths are honoured precisely.
   const useFixedLayout = resizableColumns && Object.keys(internalColWidths).length > 0;
 
+  // ── User sticky columns state ────────────────────────────────────────────────
+  const [internalStickyColumns, setInternalStickyColumns] = useState<Record<string, 'left' | 'right'>>(tableSettings?.stickyColumns ?? defaultStickyColumns ?? {});
+  const [stickyPanelOpen, setStickyPanelOpen] = useState(false);
+  const stickyPanelRef = useRef<HTMLDivElement>(null);
+
+  // ── Unified settings snapshot ref (declared early so all handlers can use it) ─
+  // The .current assignment is done after all state is declared below.
+  const settingsSnapshotRef = useRef<TableSettings>({});
+
+  const handleStickyChange = (colId: string, pin: 'left' | 'right' | null) => {
+    setInternalStickyColumns((prev) => {
+      const next = { ...prev };
+      if (pin === null) delete next[colId];
+      else next[colId] = pin;
+      onStickyColumnsChange?.(next);
+      onTableSettingsChange?.({ ...settingsSnapshotRef.current, stickyColumns: next });
+      return next;
+    });
+  };
+
+  const hasStickyColumns = Object.keys(internalStickyColumns).length > 0;
+
   // ── Grouping state ───────────────────────────────────────────────────────────
-  const [internalGroupBy, setInternalGroupBy] = useState<string | null>(defaultGroupBy ?? null);
+  const [internalGroupBy, setInternalGroupBy] = useState<string | null>(tableSettings?.groupBy ?? defaultGroupBy ?? null);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [groupPanelOpen, setGroupPanelOpen] = useState(false);
-  const [showGroupHeaderLocal, setShowGroupHeaderLocal] = useState(showGroupHeader ?? true);
+  const [showGroupHeaderLocal, setShowGroupHeaderLocal] = useState(tableSettings?.showGroupHeader ?? showGroupHeader ?? true);
   const groupPanelRef = useRef<HTMLDivElement>(null);
 
   const resolvedGroupBy = groupBy ?? internalGroupBy;
   const resolvedShowGroupHeader = showGroupHeader ?? showGroupHeaderLocal;
+
+  // ── Unified settings snapshot — update after all state is declared ───────────
+  // Handlers close over the ref (declared above); this assignment runs
+  // synchronously on every render before any user interaction can fire.
+  settingsSnapshotRef.current = {
+    columnVisibility: colVisibility,
+    columnWidths: internalColWidths,
+    activeView,
+    groupBy: internalGroupBy,
+    showGroupHeader: showGroupHeaderLocal,
+    stickyColumns: internalStickyColumns,
+  };
+
+  // ── Selection Lookup ─────────────────────────────────────────────────────────
+  const selectionLookup = useMemo(() => {
+    if (!selectedItems || selectedItems.length === 0) return null;
+
+    const lookup = new Set<unknown>();
+    selectedItems.forEach((item) => {
+      // Support reference equality
+      lookup.add(item);
+
+      // Support ID equality
+      if (rowKey) {
+        // We pass -1 as index since we don't have it for selected items,
+        // expecting rowKey to rely on intrinsic properties.
+        lookup.add(rowKey(item, -1));
+      } else if (typeof (item as Record<string, unknown>).id !== 'undefined') {
+        const idVal = (item as Record<string, unknown>).id;
+        lookup.add(String(idVal));
+      }
+    });
+    return lookup;
+  }, [selectedItems, rowKey]);
 
   // ── Outside-click handlers ───────────────────────────────────────────────────
   useEffect(() => {
@@ -572,6 +841,17 @@ function TableComponent<T>({
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [groupPanelOpen]);
+
+  useEffect(() => {
+    if (!stickyPanelOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (stickyPanelRef.current && !stickyPanelRef.current.contains(e.target as Node)) {
+        setStickyPanelOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [stickyPanelOpen]);
 
   // ── Sort handler ─────────────────────────────────────────────────────────────
   const handleSortToggle = (column: TableColumn<T>) => {
@@ -597,6 +877,7 @@ function TableComponent<T>({
     setInternalGroupBy(columnId);
     setExpandedGroups({}); // reset expansion state when group changes
     onGroupByChange?.(columnId);
+    onTableSettingsChange?.({ ...settingsSnapshotRef.current, groupBy: columnId });
   };
 
   // ── Sorted data ──────────────────────────────────────────────────────────────
@@ -615,12 +896,17 @@ function TableComponent<T>({
       return data;
     }
 
-    // sortValue takes priority; fall back to accessor, then render
+    // sortValue takes priority; fall back to the raw accessor value, then render.
+    // Accessor is preferred over render because render typically returns JSX which
+    // cannot be meaningfully compared as a string.
     const getValue = column.sortValue
       ? (row: T) => column.sortValue!(row)
-      : column.render
-        ? (row: T, index: number) => column.render!(row, index)
-        : (row: T, index: number) => resolveValue(row, column, index);
+      : column.accessor
+        ? (row: T, index: number) => {
+            if (typeof column.accessor === 'function') return column.accessor(row, index);
+            return (row as Record<string, unknown>)[column.accessor as string];
+          }
+        : (row: T, index: number) => (column.render ? column.render(row, index) : null);
 
     const sorted = [...data];
     sorted.sort((a, b) => {
@@ -638,8 +924,8 @@ function TableComponent<T>({
         return '';
       };
 
-      const aComparable = typeof aValue === 'number' ? aValue : safeString(aValue).toLowerCase();
-      const bComparable = typeof bValue === 'number' ? bValue : safeString(bValue).toLowerCase();
+      const aComparable = typeof aValue === 'number' ? aValue : safeString(aValue as React.ReactNode).toLowerCase();
+      const bComparable = typeof bValue === 'number' ? bValue : safeString(bValue as React.ReactNode).toLowerCase();
 
       if (aComparable < bComparable) {
         return resolvedSort.direction === 'asc' ? -1 : 1;
@@ -660,6 +946,29 @@ function TableComponent<T>({
   // The grouped column is always hidden from the rendered table
   const visibleColumns = effectiveColumns.filter((col) => colVisibility[col.id] !== false && col.id !== resolvedGroupBy);
   const hasHideableColumns = effectiveColumns.some((col) => col.hideable !== false);
+
+  // ── Ordered visible columns ──────────────────────────────────────────────────
+  // When columns are pinned (user-configured or code-defined), they are moved to
+  // the appropriate edge while preserving relative order within each group:
+  //   [ left-pinned | normal | right-pinned ]
+  // The stickyActions column (original last col) is always last within the right group.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const orderedVisibleColumns = useMemo((): TableColumn<T>[] => {
+    const left: TableColumn<T>[] = [];
+    const middle: TableColumn<T>[] = [];
+    const right: TableColumn<T>[] = [];
+    visibleColumns.forEach((col, i) => {
+      const effective = internalStickyColumns[col.id] ?? col.sticky;
+      if (effective === 'left') {
+        left.push(col);
+      } else if (effective === 'right' || (stickyActions && i === visibleColumns.length - 1)) {
+        right.push(col);
+      } else {
+        middle.push(col);
+      }
+    });
+    return [...left, ...middle, ...right];
+  }, [visibleColumns, internalStickyColumns, stickyActions]);
 
   // ── Grouped data ─────────────────────────────────────────────────────────────
   const groupedData = useMemo((): GroupEntry<T>[] | null => {
@@ -736,6 +1045,35 @@ function TableComponent<T>({
   // leading column for the expand/collapse chevron.
   const showGroupExpandCol = !!(resolvedGroupBy && resolvedShowGroupHeader);
 
+  // ── Effective per-column stickiness (column-defined + user-configured) ───────
+  // User config takes precedence over the column-defined sticky value, so users
+  // can override or clear a code-defined pin at runtime.
+  const getEffectiveSticky = (col: TableColumn<T>): 'left' | 'right' | undefined =>
+    internalStickyColumns[col.id] ?? col.sticky ?? undefined;
+
+  // ── Sticky-right column offsets ──────────────────────────────────────────────
+  // When multiple columns are pinned to the right (via sticky:'right',
+  // stickyActions, or user config), each one needs a `right` offset equal to
+  // the total width of all right-sticky columns further to the right. We
+  // calculate this from internalColWidths → column.width → column.minWidth.
+  const rightStickyOffsets = useMemo((): Record<string, number | undefined> => {
+    const offsets: Record<string, number | undefined> = {};
+    let cumulative = 0;
+    for (let i = orderedVisibleColumns.length - 1; i >= 0; i--) {
+      const col = orderedVisibleColumns[i];
+      const effective = internalStickyColumns[col.id] ?? col.sticky;
+      const isSticky = effective === 'right' || (stickyActions && i === orderedVisibleColumns.length - 1);
+      if (!isSticky) continue;
+      offsets[col.id] = cumulative;
+      const w =
+        internalColWidths[col.id] ??
+        (typeof col.width === 'number' ? col.width : undefined) ??
+        (typeof col.minWidth === 'number' ? col.minWidth : undefined);
+      if (w !== undefined) cumulative += w;
+    }
+    return offsets;
+  }, [orderedVisibleColumns, stickyActions, internalColWidths, internalStickyColumns]);
+
   // ── Visual class helpers ─────────────────────────────────────────────────────
   const wrapperClasses = classNames(
     'w-full',
@@ -778,11 +1116,20 @@ function TableComponent<T>({
   // ── Row renderer (shared between grouped and flat modes) ──────────────────────
   const renderRow = (row: T, originalIndex: number, isGroupedSubRow = false) => {
     const key = resolveRowKey(row, originalIndex, rowKey);
+
+    // Check reference or ID match
+    const isSelected = selectionLookup?.has(row) || selectionLookup?.has(key);
+    const isHighlighted = !isSelected && (rowHighlight?.(row, originalIndex) ?? false);
+
+    const selectedClass = isSelected ? getSelectedRowClass(color) : '';
+    const highlightRowClass = isHighlighted ? getHighlightRowClass(color) : '';
+
     const rowClasses = classNames(
       cellPadding,
       'group',
-      hoverable && 'hover:bg-neutral-200/60 dark:hover:bg-neutral-700/40',
-      striped && originalIndex % 2 === 1 && 'bg-neutral-100 dark:bg-neutral-800/40',
+      isSelected ? selectedClass : isHighlighted ? highlightRowClass : striped && originalIndex % 2 === 1 && 'bg-neutral-100 dark:bg-neutral-800/40',
+      !isSelected && !isHighlighted && hoverable && 'hover:bg-neutral-200/60 dark:hover:bg-neutral-700/40',
+      isHighlighted && hoverable && 'hover:brightness-95',
       'transition-colors duration-150 ease-out',
       onRowClick ? 'cursor-pointer' : 'cursor-default',
       rowClassName ? rowClassName(row, originalIndex) : undefined,
@@ -794,49 +1141,74 @@ function TableComponent<T>({
         {showGroupExpandCol && <td className="w-10" aria-hidden="true" />}
         {/* Indent spacer — only in grouped mode without group headers */}
         {resolvedGroupBy && !showGroupExpandCol && <td className="w-4" aria-hidden="true" />}
-        {visibleColumns.map((column, colIndex) => {
+        {orderedVisibleColumns.map((column, colIndex) => {
           const cellValue = resolveValue(row, column, originalIndex);
-          const isTruncated = !!column.maxWidth;
-          const cellTitle = isTruncated && (typeof cellValue === 'string' || typeof cellValue === 'number') ? String(cellValue) : undefined;
+          // Text cells (string/number) get TruncatedText with a tooltip on actual overflow.
+          // JSX cells fall back to the old maxWidth-based truncate class.
+          const isTextCell = typeof cellValue === 'string' || typeof cellValue === 'number';
 
           const tdResizeWidth = internalColWidths[column.id];
+          const effectiveSticky = getEffectiveSticky(column);
+          const isStickyLeft = effectiveSticky === 'left';
+          const isStickyRight = effectiveSticky === 'right' || (stickyActions && colIndex === orderedVisibleColumns.length - 1);
+          const rightOffset = isStickyRight ? rightStickyOffsets[column.id] : undefined;
           return (
             <td
               key={column.id}
               className={classNames(
                 'whitespace-nowrap align-middle text-sm text-neutral-700 dark:text-neutral-200',
-                column.sticky && 'sticky',
-                column.sticky === 'left' && 'left-0',
-                column.sticky === 'right' && 'right-0',
-                column.sticky && 'z-10',
-                column.sticky && (striped && originalIndex % 2 === 1 ? 'bg-neutral-100 dark:bg-neutral-800/40' : 'bg-white dark:bg-neutral-900'),
+                (isStickyLeft || isStickyRight) && 'sticky',
+                isStickyLeft && 'left-0',
+                // right position is set via inline style when offset > 0
+                isStickyRight && !rightOffset && 'right-0',
+                (isStickyLeft || isStickyRight) && 'z-10',
+                (isStickyLeft || isStickyRight) && (
+                  isSelected ? getSelectedRowClass(color)
+                  : isHighlighted ? getHighlightRowClass(color)
+                  : striped && originalIndex % 2 === 1 ? 'bg-neutral-100 dark:bg-neutral-800/40'
+                  : 'bg-white dark:bg-neutral-900'
+                ),
                 // Apply hover background to sticky cells when row is hovered
-                column.sticky && hoverable && 'group-hover:bg-neutral-200/60 dark:group-hover:bg-neutral-700/40',
+                (isStickyLeft || isStickyRight) && !isHighlighted && hoverable && 'group-hover:bg-neutral-200/60 dark:group-hover:bg-neutral-700/40',
+                (isStickyLeft || isStickyRight) && isHighlighted && hoverable && 'group-hover:brightness-95',
                 getCellAlignment(column.align),
                 colIndex === 0 && sidePaddingTokens.left,
-                colIndex === visibleColumns.length - 1 && sidePaddingTokens.right,
-                tdResizeWidth && 'overflow-hidden',
+                colIndex === orderedVisibleColumns.length - 1 && sidePaddingTokens.right,
+                // Pulsing left border indicator on the first visible cell for highlighted rows
+                colIndex === 0 && isHighlighted && classNames('border-l-4 animate-pulse', getHighlightBorderClass(color)),
+                isStickyRight && 'border-l border-neutral-200 dark:border-neutral-700',
                 column.className,
               )}
-              style={
-                tdResizeWidth
+              style={{
+                ...(tdResizeWidth
                   ? { width: tdResizeWidth, minWidth: tdResizeWidth, maxWidth: tdResizeWidth }
-                  : applyWidthStyle(column.width, column.minWidth, column.maxWidth)
-              }
-              title={cellTitle}
+                  : applyWidthStyle(column.width, column.minWidth, column.maxWidth)),
+                ...(isStickyRight && rightOffset !== undefined ? { right: rightOffset } : {}),
+              }}
             >
               <div
                 className={classNames(
-                  'flex items-center',
+                  'flex items-center min-w-0',
                   'py-1',
                   sidePaddingTokens.contentVertical,
                   getCellFlexAlignment(column.align),
-                  isTruncated && 'truncate',
+                  // For JSX cells with a declared maxWidth, still clip via truncate
+                  !isTextCell && column.maxWidth && 'truncate',
                   // Add extra left indent to the first data column in grouped sub-rows
                   isGroupedSubRow && colIndex === 0 && 'pl-2',
                 )}
               >
-                {cellValue}
+                {isTextCell ? (
+                  <TruncatedText
+                    text={String(cellValue)}
+                    as="span"
+                    delay={2000}
+                    noWrapper
+                    className="min-w-0 flex-1"
+                  />
+                ) : (
+                  cellValue
+                )}
               </div>
             </td>
           );
@@ -852,7 +1224,7 @@ function TableComponent<T>({
     <div className={wrapperClasses} style={style}>
       <div className={classNames('relative flex flex-col', fullHeight && 'flex-1 overflow-hidden h-full')}>
         {/* ── Header bar ────────────────────────────────────────────────────── */}
-        {(headerActions || showViewToggle || hasHideableColumns || isUserGroupable) && (
+        {(headerActions || showViewToggle || hasHideableColumns || isUserGroupable || userStickyColumns) && (
           <div className="flex-none flex items-center gap-3 border-b border-neutral-200 px-6 py-3 dark:border-neutral-700">
             {headerTitle && <div className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{headerTitle}</div>}
             <div className="flex-1" />
@@ -869,10 +1241,12 @@ function TableComponent<T>({
                     accent={false}
                     tooltip="Table view"
                     tooltipPosition="bottom"
-                    className={classNames(
-                      activeView !== 'table' && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200',
-                    )}
-                    onClick={() => { setActiveView('table'); onViewChange?.('table'); }}
+                    className={classNames(activeView !== 'table' && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
+                    onClick={() => {
+                      setActiveView('table');
+                      onViewChange?.('table');
+                      onTableSettingsChange?.({ ...settingsSnapshotRef.current, activeView: 'table' });
+                    }}
                     aria-label="Switch to table view"
                   />
                   <IconButton
@@ -884,10 +1258,12 @@ function TableComponent<T>({
                     accent={false}
                     tooltip="Panel view"
                     tooltipPosition="bottom"
-                    className={classNames(
-                      activeView !== 'panel' && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200',
-                    )}
-                    onClick={() => { setActiveView('panel'); onViewChange?.('panel'); }}
+                    className={classNames(activeView !== 'panel' && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
+                    onClick={() => {
+                      setActiveView('panel');
+                      onViewChange?.('panel');
+                      onTableSettingsChange?.({ ...settingsSnapshotRef.current, activeView: 'panel' });
+                    }}
                     aria-label="Switch to panel view"
                   />
                 </>
@@ -933,6 +1309,7 @@ function TableComponent<T>({
                                   const next = { ...colVisibility, [col.id]: !visible };
                                   setColVisibility(next);
                                   onColumnVisibilityChange?.(next);
+                                  onTableSettingsChange?.({ ...settingsSnapshotRef.current, columnVisibility: next });
                                 }}
                                 className={classNames('h-3.5 w-3.5 rounded border-neutral-300', getAccentClass(color))}
                               />
@@ -951,6 +1328,7 @@ function TableComponent<T>({
                             for (const col of effectiveColumns) reset[col.id] = true;
                             setColVisibility(reset);
                             onColumnVisibilityChange?.(reset);
+                            onTableSettingsChange?.({ ...settingsSnapshotRef.current, columnVisibility: reset });
                           }}
                         >
                           Reset to default
@@ -975,15 +1353,16 @@ function TableComponent<T>({
                       accent={false}
                       tooltip="Group by"
                       tooltipPosition="bottom"
-                      className={classNames(
-                        !(groupPanelOpen || resolvedGroupBy) && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200',
-                      )}
+                      className={classNames(!(groupPanelOpen || resolvedGroupBy) && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
                       onClick={() => setGroupPanelOpen((o) => !o)}
                       aria-label="Configure row grouping"
                     />
                     {/* Active indicator dot */}
                     {resolvedGroupBy && (
-                      <span className={classNames('pointer-events-none absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-white dark:ring-neutral-900', getDotColorClass(color))} aria-hidden="true" />
+                      <span
+                        className={classNames('pointer-events-none absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-white dark:ring-neutral-900', getDotColorClass(color))}
+                        aria-hidden="true"
+                      />
                     )}
                   </div>
 
@@ -1039,11 +1418,101 @@ function TableComponent<T>({
                           <input
                             type="checkbox"
                             checked={resolvedShowGroupHeader}
-                            onChange={() => setShowGroupHeaderLocal((v) => !v)}
+                            onChange={() => {
+                              setShowGroupHeaderLocal((v) => {
+                                const next = !v;
+                                onTableSettingsChange?.({ ...settingsSnapshotRef.current, showGroupHeader: next });
+                                return next;
+                              });
+                            }}
                             className={classNames('h-3.5 w-3.5 rounded border-neutral-300', getAccentClass(color))}
                           />
                           <span className="text-neutral-700 dark:text-neutral-200">Show group header</span>
                         </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Sticky column picker — table view only */}
+              {userStickyColumns && activeView === 'table' && (
+                <div className="relative" ref={stickyPanelRef}>
+                  <div className="relative inline-flex">
+                    <IconButton
+                      icon="Pin"
+                      size="xs"
+                      variant="icon"
+                      color={stickyPanelOpen || hasStickyColumns ? color : 'slate'}
+                      rounded="md"
+                      accent={false}
+                      tooltip="Sticky columns"
+                      tooltipPosition="bottom"
+                      className={classNames(!(stickyPanelOpen || hasStickyColumns) && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
+                      onClick={() => setStickyPanelOpen((o) => !o)}
+                      aria-label="Configure sticky columns"
+                    />
+                    {hasStickyColumns && (
+                      <span
+                        className={classNames('pointer-events-none absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full ring-2 ring-white dark:ring-neutral-900', getDotColorClass(color))}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </div>
+
+                  {stickyPanelOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-1 min-w-[240px] rounded-xl border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-900">
+                      {/* Panel header */}
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-100 dark:border-neutral-800">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Sticky columns</span>
+                        {hasStickyColumns && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInternalStickyColumns({});
+                              onStickyColumnsChange?.({});
+                            }}
+                            className="text-xs text-neutral-400 hover:text-neutral-600 dark:text-neutral-500 dark:hover:text-neutral-300 transition-colors"
+                          >
+                            Clear all
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Column list */}
+                      <div className="py-1 max-h-64 overflow-y-auto">
+                        {effectiveColumns.map((col) => {
+                          const label = getColumnLabel(col);
+                          const current = internalStickyColumns[col.id] ?? null;
+                          return (
+                            <div key={col.id} className="flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-neutral-50 dark:hover:bg-neutral-800/60">
+                              <span className="flex-1 truncate text-neutral-700 dark:text-neutral-200">{label}</span>
+                              {/* Left / None / Right toggle */}
+                              <div className="flex items-center rounded-md border border-neutral-200 dark:border-neutral-700 overflow-hidden text-xs">
+                                {(['left', null, 'right'] as const).map((side) => (
+                                  <button
+                                    key={String(side)}
+                                    type="button"
+                                    onClick={() => handleStickyChange(col.id, side)}
+                                    className={classNames(
+                                      'px-2 py-0.5 transition-colors select-none',
+                                      current === side
+                                        ? 'bg-neutral-200 dark:bg-neutral-700 font-semibold text-neutral-900 dark:text-neutral-100'
+                                        : 'text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 dark:text-neutral-500',
+                                    )}
+                                  >
+                                    {side === 'left' ? '←' : side === 'right' ? '→' : '·'}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Legend */}
+                      <div className="border-t border-neutral-100 px-3 py-2 dark:border-neutral-800">
+                        <span className="text-xs text-neutral-400 dark:text-neutral-500">← pin left &nbsp;·&nbsp; · unpin &nbsp;·&nbsp; → pin right</span>
                       </div>
                     </div>
                   )}
@@ -1058,29 +1527,33 @@ function TableComponent<T>({
         {/* ── Table view ────────────────────────────────────────────────────── */}
         {activeView === 'table' && visibleColumns.length > 0 && (
           <div className={classNames('relative', fullHeight && 'flex-1 min-h-0')}>
-            <div className={classNames(fullHeight ? 'h-full overflow-hidden' : 'overflow-x-auto')}>
-              <div className={classNames(fullHeight ? 'block min-w-full h-full' : 'inline-block min-w-full align-middle', !fullHeight && maxHeight && 'max-h-full')}>
-                <div
-                  className={classNames(!fullHeight && 'overflow-hidden', !fullHeight && maxHeight && 'max-h-full relative', fullHeight && 'h-full overflow-auto relative')}
-                  style={!fullHeight ? scrollContainerStyle : undefined}
-                >
-                  <table
-                    className={tableClasses}
-                    style={useFixedLayout ? { tableLayout: 'fixed', width: '100%' } : undefined}
-                  >
+            <div
+              className={classNames(
+                'overflow-x-auto relative',
+                fullHeight ? 'h-full overflow-y-auto' : '',
+                !fullHeight && maxHeight && 'overflow-y-auto',
+              )}
+              style={!fullHeight ? scrollContainerStyle : undefined}
+            >
+                  <table className={tableClasses} style={useFixedLayout ? { tableLayout: 'fixed', width: '100%' } : undefined}>
                     {/* Colgroup drives precise column widths in fixed layout */}
                     {useFixedLayout && (
                       <colgroup>
                         {showGroupExpandCol && <col style={{ width: '2.5rem' }} />}
                         {resolvedGroupBy && !showGroupExpandCol && <col style={{ width: '1rem' }} />}
-                        {visibleColumns.map((col) => {
+                        {orderedVisibleColumns.map((col) => {
                           const resizedW = internalColWidths[col.id];
                           if (resizedW) return <col key={col.id} style={{ width: `${resizedW}px`, minWidth: `${resizedW}px` }} />;
                           // For non-resized columns, honour width/minWidth so fixed layout can't squeeze them below their declared minimum
                           const declaredW = col.width !== undefined ? (typeof col.width === 'number' ? col.width : col.width) : undefined;
                           const declaredMin = col.minWidth !== undefined ? (typeof col.minWidth === 'number' ? col.minWidth : col.minWidth) : undefined;
                           const colW = declaredW ?? declaredMin;
-                          return <col key={col.id} style={colW !== undefined ? { width: typeof colW === 'number' ? `${colW}px` : colW, minWidth: typeof colW === 'number' ? `${colW}px` : colW } : undefined} />;
+                          return (
+                            <col
+                              key={col.id}
+                              style={colW !== undefined ? { width: typeof colW === 'number' ? `${colW}px` : colW, minWidth: typeof colW === 'number' ? `${colW}px` : colW } : undefined}
+                            />
+                          );
                         })}
                       </colgroup>
                     )}
@@ -1092,41 +1565,50 @@ function TableComponent<T>({
                         )}
                         {/* Indent spacer th for grouped mode without group headers */}
                         {resolvedGroupBy && !showGroupExpandCol && <th scope="col" className="w-4" aria-hidden="true" />}
-                        {visibleColumns.map((column) => {
+                        {orderedVisibleColumns.map((column, colIndex) => {
                           const isSorted = resolvedSort?.columnId === column.id;
                           const sortDirection = isSorted ? resolvedSort?.direction : undefined;
 
                           const isResizable = resizableColumns && column.resizable !== false;
                           const resizeWidth = internalColWidths[column.id];
+                          const isStickyLeft = column.sticky === 'left';
+                          const isStickyRight = column.sticky === 'right' || (stickyActions && colIndex === visibleColumns.length - 1);
+                          const rightOffset = isStickyRight ? rightStickyOffsets[column.id] : undefined;
 
                           return (
                             <th
                               key={column.id}
-                              ref={(el) => { thRefs.current[column.id] = el; }}
+                              ref={(el) => {
+                                thRefs.current[column.id] = el;
+                              }}
                               scope="col"
                               className={classNames(
                                 headerBaseClasses,
                                 headerToneClasses,
                                 cellPadding,
                                 stickyHeader && 'sticky top-0',
-                                column.sticky && 'sticky',
-                                column.sticky === 'left' && 'left-0',
-                                column.sticky === 'right' && 'right-0',
-                                stickyHeader && column.sticky ? 'z-30' : stickyHeader ? 'z-20' : column.sticky ? 'z-10' : '',
+                                (isStickyLeft || isStickyRight) && 'sticky',
+                                isStickyLeft && 'left-0',
+                                // right position is set via inline style when offset > 0
+                                isStickyRight && !rightOffset && 'right-0',
+                                stickyHeader && (isStickyLeft || isStickyRight) ? 'z-30' : stickyHeader ? 'z-20' : (isStickyLeft || isStickyRight) ? 'z-10' : '',
                                 getCellAlignment(column.align),
-                                isResizable && 'relative overflow-hidden',
+                                'overflow-hidden',
+                                isResizable && 'relative',
+                                isStickyRight && 'border-l border-neutral-200 dark:border-neutral-700',
                                 column.headerClassName,
                               )}
-                              style={
-                                resizeWidth
+                              style={{
+                                ...(resizeWidth
                                   ? { width: resizeWidth, minWidth: resizeWidth, maxWidth: resizeWidth }
-                                  : applyWidthStyle(column.width, column.minWidth, column.maxWidth)
-                              }
+                                  : applyWidthStyle(column.width, column.minWidth, column.maxWidth)),
+                                ...(isStickyRight && rightOffset !== undefined ? { right: rightOffset } : {}),
+                              }}
                               aria-sort={sortDirection ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
                               title={column.tooltip}
                             >
-                              <div className={classNames('flex items-center gap-1', column.align === 'right' ? 'justify-end' : column.align === 'center' ? 'justify-center' : 'justify-start')}>
-                                <span className={classNames((column.maxWidth || resizeWidth) && 'truncate min-w-0 flex-1')}>{column.header}</span>
+                              <div className={classNames('flex items-center gap-1 min-w-0', column.align === 'right' ? 'justify-end' : column.align === 'center' ? 'justify-center' : 'justify-start')}>
+                                <span className="truncate min-w-0 flex-1">{column.header}</span>
                                 {column.sortable ? (
                                   <IconButton
                                     icon={sortDirection ? sortIconMap[sortDirection] : sortIconMap.default}
@@ -1137,10 +1619,7 @@ function TableComponent<T>({
                                     accent={false}
                                     tooltip={sortDirection === 'asc' ? 'Sort descending' : sortDirection === 'desc' ? 'Clear sort' : 'Sort ascending'}
                                     tooltipPosition="bottom"
-                                    className={classNames(
-                                      'ml-1 flex-shrink-0',
-                                      !isSorted && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200',
-                                    )}
+                                    className={classNames('ml-1 flex-shrink-0', !isSorted && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
                                     onClick={() => handleSortToggle(column)}
                                     aria-label="Toggle sort"
                                   />
@@ -1205,8 +1684,6 @@ function TableComponent<T>({
                     </tbody>
                   </table>
                   {loading && <Loader overlay variant={loaderType} label={loadingMessage} progress={loaderProgress} className="rounded-none" />}
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -1220,21 +1697,21 @@ function TableComponent<T>({
                 className={classNames(
                   'p-4',
                   panelMinItemWidth != null
-                    // auto-fill mode: grid base + any extra non-layout classes from consumer
-                    // gap is intentionally excluded here — it lives in the inline style below
-                    ? classNames('grid', panelGridClassName)
-                    // legacy / explicit class mode (gap lives in the class string as before)
-                    : (panelGridClassName ?? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'),
+                    ? // auto-fill mode: grid base + any extra non-layout classes from consumer
+                      // gap is intentionally excluded here — it lives in the inline style below
+                      classNames('grid', panelGridClassName)
+                    : // legacy / explicit class mode (gap lives in the class string as before)
+                      (panelGridClassName ?? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'),
                 )}
-                style={panelMinItemWidth != null ? {
-                  gridTemplateColumns: `repeat(auto-fill, minmax(min(${
-                    typeof panelMinItemWidth === 'number' ? `${panelMinItemWidth}px` : panelMinItemWidth
-                  }, 100%), 1fr))`,
-                  // inline style wins over any class — gap is always consistent
-                  gap: panelGap != null
-                    ? (typeof panelGap === 'number' ? `${panelGap}px` : panelGap)
-                    : '1rem',
-                } : undefined}
+                style={
+                  panelMinItemWidth != null
+                    ? {
+                        gridTemplateColumns: `repeat(auto-fill, minmax(min(${typeof panelMinItemWidth === 'number' ? `${panelMinItemWidth}px` : panelMinItemWidth}, 100%), 1fr))`,
+                        // inline style wins over any class — gap is always consistent
+                        gap: panelGap != null ? (typeof panelGap === 'number' ? `${panelGap}px` : panelGap) : '1rem',
+                      }
+                    : undefined
+                }
               >
                 {panelRows.map((row, rowIndex) => (
                   <React.Fragment key={resolveRowKey(row, rowIndex, rowKey)}>{panelItem(row, rowIndex)}</React.Fragment>

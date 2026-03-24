@@ -669,7 +669,7 @@ export const HostSwitcher: React.FC<HostSwitcherProps> = ({ color = 'blue' }) =>
                 size="xs"
                 leadingIcon="Add"
                 color={themeColor}
-                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${cls.addButton}`}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors`}
               >
                 Add New Host
               </Button>

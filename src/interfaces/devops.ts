@@ -155,6 +155,7 @@ export interface DevOpsRemoteHost {
   vms?: VirtualMachine[];
   cache_config?: CacheConfig;
   cache_items?: DevOpsRemoteHostItem[];
+  is_local?: boolean;
   [key: string]: unknown;
 }
 
