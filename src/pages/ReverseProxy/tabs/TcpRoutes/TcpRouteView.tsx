@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Button, Panel } from '@prl/ui-kit';
+import { Button, ConfirmModal, Panel } from '@prl/ui-kit';
 import { ReverseProxyHost, ReverseProxyHostTcpRoute } from '@/interfaces/ReverseProxy';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { devopsService } from '@/services/devops';
@@ -111,6 +111,7 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
   const [routeErrors, setRouteErrors] = useState<Record<string, string>>({});
   const [routeDirty, setRouteDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   // Fallback: if API didn't return target_vm_details.state, fetch VM directly once
   useEffect(() => {
@@ -207,6 +208,17 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
     }
   }, [routeDirty, tcpRoute, targetType, targetHost, targetPort, targetVmId, onSaveRoute]);
 
+  const handleDiscard = () => {
+    const route = proxyHost.tcp_route;
+    setTargetType(resolveTargetType(route));
+    setTargetHost(route?.target_host ?? '');
+    setTargetPort(route?.target_port ?? '');
+    setTargetVmId(route?.target_vm_id ?? '');
+    setRouteErrors({});
+    setRouteDirty(false);
+    setShowDiscardConfirm(false);
+  };
+
   const canEdit = canCreate || canUpdate;
   const canStartOrResume = canCreate && !!tcpRoute?.target_vm_id && ['stopped', 'paused', 'suspended'].includes(localVmHealth);
   const showSaveButton = routeDirty || !tcpRoute;
@@ -261,19 +273,38 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
         </div>
 
         {canEdit && (showSaveButton || !!tcpRoute) && (
-          <div className="flex items-center justify-end gap-2 pb-4 pt-3">
-            {canCreate && tcpRoute && (
-              <Button variant="soft" color="rose" size="sm" leadingIcon="Trash" onClick={onClearRoute}>
-                Clear TCP Route
-              </Button>
-            )}
-            {showSaveButton && (
-              <Button variant="soft" color={themeColor} size="sm" loading={saving} onClick={() => void handleSave()}>
-                {tcpRoute ? 'Save Changes' : 'Save TCP Route'}
-              </Button>
-            )}
+          <div className="flex items-center justify-between gap-2 pb-4 pt-3">
+            <div>
+              {canCreate && tcpRoute && (
+                <Button variant="soft" color="rose" size="sm" leadingIcon="Trash" onClick={onClearRoute}>
+                  Clear TCP Route
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {showSaveButton && routeDirty && tcpRoute && (
+                <Button variant="soft" color="slate" size="sm" onClick={() => setShowDiscardConfirm(true)}>
+                  Discard Changes
+                </Button>
+              )}
+              {showSaveButton && (
+                <Button variant="soft" color={themeColor} size="sm" loading={saving} onClick={() => void handleSave()}>
+                  {tcpRoute ? 'Save Changes' : 'Save TCP Route'}
+                </Button>
+              )}
+            </div>
           </div>
         )}
+
+        <ConfirmModal
+          isOpen={showDiscardConfirm}
+          title="Discard Changes"
+          description="You have unsaved changes. Are you sure you want to discard them?"
+          confirmLabel="Discard"
+          confirmColor="rose"
+          onConfirm={handleDiscard}
+          onClose={() => setShowDiscardConfirm(false)}
+        />
       </Panel>
     </div>
   );

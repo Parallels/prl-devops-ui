@@ -9,7 +9,7 @@ import { LayoutProvider, useLayout } from '../contexts/LayoutContext';
 import { BottomSheetProvider, SideMenuLayout, type SideMenuItem, type SideMenuItemGuard } from '@prl/ui-kit';
 import { WebSocketProvider } from '../contexts/WebSocketContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
-import { EventsHubProvider } from '../contexts/EventsHubContext';
+import { EventsHubProvider, useEventsHub } from '../contexts/EventsHubContext';
 import { useSession } from '@/contexts/SessionContext';
 import { Claims, Roles } from '@/interfaces/tokenTypes';
 import { JobsProvider, useJobs } from '@/contexts/JobsContext';
@@ -20,6 +20,8 @@ import { useModuleView, MODULE_VIEW_NAMES } from '@/components/HostSwitcher/Modu
 import { SettingsModal } from '@/components/Settings/SettingsModal';
 import { ToastManager } from '@/components/Toast/ToastManager';
 import { HostOfflineOverlay } from '@/components/HostOfflineOverlay';
+import { HighlightProvider, useHighlight, type HighlightState } from '@/contexts/HighlightContext';
+import { drainUnseenMessages } from '@/utils/messageQueue';
 
 export interface MainLayoutProps {
   children?: React.ReactNode;
@@ -36,30 +38,18 @@ const LayoutModals: React.FC = () => {
   );
 };
 
-// Small animated badge for active jobs in the sidebar
+// ── Active-jobs badge (Jobs nav item) ─────────────────────────────────────
+
 type JobBadgeTone = 'pending' | 'running' | 'error';
 
 const jobBadgeColorMap: Record<JobBadgeTone, { ping: string; dot: string; text: string }> = {
-  pending: {
-    ping: 'bg-amber-400',
-    dot: 'bg-amber-500',
-    text: 'text-amber-600 dark:text-amber-400',
-  },
-  running: {
-    ping: 'bg-blue-400',
-    dot: 'bg-blue-500',
-    text: 'text-blue-600 dark:text-blue-400',
-  },
-  error: {
-    ping: 'bg-red-400',
-    dot: 'bg-red-500',
-    text: 'text-red-600 dark:text-red-400',
-  },
+  pending: { ping: 'bg-amber-400', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+  running: { ping: 'bg-blue-400',  dot: 'bg-blue-500',  text: 'text-blue-600 dark:text-blue-400' },
+  error:   { ping: 'bg-red-400',   dot: 'bg-red-500',   text: 'text-red-600 dark:text-red-400' },
 };
 
 const ActiveJobBadge: React.FC<{ count: number; tone: JobBadgeTone }> = ({ count, tone }) => {
   const colors = jobBadgeColorMap[tone];
-
   return (
     <span className="inline-flex items-center gap-1">
       <span className="relative flex h-2 w-2">
@@ -71,33 +61,55 @@ const ActiveJobBadge: React.FC<{ count: number; tone: JobBadgeTone }> = ({ count
   );
 };
 
-// Per-type dot for Catalogs/VMs menu items when a job of that type is active
-const ActiveTypeDot: React.FC = () => (
-  <span className="relative flex h-2 w-2">
-    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-  </span>
-);
+// ── Highlight badge (Catalogs / VMs / Hosts nav items) ────────────────────
 
-const isActiveState = (state: string): boolean => state === 'pending' || state === 'running';
-const isTerminalState = (state: string): boolean => state === 'completed' || state === 'failed';
-
-const toSideMenuType = (jobType: string, jobOperation?: string): 'catalog' | 'vm' | 'host' | undefined => {
-  switch (jobType.toLowerCase()) {
-    case 'catalog':
-    case 'packer':
-    case 'packer_template':
-      return 'catalog';
-    case 'vm':
-    case 'machine':
-    case 'machines':
-      return 'vm';
-    case 'orchestrator':
-      return jobOperation?.toLowerCase() === 'deploy' ? 'host' : undefined;
-    default:
-      return undefined;
-  }
+const highlightBadgeColors: Record<HighlightState, { ping: string; dot: string; text: string }> = {
+  error:   { ping: 'bg-red-400',     dot: 'bg-red-500',     text: 'text-red-600 dark:text-red-400' },
+  warning: { ping: 'bg-amber-400',   dot: 'bg-amber-500',   text: 'text-amber-600 dark:text-amber-400' },
+  info:    { ping: 'bg-blue-400',    dot: 'bg-blue-500',    text: 'text-blue-600 dark:text-blue-400' },
+  success: { ping: 'bg-emerald-400', dot: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-400' },
 };
+
+/** Reads highlight context directly — renders null when there are no entries. */
+const HighlightBadge: React.FC<{ menuItemId: string }> = ({ menuItemId }) => {
+  const { getMenuBadgeInfo } = useHighlight();
+  const info = getMenuBadgeInfo(menuItemId);
+  if (!info) return null;
+  const colors = highlightBadgeColors[info.state];
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span className="relative flex h-2 w-2">
+        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${colors.ping}`} />
+        <span className={`relative inline-flex rounded-full h-2 w-2 ${colors.dot}`} />
+      </span>
+      {info.count > 1 && (
+        <span className={`text-[10px] font-bold tabular-nums ${colors.text}`}>{info.count}</span>
+      )}
+    </span>
+  );
+};
+
+// ── Job target resolver ────────────────────────────────────────────────────
+
+function resolveJobTarget(
+  jobType: string,
+  jobOperation?: string,
+  resultRecordType?: string,
+): { pageId: string; menuItemId: string; isItemTarget: boolean } | null {
+  const t = (resultRecordType ?? jobType).toLowerCase();
+  const op = jobOperation?.toLowerCase();
+  if (t === 'orchestrator_host' || (t === 'orchestrator' && op === 'deploy')) {
+    return { pageId: 'hosts', menuItemId: 'hosts', isItemTarget: true };
+  }
+  if (t === 'catalog' || t === 'packer' || t === 'packer_template') {
+    return { pageId: 'catalogs', menuItemId: 'catalogs', isItemTarget: false };
+  }
+  if (t === 'vm' || t === 'machine' || t === 'machines') {
+    return { pageId: 'vms', menuItemId: 'vms', isItemTarget: false };
+  }
+  return null;
+}
+
 
 const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
   const { isOverlay, setIsOverlay } = useLayout();
@@ -107,53 +119,80 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { hasClaim, hasRole, hasAnyClaim, hasAllClaims, hasModule } = useSession();
   const { jobs, activeCount } = useJobs();
+  const { containerMessages } = useEventsHub();
+  const { addHighlight, clearHighlights } = useHighlight();
   const activeModuleView = useModuleView();
   const [currentRoute, setCurrentRoute] = useState<Route>('home');
-  const [unseenByType, setUnseenByType] = useState<Record<string, boolean>>({});
   const [hasFailedWithMultipleActiveJobs, setHasFailedWithMultipleActiveJobs] = useState(false);
   const previousStatesRef = useRef<Record<string, string>>({});
   const previousActiveCountRef = useRef(0);
+  const lastJobManagerEventIdRef = useRef<string | null>(null);
+  const prevPathnameRef = useRef(location.pathname);
 
-  // Show "new" dots only after active jobs transition to a terminal state.
+  // Watch job_manager events to add highlight entries.
+  // Running in MainLayout (always mounted) ensures highlights are captured even
+  // when the target page is not currently rendered.
+  useEffect(() => {
+    const msgs = containerMessages['job_manager'];
+    const unseen = drainUnseenMessages(msgs, lastJobManagerEventIdRef, 'all');
+    if (unseen.length === 0) return;
+
+    for (const event of unseen) {
+      const { raw } = event;
+      if (raw.message !== 'JOB_COMPLETED' && raw.message !== 'JOB_FAILED') continue;
+
+      const job = raw.body as { job_type?: string; job_operation?: string; result_record_id?: string; result_record_type?: string } | undefined;
+      if (!job) continue;
+
+      const highlightState: HighlightState = raw.message === 'JOB_FAILED' ? 'error' : 'success';
+      const target = resolveJobTarget(job.job_type ?? '', job.job_operation, job.result_record_type);
+      if (!target) continue;
+
+      addHighlight({
+        pageId: target.pageId,
+        menuItemId: target.menuItemId,
+        // For item-level targets (e.g. a deployed host), use result_record_id as itemId.
+        // For record-level targets (e.g. a VM created by a job), use it as recordId.
+        itemId: target.isItemTarget ? (job.result_record_id ?? undefined) : undefined,
+        recordId: job.result_record_id ?? undefined,
+        state: highlightState,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerMessages['job_manager']]);
+
+  // When the user navigates away from a page, clear that page's highlights.
+  // Runs in MainLayout (always mounted) so it's unaffected by the target
+  // page's component lifecycle and React Strict Mode's double-invoke.
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const prevPath = prevPathnameRef.current;
+    prevPathnameRef.current = currentPath;
+
+    if (prevPath === currentPath) return;
+
+    // Derive the pageId from the path segment: '/vms/...' → 'vms'
+    const prevPageId = prevPath.replace(/^\//, '').split('/')[0];
+    if (prevPageId) {
+      clearHighlights({ pageId: prevPageId });
+    }
+  }, [location.pathname, clearHighlights]);
+
+  // Track job state transitions for the Jobs nav item badge.
   useEffect(() => {
     const previousStates = previousStatesRef.current;
-    const completedTypes = new Set<'catalog' | 'vm'>();
     let shouldFlagErrorBadge = false;
 
     for (const job of jobs) {
       const previousState = previousStates[job.id];
       if (!previousState || previousState === job.state) continue;
-
       if (job.state === 'failed' && previousActiveCountRef.current > 1) {
         shouldFlagErrorBadge = true;
       }
-
-      if (isActiveState(previousState) && isTerminalState(job.state)) {
-        const menuType = toSideMenuType(job.job_type, job.job_operation);
-        if (menuType) completedTypes.add(menuType);
-      }
     }
 
-    if (completedTypes.size > 0) {
-      setUnseenByType((prev) => {
-        let changed = false;
-        const next = { ...prev };
-        completedTypes.forEach((type) => {
-          if (!next[type]) {
-            next[type] = true;
-            changed = true;
-          }
-        });
-        return changed ? next : prev;
-      });
-    }
-
-    if (shouldFlagErrorBadge) {
-      setHasFailedWithMultipleActiveJobs(true);
-    }
-    if (activeCount === 0) {
-      setHasFailedWithMultipleActiveJobs(false);
-    }
+    if (shouldFlagErrorBadge) setHasFailedWithMultipleActiveJobs(true);
+    if (activeCount === 0) setHasFailedWithMultipleActiveJobs(false);
 
     previousStatesRef.current = jobs.reduce<Record<string, string>>((acc, job) => {
       acc[job.id] = job.state;
@@ -161,15 +200,6 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
     }, {});
     previousActiveCountRef.current = activeCount;
   }, [jobs, activeCount]);
-
-  useEffect(() => {
-    // Clear the indicator when the user visits the corresponding section
-    const path = location.pathname;
-    const visitedType = path.startsWith('/catalogs') ? 'catalog' : path.startsWith('/vms') ? 'vm' : path.startsWith('/hosts') ? 'host' : undefined;
-    if (visitedType && unseenByType[visitedType]) {
-      setUnseenByType((prev) => ({ ...prev, [visitedType]: false }));
-    }
-  }, [location.pathname, unseenByType]);
 
   const isCatalogRoute = location.pathname.startsWith('/catalogs');
   const isVmRoute = location.pathname.startsWith('/vms');
@@ -192,7 +222,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
         path: '/catalogs',
         icon: 'Library',
         guards: [{ type: 'claim', claim: Claims.LIST_CATALOG_MANIFEST }],
-        badge: unseenByType['catalog'] && !isCatalogRoute ? <ActiveTypeDot /> : undefined,
+        badge: !isCatalogRoute ? <HighlightBadge menuItemId="catalogs" /> : undefined,
       },
 
       { slug: 'computing', label: 'Computing', type: 'group', hasDivider: true },
@@ -206,7 +236,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
           { type: 'claim', claim: Claims.LIST_REVERSE_PROXY_HOSTS },
           { type: 'module', module: 'orchestrator' },
         ],
-        badge: unseenByType['host'] && !isHostRoute ? <ActiveTypeDot /> : undefined,
+        badge: !isHostRoute ? <HighlightBadge menuItemId="hosts" /> : undefined,
       },
       {
         groupName: 'computing',
@@ -215,7 +245,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
         path: '/vms',
         icon: 'VirtualMachine',
         guards: [{ type: 'claim', claim: Claims.LIST_VM }],
-        badge: unseenByType['vm'] && !isVmRoute ? <ActiveTypeDot /> : undefined,
+        badge: !isVmRoute ? <HighlightBadge menuItemId="vms" /> : undefined,
       },
       {
         groupName: 'computing',
@@ -310,7 +340,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
         guards: [{ type: 'role', role: Roles.SUPER_USER }],
       },
     ],
-    [activeCount, jobsBadgeTone, unseenByType, isCatalogRoute, isVmRoute, isHostRoute],
+    [activeCount, jobsBadgeTone, isCatalogRoute, isVmRoute, isHostRoute],
   );
 
   const guardEvaluator = useCallback(
@@ -441,19 +471,21 @@ export const MainLayout: React.FC<MainLayoutProps> = (props) => {
       <WebSocketProvider>
         <NotificationProvider>
           <EventsHubProvider>
-            <JobsProvider>
-              <LayoutProvider>
-                <SystemSettingsProvider>
-                  <HostSettingsProvider>
-                    <UserConfigProvider>
-                      {/* <VMProvider> */}
-                      <MainLayoutContent {...props} />
-                      {/* </VMProvider> */}
-                    </UserConfigProvider>
-                  </HostSettingsProvider>
-                </SystemSettingsProvider>
-              </LayoutProvider>
-            </JobsProvider>
+            <HighlightProvider>
+              <JobsProvider>
+                <LayoutProvider>
+                  <SystemSettingsProvider>
+                    <HostSettingsProvider>
+                      <UserConfigProvider>
+                        {/* <VMProvider> */}
+                        <MainLayoutContent {...props} />
+                        {/* </VMProvider> */}
+                      </UserConfigProvider>
+                    </HostSettingsProvider>
+                  </SystemSettingsProvider>
+                </LayoutProvider>
+              </JobsProvider>
+            </HighlightProvider>
           </EventsHubProvider>
         </NotificationProvider>
       </WebSocketProvider>

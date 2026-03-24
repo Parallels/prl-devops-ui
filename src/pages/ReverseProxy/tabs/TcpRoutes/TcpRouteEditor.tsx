@@ -1,8 +1,10 @@
-import React from 'react';
-import { FormField, Input, MultiToggle, Select } from '@prl/ui-kit';
+import React, { useMemo } from 'react';
+import { FormField, Input, MultiToggle, Picker, type PickerItem } from '@prl/ui-kit';
 import type { VirtualMachine } from '@/interfaces/VirtualMachine';
 import type { TargetType } from './types';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { OsIcon } from '@/utils/virtualMachine';
+import { getStateTone } from '@/utils/vmUtils';
 
 interface TcpRouteEditorProps {
   targetType: TargetType;
@@ -33,8 +35,18 @@ const TcpRouteEditor: React.FC<TcpRouteEditorProps> = ({
   onTargetVmIdChange,
   onClearError,
 }) => {
-  const vmOptions = [{ value: '', label: 'Select a VM…' }, ...availableVms.map((vm) => ({ value: vm.ID ?? '', label: `${vm.Name ?? vm.ID} (${vm.State ?? 'unknown'})` }))];
   const { themeColor } = useSystemSettings();
+
+  const vmPickerItems = useMemo<PickerItem[]>(
+    () => availableVms.map((vm) => ({
+      id: vm.ID ?? '',
+      icon: <OsIcon os={vm.OS} className="h-5 w-5" />,
+      title: vm.Name ?? vm.ID ?? '',
+      subtitle: vm.OS,
+      tags: [{ label: vm.State ?? 'unknown', tone: getStateTone(vm.State) }],
+    })),
+    [availableVms],
+  );
 
   return (
     <div className="space-y-4">
@@ -95,21 +107,19 @@ const TcpRouteEditor: React.FC<TcpRouteEditorProps> = ({
         <div className="flex gap-3">
           <div className="flex-1">
             <FormField label="Virtual Machine" required>
-              <Select
-                value={targetVmId}
-                onChange={(e) => {
-                  onTargetVmIdChange(e.target.value);
-                  onClearError('targetVmId');
-                }}
-                validationStatus={errors.targetVmId ? 'error' : 'none'}
-                disabled={disabled}
-              >
-                {vmOptions.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
+              <div className={disabled ? 'pointer-events-none opacity-60' : ''}>
+                <Picker
+                  color={themeColor}
+                  items={vmPickerItems}
+                  selectedId={targetVmId}
+                  onSelect={(item) => {
+                    onTargetVmIdChange(item.id);
+                    onClearError('targetVmId');
+                  }}
+                  placeholder="Select a virtual machine…"
+                  escapeBoundary
+                />
+              </div>
               {errors.targetVmId && <p className="mt-1 text-xs text-rose-500">{errors.targetVmId}</p>}
             </FormField>
           </div>

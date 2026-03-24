@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Button, CustomIcon, EmptyState, HealthCheck, IconButton, Live, Panel, Pill, SearchBar, SidePanel, SplitView, Table, TooltipWrapper, type Column, type SplitViewItem } from '@prl/ui-kit';
+import { Button, CustomIcon, EmptyState, IconButton, Panel, Pill, SearchBar, SidePanel, SplitView, Table, TooltipWrapper, type Column, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { useSession } from '@/contexts/SessionContext';
@@ -11,6 +11,7 @@ import { OsIcon } from '@/utils/virtualMachine';
 import { useLocation } from 'react-router-dom';
 import { useNavigateTo } from '@/hooks/useNavigateTo';
 import type { VmsDeepLinkState } from '@/types/deepLink';
+import { useHighlight } from '@/contexts/HighlightContext';
 import { getStateTone, parseVmReferenceBody, parseVmStateChangeBody, parseVmUptimeChangeBody, sortVirtualMachines, upsertVirtualMachine } from '@/utils/vmUtils';
 import { drainUnseenMessages } from '@/utils/messageQueue';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
@@ -90,23 +91,25 @@ const baseColumns: Column<VirtualMachine>[] = [
 ];
 
 // HostLink is a component so it can call useNavigateTo (hooks require components).
-function HostLink({ hostId }: { hostId: string }) {
+function HostLink({ hostId, hostName }: { hostId: string; hostName: string }) {
   const { toHost } = useNavigateTo();
+  const { addHighlight } = useHighlight();
+
   if (!hostId || hostId === '—') {
     return <span className="font-mono text-xs text-neutral-400 dark:text-neutral-500">—</span>;
   }
   return (
-    <button
-      type="button"
+    <Button
+      variant="link"
       onClick={(e) => {
         e.stopPropagation();
+        addHighlight({ pageId: 'hosts', itemId: hostId, state: 'info' });
         toHost(hostId);
       }}
-      title={`Go to host ${hostId}`}
-      className="font-mono text-xs text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 hover:underline truncate block max-w-45 text-left"
+      tooltip={`Go to host ${hostName}`}
     >
-      {hostId}
-    </button>
+      {hostName}
+    </Button>
   );
 }
 
@@ -119,7 +122,7 @@ const orchestratorColumns: Column<VirtualMachine>[] = [
     header: 'Host',
     accessor: 'host_name',
     width: 200,
-    render: (row) => <HostLink hostId={String(row.host_name ?? '—')} />,
+    render: (row) => <HostLink hostId={String(row.host_id ?? '—')} hostName={String(row.host_name ?? '—')} />,
   },
   {
     id: 'user',
@@ -154,9 +157,10 @@ interface VmTablePanelProps {
   onRowClick: (vm: VirtualMachine) => void;
   columnVisibility?: Record<string, boolean>;
   onColumnVisibilityChange?: (v: Record<string, boolean>) => void;
+  highlightRecordId?: string;
 }
 
-function VmTablePanel({ columns, data, defaultSort, emptyTitle, emptySubtitle, onRowClick, columnVisibility, onColumnVisibilityChange }: VmTablePanelProps) {
+function VmTablePanel({ columns, data, defaultSort, emptyTitle, emptySubtitle, onRowClick, columnVisibility, onColumnVisibilityChange, highlightRecordId }: VmTablePanelProps) {
   const { themeColor } = useSystemSettings();
 
   return (
@@ -179,6 +183,7 @@ function VmTablePanel({ columns, data, defaultSort, emptyTitle, emptySubtitle, o
           onRowClick={onRowClick}
           columnVisibility={columnVisibility}
           onColumnVisibilityChange={onColumnVisibilityChange}
+          rowHighlight={highlightRecordId ? (vm) => vm.ID === highlightRecordId : undefined}
           emptyState={<EmptyState icon="Container" title={emptyTitle} subtitle={emptySubtitle} />}
           panelItem={(vm) => (
             <Panel variant="glass" padding="sm" tone={getStateTone(vm.State)} decoration="both" hoverable onClick={() => onRowClick(vm)}>
@@ -229,10 +234,16 @@ export const Vms: React.FC = () => {
 
   const localColVisibility = getConfig<Record<string, boolean>>(SLUG_LOCAL_COLS, {});
   const orchColVisibility = getConfig<Record<string, boolean>>(SLUG_ORCH_COLS, {});
+  const { highlights, clearHighlights } = useHighlight();
   const [orchestratorVms, setOrchestratorVms] = useState<VirtualMachine[]>([]);
   const [localVms, setLocalVms] = useState<VirtualMachine[]>([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Derived highlight values from context
+  const vmHighlights = useMemo(() => highlights.filter((e) => e.pageId === 'vms'), [highlights]);
+  const highlightedItemId = useMemo(() => vmHighlights.find((e) => e.itemId)?.itemId, [vmHighlights]);
+  const highlightedRecordId = useMemo(() => vmHighlights.find((e) => e.recordId)?.recordId, [vmHighlights]);
   const [error, setError] = useState<string | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState<string | undefined>();
   const [selectedVm, setSelectedVm] = useState<SelectedVm | null>(null);
@@ -453,10 +464,14 @@ export const Vms: React.FC = () => {
     [pendingAction, session?.hostname, fetchVms],
   );
 
-  const handleGroupChange = useCallback((id: string) => {
-    setSelectedGroupId(id);
-    setSelectedVm(null);
-  }, []);
+  const handleGroupChange = useCallback(
+    (id: string) => {
+      setSelectedGroupId(id);
+      setSelectedVm(null);
+      clearHighlights({ pageId: 'vms', itemId: id });
+    },
+    [clearHighlights],
+  );
 
   const emptyState = () => {
     return (
@@ -500,6 +515,7 @@ export const Vms: React.FC = () => {
         label: 'Local VMs',
         subtitle: `${localVms.length} machine${localVms.length !== 1 ? 's' : ''}`,
         icon: 'VirtualMachine',
+        highlight: highlightedItemId === 'local',
         actions: (
           <IconButton
             icon="Download"
@@ -521,9 +537,13 @@ export const Vms: React.FC = () => {
             defaultSort={{ columnId: 'name', direction: 'asc' }}
             emptyTitle={query ? 'No matching VMs' : 'No local VMs'}
             emptySubtitle={query ? `No local VMs match "${query}".` : 'No virtual machines found on the local host.'}
-            onRowClick={(vm) => setSelectedVm({ vm, isOrchestrator: false })}
+            onRowClick={(vm) => {
+              setSelectedVm({ vm, isOrchestrator: false });
+              clearHighlights({ pageId: 'vms', recordId: vm.ID });
+            }}
             columnVisibility={configLoaded ? localColVisibility : undefined}
             onColumnVisibilityChange={(v) => void setConfig(SLUG_LOCAL_COLS, v)}
+            highlightRecordId={highlightedRecordId}
           />
         ),
       });
@@ -534,6 +554,7 @@ export const Vms: React.FC = () => {
         label: 'Orchestrator VMs',
         subtitle: `${orchestratorVms.length} machine${orchestratorVms.length !== 1 ? 's' : ''}`,
         icon: 'VirtualMachine',
+        highlight: highlightedItemId === 'orchestrator',
         actions: (
           <IconButton
             icon="Download"
@@ -555,16 +576,35 @@ export const Vms: React.FC = () => {
             defaultSort={{ columnId: 'name', direction: 'asc' }}
             emptyTitle={query ? 'No matching VMs' : 'No orchestrator VMs'}
             emptySubtitle={query ? `No orchestrator VMs match "${query}".` : 'No virtual machines found on the orchestrator.'}
-            onRowClick={(vm) => setSelectedVm({ vm, isOrchestrator: true })}
+            onRowClick={(vm) => {
+              setSelectedVm({ vm, isOrchestrator: true });
+              clearHighlights({ pageId: 'vms', recordId: vm.ID });
+            }}
             columnVisibility={configLoaded ? orchColVisibility : undefined}
             onColumnVisibilityChange={(v) => void setConfig(SLUG_ORCH_COLS, v)}
+            highlightRecordId={highlightedRecordId}
           />
         ),
       });
     }
 
     return result;
-  }, [orchestratorVms, localVms, filteredLocalVms, filteredOrchestratorVms, query, configLoaded, localColVisibility, orchColVisibility, setConfig, toCatalogs, themeColor]);
+  }, [
+    orchestratorVms,
+    localVms,
+    filteredLocalVms,
+    filteredOrchestratorVms,
+    query,
+    configLoaded,
+    localColVisibility,
+    orchColVisibility,
+    setConfig,
+    toCatalogs,
+    themeColor,
+    highlightedItemId,
+    highlightedRecordId,
+    clearHighlights,
+  ]);
 
   return (
     <div className="relative flex h-full min-h-0">

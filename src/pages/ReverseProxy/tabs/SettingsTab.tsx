@@ -1,73 +1,22 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Button, FormField, Input, Panel, Section, Toggle } from '@prl/ui-kit';
+import { Button, ConfirmModal, FormField, Input, MultiSelectPills, Panel, Section, TagPicker, Toggle, type TagPickerItem } from '@prl/ui-kit';
 import { ReverseProxyHost } from '@/interfaces/ReverseProxy';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
-// ── Tag input (for CORS arrays) ───────────────────────────────────────────────
-
-interface TagInputProps {
-  values: string[];
-  placeholder?: string;
-  onChange: (values: string[]) => void;
-  disabled?: boolean;
-  suggestions?: string[];
-}
-
-const TagInput: React.FC<TagInputProps> = ({ values, placeholder, onChange, disabled, suggestions = [] }) => {
-  const [draft, setDraft] = useState('');
-
-  const commit = (raw: string) => {
-    const v = raw.trim();
-    if (!v || values.includes(v)) {
-      setDraft('');
-      return;
-    }
-    onChange([...values, v]);
-    setDraft('');
-  };
-
-  return (
-    <div
-      className={`rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 p-1.5 min-h-[38px] flex flex-wrap gap-1 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
-    >
-      {values.map((v) => (
-        <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300">
-          {v}
-          <button type="button" onClick={() => onChange(values.filter((x) => x !== v))} className="hover:text-rose-500">
-            ×
-          </button>
-        </span>
-      ))}
-      <input
-        className="flex-1 min-w-[100px] bg-transparent text-sm text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none px-1"
-        placeholder={values.length === 0 ? placeholder : ''}
-        value={draft}
-        disabled={disabled}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            commit(draft);
-          }
-          if (e.key === 'Backspace' && !draft && values.length) onChange(values.slice(0, -1));
-        }}
-        onBlur={() => draft && commit(draft)}
-        list="tag-suggestions"
-      />
-      {suggestions.length > 0 && (
-        <datalist id="tag-suggestions">
-          {suggestions.map((s) => (
-            <option key={s} value={s} />
-          ))}
-        </datalist>
-      )}
-    </div>
-  );
-};
-
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'];
+
+const COMMON_HEADERS: TagPickerItem[] = [
+  { id: 'Content-Type', label: 'Content-Type' },
+  { id: 'Authorization', label: 'Authorization' },
+  { id: 'Accept', label: 'Accept' },
+  { id: 'X-Requested-With', label: 'X-Requested-With' },
+  { id: 'Origin', label: 'Origin' },
+  { id: 'Cache-Control', label: 'Cache-Control' },
+];
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 interface SettingsTabProps {
   proxyHost: ReverseProxyHost;
@@ -88,6 +37,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ proxyHost, canUpdate, 
   const [headers, setHeaders] = useState<string[]>(proxyHost.cors?.allowed_headers ?? []);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
   useEffect(() => {
     setName(proxyHost.name ?? '');
@@ -101,6 +51,18 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ proxyHost, canUpdate, 
   }, [proxyHost]);
 
   const markDirty = () => setIsDirty(true);
+
+  const handleDiscard = () => {
+    setName(proxyHost.name ?? '');
+    setHost(proxyHost.host ?? '');
+    setPort(proxyHost.port ?? '80');
+    setCorsEnabled(proxyHost.cors?.enabled ?? false);
+    setOrigins(proxyHost.cors?.allowed_origins ?? []);
+    setMethods(proxyHost.cors?.allowed_methods ?? []);
+    setHeaders(proxyHost.cors?.allowed_headers ?? []);
+    setIsDirty(false);
+    setShowDiscardConfirm(false);
+  };
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -123,8 +85,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ proxyHost, canUpdate, 
       setSaving(false);
     }
   }, [name, host, port, corsEnabled, origins, methods, headers, onSave]);
-
-  const corsDisabled = !corsEnabled;
 
   return (
     <div className="p-4 space-y-6">
@@ -178,7 +138,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ proxyHost, canUpdate, 
       {!hasTcpRoute && (
         <Panel variant="glass" backgroundColor="white" padding="xs">
           <Section title="CORS Settings" noPadding>
-            <div className="flex items-center justify-between rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-2.5">
+            {/* Enable toggle */}
+            <div className="flex items-center justify-between px-3 py-2.5">
               <div>
                 <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">Enable CORS</p>
                 <p className="text-xs text-neutral-500 dark:text-neutral-400">Applies cross-origin headers to all HTTP responses from this host</p>
@@ -195,50 +156,56 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ proxyHost, canUpdate, 
             </div>
 
             {corsEnabled && (
-              <div className="pl-3 border-l-2 border-sky-200 dark:border-sky-700 space-y-3">
-                <FormField label="Allowed Origins" description="Enter origins and press Enter. Use * for all.">
-                  <TagInput
-                    values={origins}
-                    placeholder="https://example.com"
-                    onChange={(v) => {
+              <div className="px-3 pb-3 space-y-4">
+                {/* Allowed Origins */}
+                <FormField label="Allowed Origins" description='Enter origins and press Enter. Use "*" to allow all.'>
+                  <TagPicker
+                    items={[{ id: '*', label: '*' }]}
+                    value={origins}
+                    onChange={(v: string[]) => {
                       setOrigins(v);
                       markDirty();
                     }}
-                    disabled={!canUpdate || corsDisabled}
+                    allowCreate
+                    placeholder="https://example.com"
+                    searchPlaceholder="Add origin…"
+                    color={themeColor}
+                    disabled={!canUpdate}
                   />
                 </FormField>
 
+                {/* Allowed Methods */}
                 <FormField label="Allowed Methods">
-                  <div className="flex flex-wrap gap-1.5">
-                    {HTTP_METHODS.map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => {
-                          setMethods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
-                          markDirty();
-                        }}
-                        disabled={!canUpdate || corsDisabled}
-                        className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
-                          methods.includes(m) ? 'bg-sky-600 text-white' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
-                  </div>
+                  <MultiSelectPills
+                    name="allowed_methods"
+                    options={HTTP_METHODS.map((m) => ({ value: m, label: m }))}
+                    value={methods}
+                    onChange={(selected) => {
+                      setMethods(selected);
+                      markDirty();
+                    }}
+                    color={themeColor}
+                    rounded="md"
+                    gap="1.5"
+                    size="xs"
+                    disabled={!canUpdate}
+                  />
                 </FormField>
 
-                <FormField label="Allowed Headers" description="Enter header names and press Enter.">
-                  <TagInput
-                    values={headers}
-                    placeholder="Content-Type"
-                    onChange={(v) => {
+                {/* Allowed Headers */}
+                <FormField label="Allowed Headers" description="Select common headers or type a custom one and press Enter.">
+                  <TagPicker
+                    items={COMMON_HEADERS}
+                    value={headers}
+                    onChange={(v: string[]) => {
                       setHeaders(v);
                       markDirty();
                     }}
-                    disabled={!canUpdate || corsDisabled}
-                    suggestions={['Content-Type', 'Authorization', 'Accept', 'X-Requested-With']}
+                    allowCreate
+                    placeholder="Content-Type, Authorization…"
+                    searchPlaceholder="Search or add header…"
+                    color={themeColor}
+                    disabled={!canUpdate}
                   />
                 </FormField>
               </div>
@@ -247,14 +214,27 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ proxyHost, canUpdate, 
         </Panel>
       )}
 
-      {/* Save */}
+      {/* Save / Discard */}
       {canUpdate && isDirty && (
-        <div className="flex justify-end pt-2 border-t border-neutral-100 dark:border-neutral-800">
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-100 dark:border-neutral-800">
+          <Button variant="soft" color="slate" size="sm" onClick={() => setShowDiscardConfirm(true)}>
+            Discard Changes
+          </Button>
           <Button variant="solid" color={themeColor} size="sm" loading={saving} onClick={() => void handleSave()}>
             Save Settings
           </Button>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={showDiscardConfirm}
+        title="Discard Changes"
+        description="You have unsaved changes. Are you sure you want to discard them?"
+        confirmLabel="Discard"
+        confirmColor="rose"
+        onConfirm={handleDiscard}
+        onClose={() => setShowDiscardConfirm(false)}
+      />
     </div>
   );
 };

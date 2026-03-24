@@ -14,8 +14,10 @@ export type TabsJustify = "start" | "center" | "end" | "between";
 export interface TabItemAction {
   id?: string;
   label?: ReactNode;
-  icon: string | React.ReactElement;
-  onClick: () => void;
+  /** Render a fully custom React node in the tab bar. When set, `icon` and `onClick` are ignored. */
+  node?: ReactNode;
+  icon?: string | React.ReactElement;
+  onClick?: () => void;
   color?: ThemeColor;
   active?: boolean;
 }
@@ -381,23 +383,27 @@ const Tabs: React.FC<TabsProps> = ({
           );
         })}
         <div className="flex-grow" />
-        <div id="tab-item-actions-end" className="flex items-center text-neutral-400 dark:text-neutral-500">
+        <div id="tab-item-actions-end" className="flex items-center gap-1 pr-2 text-neutral-400 dark:text-neutral-500">
           {items
             .find((item) => item.id === activeId)
-            ?.actions?.map((action, idx) => (
-              <IconButton
-                key={`tab-action-${idx}`}
-                accent={true}
-                color={action.color ?? color}
-                accentColor={action.color ?? color}
-                icon={action.icon}
-                size={size}
-                aria-pressed={action.active || undefined}
-                aria-label={typeof action.label === "string" ? action.label : `Action ${idx + 1}`}
-                onClick={action.onClick}
-                className={classNames(`${action.active && iconAccentActive[action.color ?? color]}`)}
-              />
-            ))}
+            ?.actions?.map((action, idx) =>
+              action.node ? (
+                <React.Fragment key={action.id ?? `tab-action-${idx}`}>{action.node}</React.Fragment>
+              ) : action.icon ? (
+                <IconButton
+                  key={action.id ?? `tab-action-${idx}`}
+                  accent={true}
+                  color={action.color ?? color}
+                  accentColor={action.color ?? color}
+                  icon={action.icon}
+                  size={size}
+                  aria-pressed={action.active || undefined}
+                  aria-label={typeof action.label === "string" ? action.label : `Action ${idx + 1}`}
+                  onClick={action.onClick ?? (() => undefined)}
+                  className={classNames(`${action.active && iconAccentActive[action.color ?? color]}`)}
+                />
+              ) : null
+            )}
         </div>
       </div>
       {items.map((item) => {

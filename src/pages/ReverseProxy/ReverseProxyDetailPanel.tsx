@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CustomIcon, IconButton, Pill, Tabs } from '@prl/ui-kit';
+import { Button, Tabs } from '@prl/ui-kit';
 import { ReverseProxyConfig, ReverseProxyHost, ReverseProxyHostHttpRoute, ReverseProxyHostTcpRoute } from '@/interfaces/ReverseProxy';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
-import { PageHeader, PageHeaderIcon } from '@/components/PageHeader';
 import { HttpRoutesTab } from './tabs/HttpRoutesTab';
 import { TcpRouteTab } from './tabs/TcpRouteTab';
 import { ProxyTrafficLogsTab } from './tabs/ProxyTrafficLogsTab';
 import { SettingsTab } from './tabs/SettingsTab';
 import { TcpRouteView } from './tabs/TcpRoutes/TcpRouteView';
-import { HttpRouteFormData } from './ReverseProxyModals';
+import { HttpRouteFormData, HttpRouteModal } from './ReverseProxyModals';
 import { devopsService } from '@/services/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { Claims } from '@/interfaces/tokenTypes';
@@ -27,7 +26,7 @@ export interface ReverseProxyDetailPanelProps {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = ({ proxyHost, config, availableVms, orchestratorHostId, onDelete, onUpdate }) => {
+export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = ({ proxyHost, config, availableVms, orchestratorHostId, onUpdate }) => {
   const { session, hasClaim } = useSession();
   const { themeColor } = useSystemSettings();
   const hostname = session?.hostname ?? '';
@@ -40,7 +39,7 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
   const canDeleteRoute = hasClaim(Claims.DELETE_REVERSE_PROXY_HOST_HTTP_ROUTE);
 
   const [localHost, setLocalHost] = useState<ReverseProxyHost>(proxyHost);
-  const [restarting, setRestarting] = useState(false);
+  const [showAddRouteModal, setShowAddRouteModal] = useState(false);
 
   // Keep local state in sync when the parent updates (e.g. after list refresh)
   useEffect(() => {
@@ -49,16 +48,6 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
 
   const hasTcpRoute = !!localHost.tcp_route;
   const httpRoutes = [...new Map((localHost.http_routes ?? []).map((r) => [r.id, r])).values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-  const routeType = hasTcpRoute ? 'TCP' : httpRoutes.length > 0 ? 'HTTP' : null;
-
-  const handleRestart = useCallback(async () => {
-    setRestarting(true);
-    try {
-      await devopsService.reverseProxy.restartReverseProxy(hostname, orchestratorHostId);
-    } finally {
-      setRestarting(false);
-    }
-  }, [hostname, orchestratorHostId]);
 
   const buildHttpRoutePayload = (data: HttpRouteFormData, routeId?: string): Partial<ReverseProxyHostHttpRoute> => ({
     ...(routeId ? { id: routeId } : {}),
@@ -147,31 +136,9 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
     [hostname, localHost, orchestratorHostId, onUpdate],
   );
 
-  const displayName = localHost.name || localHost.host || '—';
-  const title = `${displayName}:${localHost.port ?? '—'}`;
-
   return (
     <div className="flex flex-col h-full min-h-0">
-      <PageHeader
-        icon={
-          <PageHeaderIcon color="rose">
-            <CustomIcon icon={routeType === 'TCP' ? 'ReverseProxyTCP' : 'ReverseProxyHTTP'} className="w-5 h-5" />
-          </PageHeaderIcon>
-        }
-        title={title}
-        subtitle={localHost.id}
-        actions={
-          <>
-            {routeType && (
-              <Pill size="sm" tone={routeType === 'TCP' ? 'violet' : 'sky'} variant="soft">
-                {routeType}
-              </Pill>
-            )}
-            <IconButton icon="Restart" size="sm" variant="ghost" color="slate" loading={restarting} onClick={() => void handleRestart()} aria-label="Restart proxy engine" />
-            {canDelete && <IconButton icon="Trash" size="sm" variant="ghost" color="danger" onClick={() => onDelete(localHost)} aria-label="Delete proxy host" />}
-          </>
-        }
-      />
+      <HttpRouteModal isOpen={showAddRouteModal} availableVms={availableVms} onClose={() => setShowAddRouteModal(false)} onSubmit={handleAddHttpRoute} />
 
       {hasTcpRoute ? (
         <Tabs
@@ -201,14 +168,14 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
               ),
             },
             {
-              id: 'logs',
-              label: 'Logs',
-              panel: <ProxyTrafficLogsTab hostId={localHost.id} trafficType="tcp" />,
-            },
-            {
               id: 'settings',
               label: 'Settings',
               panel: <SettingsTab proxyHost={localHost} canUpdate={canUpdate} onSave={handleSaveSettings} />,
+            },
+            {
+              id: 'logs',
+              label: 'Logs',
+              panel: <ProxyTrafficLogsTab hostId={localHost.id} trafficType="tcp" />,
             },
           ]}
         />
@@ -225,7 +192,19 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
           items={[
             {
               id: 'routes',
-              label: `HTTP Routes${httpRoutes.length ? ` (${httpRoutes.length})` : ''}`,
+              label: `Routes`,
+              actions:
+                canCreate || canCreateRoute
+                  ? [
+                      {
+                        node: (
+                          <Button variant="soft" color={themeColor} size="sm" leadingIcon="Add" onClick={() => setShowAddRouteModal(true)}>
+                            Add Route
+                          </Button>
+                        ),
+                      },
+                    ]
+                  : undefined,
               panel: (
                 <HttpRoutesTab
                   proxyHost={localHost}
@@ -234,10 +213,8 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
                   hasTcpRoute={hasTcpRoute}
                   availableVms={availableVms}
                   orchestratorHostId={orchestratorHostId}
-                  canCreate={canCreate || canCreateRoute}
                   canUpdate={canUpdate || canUpdateRoute}
                   canDelete={canDelete || canDeleteRoute}
-                  onAddRoute={handleAddHttpRoute}
                   onUpdateRoute={handleUpdateHttpRoute}
                   onDeleteRoute={handleDeleteHttpRoute}
                   onReorderRoute={handleReorderHttpRoute}
@@ -263,14 +240,14 @@ export const ReverseProxyDetailPanel: React.FC<ReverseProxyDetailPanelProps> = (
                 ]
               : []),
             {
-              id: 'logs',
-              label: 'Logs',
-              panel: <ProxyTrafficLogsTab hostId={localHost.id} trafficType="http" />,
-            },
-            {
               id: 'settings',
               label: 'Settings',
               panel: <SettingsTab proxyHost={localHost} canUpdate={canUpdate} onSave={handleSaveSettings} />,
+            },
+            {
+              id: 'logs',
+              label: 'Logs',
+              panel: <ProxyTrafficLogsTab hostId={localHost.id} trafficType="http" />,
             },
           ]}
         />

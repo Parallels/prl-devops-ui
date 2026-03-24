@@ -55,7 +55,10 @@ export function useNavigateTo() {
 
     return {
         toVm(vmId: string, groupId?: string) {
-            const state: VmsDeepLinkState = { selectVmId: vmId, selectGroupId: groupId };
+            const state: VmsDeepLinkState = {
+                selectVmId: vmId,
+                selectGroupId: groupId,
+            };
             navigate('/vms', { state });
         },
 

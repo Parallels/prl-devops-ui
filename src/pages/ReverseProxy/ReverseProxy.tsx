@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, ConfirmModal, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, NotificationModal, Pause, Pill, SplitView, Toggle, type SplitViewItem } from '@prl/ui-kit';
+import { ConfirmModal, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, NotificationModal, Pause, Pill, SplitView, Toggle, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { ReverseProxyConfig, ReverseProxyHost } from '@/interfaces/ReverseProxy';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
@@ -257,7 +257,7 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId, 
       />
 
       {/* ── Split view ──────────────────────────────────────────── */}
-      <div className="flex-1 bg-white ">
+      <div className="flex flex-1 min-h-0 bg-white">
         <SplitView
           className="flex-1 min-w-0"
           items={items}

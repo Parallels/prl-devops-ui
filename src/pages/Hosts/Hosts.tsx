@@ -29,6 +29,7 @@ import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { OsIcon } from '@/utils/virtualMachine';
 import { useNavigateTo } from '@/hooks/useNavigateTo';
 import type { HostsDeepLinkState } from '@/types/deepLink';
+import { useHighlight } from '@/contexts/HighlightContext';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import {
   getStateTone,
@@ -43,7 +44,6 @@ import {
 } from '@/utils/vmUtils';
 import { drainUnseenMessages } from '@/utils/messageQueue';
 import { PageHeaderIcon } from '@/components/PageHeader';
-import { set } from 'date-fns';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -91,12 +91,12 @@ export const Hosts: React.FC = () => {
   const { themeColor } = useSystemSettings();
   const canCreate = hasClaim(Claims.CREATE_REVERSE_PROXY_HOST);
   const { toVm } = useNavigateTo();
+  const { highlights, addHighlight, clearHighlights } = useHighlight();
   const location = useLocation();
   const deepLink = location.state as HostsDeepLinkState | null;
   const deepLinkConsumedRef = useRef(false);
   const lastOrchestratorEventIdRef = useRef<string | null>(null);
   const lastPdfmEventIdRef = useRef<string | null>(null);
-  const lastJobManagerEventIdRef = useRef<string | null>(null);
   const pendingVmFetchesRef = useRef<Set<string>>(new Set());
 
   const [hosts, setHosts] = useState<DevOpsRemoteHost[]>([]);
@@ -113,7 +113,10 @@ export const Hosts: React.FC = () => {
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [deployNotification, setDeployNotification] = useState<string | null>(null);
-  const [highlightedHostIds, setHighlightedHostIds] = useState<Set<string>>(new Set());
+
+  // Derive highlighted host set from context (set by MainLayout job watcher)
+  const hostHighlights = useMemo(() => highlights.filter((e) => e.pageId === 'hosts'), [highlights]);
+  const highlightedHostIds = useMemo(() => new Set(hostHighlights.map((e) => e.itemId).filter(Boolean) as string[]), [hostHighlights]);
 
   async function mapRemoteHost(h: DevOpsRemoteHost): Promise<DevOpsRemoteHost> {
     let hostVms: VirtualMachine[] = [];
@@ -359,34 +362,6 @@ export const Hosts: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerMessages['pdfm']]);
 
-  // ── Job completion — highlight newly deployed hosts ──────────────────────
-  useEffect(() => {
-    const msgs = containerMessages['job_manager'];
-    const unseen = drainUnseenMessages(msgs, lastJobManagerEventIdRef, 'all');
-    if (unseen.length === 0) return;
-
-    for (const msg of unseen) {
-      const { raw } = msg;
-      if (raw.message !== 'JOB_COMPLETED') continue;
-
-      const job = raw.body as { job_type?: string; job_operation?: string; result_record_id?: string; result_record_type?: string } | undefined;
-      if (!job?.result_record_id) continue;
-
-      // Match either by result_record_type (completion payload) or by job_type+job_operation (full job payload)
-      const isOrchestratorDeploy =
-        job.result_record_type?.toLowerCase() === 'orchestrator_host' ||
-        (job.job_type?.toLowerCase() === 'orchestrator' && job.job_operation?.toLowerCase() === 'deploy');
-      if (!isOrchestratorDeploy) continue;
-
-      setHighlightedHostIds((prev) => {
-        const next = new Set(prev);
-        next.add(job.result_record_id!);
-        return next;
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [containerMessages['job_manager']]);
-
   // Consume deep-link state once hosts have loaded
   useEffect(() => {
     if (deepLinkConsumedRef.current || loading || !deepLink?.selectHostId) return;
@@ -484,8 +459,16 @@ export const Hosts: React.FC = () => {
                   role="button"
                   tabIndex={0}
                   title="Open in VMs page"
-                  onClick={() => toVm(vm.ID as string, 'orchestrator')}
-                  onKeyDown={(e) => e.key === 'Enter' && toVm(vm.ID as string, 'orchestrator')}
+                  onClick={() => {
+                    addHighlight({ pageId: 'vms', itemId: 'orchestrator', recordId: vm.ID as string, state: 'info' });
+                    toVm(vm.ID as string, 'orchestrator');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      addHighlight({ pageId: 'vms', itemId: 'orchestrator', recordId: vm.ID as string, state: 'info' });
+                      toVm(vm.ID as string, 'orchestrator');
+                    }
+                  }}
                   className="flex items-center py-2 pl-6 truncate w-full px-4 hover:bg-gray-200/60 dark:hover:bg-gray-800/40 cursor-pointer max-h-12"
                 >
                   <div className="flex  h-full p-2">
@@ -505,7 +488,7 @@ export const Hosts: React.FC = () => {
             </div>
           ) : undefined,
       })),
-    [hosts, handlePause, handleRemove, highlightedHostIds],
+    [hosts, highlightedHostIds, addHighlight, toVm],
   );
 
   return (
@@ -516,12 +499,7 @@ export const Hosts: React.FC = () => {
         value={selectedId}
         onChange={(id) => {
           setSelectedId(id);
-          setHighlightedHostIds((prev) => {
-            if (!prev.has(id)) return prev;
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
+          clearHighlights({ pageId: 'hosts', itemId: id });
         }}
         loading={loading}
         error={error ?? undefined}

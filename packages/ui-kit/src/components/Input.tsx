@@ -6,6 +6,7 @@ import { ThemeColor } from '@/theme';
 
 type InputValidationStatus = 'none' | 'error' | 'success';
 type InputSize = 'sm' | 'md' | 'lg';
+export type InputVariant = 'flat' | 'elevated' | 'ghost' | 'underline';
 
 const sizeStyles: Record<
   InputSize,
@@ -46,129 +47,162 @@ const sizeStyles: Record<
 };
 
 type InputToneTokens = {
+  /** Full focus indicator: colored border + glow ring. Used by flat / elevated / ghost variants. */
   focusRing: string;
+  /** Border-only focus indicator: no ring. Used by the underline variant. */
+  focusBorder: string;
   icon: string;
 };
 
 const toneTokens: Partial<Record<ThemeColor, InputToneTokens>> = {
   parallels: {
     focusRing: 'focus:border-rose-400 focus:ring-2 focus:ring-rose-400/60',
+    focusBorder: 'focus:border-rose-500',
     icon: 'text-rose-500 dark:text-rose-300',
   },
   brand: {
     focusRing: 'focus:border-rose-400 focus:ring-2 focus:ring-rose-400/60',
+    focusBorder: 'focus:border-rose-500',
     icon: 'text-rose-500 dark:text-rose-300',
   },
   theme: {
     focusRing: 'focus:border-rose-400 focus:ring-2 focus:ring-rose-400/60',
+    focusBorder: 'focus:border-rose-500',
     icon: 'text-rose-500 dark:text-rose-300',
   },
   red: {
     focusRing: 'focus:border-rose-400 focus:ring-2 focus:ring-rose-400/60',
+    focusBorder: 'focus:border-rose-500',
     icon: 'text-rose-500 dark:text-rose-300',
   },
   orange: {
     focusRing: 'focus:border-orange-400 focus:ring-2 focus:ring-orange-400/60',
+    focusBorder: 'focus:border-orange-500',
     icon: 'text-orange-500 dark:text-orange-300',
   },
   amber: {
     focusRing: 'focus:border-amber-400 focus:ring-2 focus:ring-amber-400/60',
+    focusBorder: 'focus:border-amber-500',
     icon: 'text-amber-500 dark:text-amber-300',
   },
   yellow: {
     focusRing: 'focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/60',
+    focusBorder: 'focus:border-yellow-500',
     icon: 'text-yellow-500 dark:text-yellow-300',
   },
   lime: {
     focusRing: 'focus:border-lime-400 focus:ring-2 focus:ring-lime-400/60',
+    focusBorder: 'focus:border-lime-500',
     icon: 'text-lime-500 dark:text-lime-300',
   },
   green: {
     focusRing: 'focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/60',
+    focusBorder: 'focus:border-emerald-500',
     icon: 'text-emerald-500 dark:text-emerald-300',
   },
   emerald: {
     focusRing: 'focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/60',
+    focusBorder: 'focus:border-emerald-500',
     icon: 'text-emerald-500 dark:text-emerald-300',
   },
   teal: {
     focusRing: 'focus:border-teal-400 focus:ring-2 focus:ring-teal-400/60',
+    focusBorder: 'focus:border-teal-500',
     icon: 'text-teal-500 dark:text-teal-300',
   },
   cyan: {
     focusRing: 'focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/60',
+    focusBorder: 'focus:border-cyan-500',
     icon: 'text-cyan-500 dark:text-cyan-300',
   },
   sky: {
     focusRing: 'focus:border-sky-400 focus:ring-2 focus:ring-sky-400/60',
+    focusBorder: 'focus:border-sky-500',
     icon: 'text-sky-500 dark:text-sky-300',
   },
   blue: {
     focusRing: 'focus:border-blue-400 focus:ring-2 focus:ring-blue-400/60',
+    focusBorder: 'focus:border-blue-500',
     icon: 'text-blue-500 dark:text-blue-300',
   },
   indigo: {
     focusRing: 'focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/60',
+    focusBorder: 'focus:border-indigo-500',
     icon: 'text-indigo-500 dark:text-indigo-300',
   },
   violet: {
     focusRing: 'focus:border-violet-400 focus:ring-2 focus:ring-violet-400/60',
+    focusBorder: 'focus:border-violet-500',
     icon: 'text-violet-500 dark:text-violet-300',
   },
   purple: {
     focusRing: 'focus:border-purple-400 focus:ring-2 focus:ring-purple-400/60',
+    focusBorder: 'focus:border-purple-500',
     icon: 'text-purple-500 dark:text-purple-300',
   },
   fuchsia: {
     focusRing: 'focus:border-fuchsia-400 focus:ring-2 focus:ring-fuchsia-400/60',
+    focusBorder: 'focus:border-fuchsia-500',
     icon: 'text-fuchsia-500 dark:text-fuchsia-300',
   },
   pink: {
     focusRing: 'focus:border-pink-400 focus:ring-2 focus:ring-pink-400/60',
+    focusBorder: 'focus:border-pink-500',
     icon: 'text-pink-500 dark:text-pink-300',
   },
   rose: {
     focusRing: 'focus:border-rose-400 focus:ring-2 focus:ring-rose-400/60',
+    focusBorder: 'focus:border-rose-500',
     icon: 'text-rose-500 dark:text-rose-300',
   },
   slate: {
     focusRing: 'focus:border-slate-500 focus:ring-2 focus:ring-slate-500/60',
+    focusBorder: 'focus:border-slate-600',
     icon: 'text-slate-500 dark:text-slate-200',
   },
   gray: {
     focusRing: 'focus:border-gray-400 focus:ring-2 focus:ring-gray-400/60',
+    focusBorder: 'focus:border-gray-500',
     icon: 'text-gray-500 dark:text-gray-300',
   },
   zinc: {
     focusRing: 'focus:border-zinc-400 focus:ring-2 focus:ring-zinc-400/60',
+    focusBorder: 'focus:border-zinc-500',
     icon: 'text-zinc-500 dark:text-zinc-300',
   },
   neutral: {
     focusRing: 'focus:border-neutral-400 focus:ring-2 focus:ring-neutral-400/60 dark:focus:border-neutral-500 dark:focus:ring-neutral-500/60',
+    focusBorder: 'focus:border-neutral-600 dark:focus:border-neutral-400',
     icon: 'text-neutral-500 dark:text-neutral-300',
   },
   stone: {
     focusRing: 'focus:border-stone-400 focus:ring-2 focus:ring-stone-400/60',
+    focusBorder: 'focus:border-stone-500',
     icon: 'text-stone-500 dark:text-stone-300',
   },
   white: {
     focusRing: 'focus:border-slate-400 focus:ring-2 focus:ring-slate-400/60',
+    focusBorder: 'focus:border-slate-500',
     icon: 'text-slate-400 dark:text-slate-200',
   },
   info: {
     focusRing: 'focus:border-sky-400 focus:ring-2 focus:ring-sky-400/60',
+    focusBorder: 'focus:border-sky-500',
     icon: 'text-sky-500 dark:text-sky-300',
   },
   success: {
     focusRing: 'focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/60',
+    focusBorder: 'focus:border-emerald-500',
     icon: 'text-emerald-500 dark:text-emerald-300',
   },
   warning: {
     focusRing: 'focus:border-yellow-400 focus:ring-2 focus:ring-yellow-400/60',
+    focusBorder: 'focus:border-yellow-500',
     icon: 'text-yellow-500 dark:text-yellow-300',
   },
   danger: {
     focusRing: 'focus:border-rose-400 focus:ring-2 focus:ring-rose-400/60',
+    focusBorder: 'focus:border-rose-500',
     icon: 'text-rose-500 dark:text-rose-300',
   },
 };
@@ -188,11 +222,32 @@ const unstyledStatusClasses: Record<Exclude<InputValidationStatus, 'none'>, stri
 const disabledClasses =
   'disabled:cursor-not-allowed disabled:border-neutral-200 disabled:bg-neutral-100 disabled:text-neutral-400 dark:disabled:border-neutral-700 dark:disabled:bg-neutral-800 dark:disabled:text-neutral-500';
 
+/**
+ * Visual surface variants:
+ *
+ * flat      — clean thin border, no shadow. Best for most form contexts. (default)
+ * elevated  — adds a subtle drop shadow; stands out against low-contrast backgrounds.
+ * ghost     — transparent border at rest; border and ring reveal on hover, focus, or validation.
+ *             Great for inline editing or dense layouts.
+ * underline — bottom border only; no background fill. Minimalist / inline editing style.
+ *             Focus shows the accent border colour; no glow ring.
+ */
+const variantStyles: Record<InputVariant, string> = {
+  flat: 'rounded-lg border border-neutral-300 bg-white dark:border-neutral-700 dark:bg-neutral-900',
+  elevated: 'rounded-lg border border-neutral-300 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900',
+  ghost:
+    'rounded-lg border border-transparent bg-neutral-100/80 hover:border-neutral-300 hover:bg-white dark:bg-neutral-800/60 dark:hover:border-neutral-600 dark:hover:bg-neutral-800',
+  underline:
+    'rounded-none border-0 border-b border-neutral-300 bg-transparent px-0 transition-colors dark:border-neutral-600',
+};
+
 type IconRenderer = string | React.ReactElement;
 
 export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'color'> {
   size?: InputSize;
   tone?: ButtonColor;
+  /** Visual surface style. Defaults to `flat`. */
+  variant?: InputVariant;
   validationStatus?: InputValidationStatus;
   leadingIcon?: IconRenderer;
   trailingIcon?: IconRenderer;
@@ -203,7 +258,7 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { size = 'md', tone = 'blue', validationStatus = 'none', leadingIcon, trailingIcon, onTrailingIconClick, className, wrapperClassName, disabled, unstyled = false, ...rest },
+  { size = 'md', tone = 'blue', variant = 'flat', validationStatus = 'none', leadingIcon, trailingIcon, onTrailingIconClick, className, wrapperClassName, disabled, unstyled = false, ...rest },
   ref: ForwardedRef<HTMLInputElement>,
 ) {
   const renderIcon = useIconRenderer();
@@ -231,7 +286,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const baseInputClasses = classNames(
     'block w-full text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none dark:text-neutral-100 dark:placeholder:text-neutral-500',
     sizeToken.input,
-    !isUnstyled && 'rounded-lg border border-neutral-300 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900',
+    !isUnstyled && variantStyles[variant],
     disabledClasses,
     hasLeadingIcon && sizeToken.leadingPadding,
     hasTrailingIcon && sizeToken.trailingPadding,
@@ -249,7 +304,10 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 
   const statusClass = validationStatus !== 'none' ? (isUnstyled ? unstyledStatusClasses[validationStatus] : statusClasses[validationStatus]) : undefined;
 
-  const mergedInputClasses = classNames(isUnstyled ? unstyledClasses : baseInputClasses, !isUnstyled && tokens.focusRing);
+  const mergedInputClasses = classNames(
+    isUnstyled ? unstyledClasses : baseInputClasses,
+    !isUnstyled && (variant === 'underline' ? tokens.focusBorder : tokens.focusRing),
+  );
 
   const renderIconWrapper = (visual: IconRenderer, position: 'left' | 'right', onClick?: React.MouseEventHandler<HTMLButtonElement>) => {
     if (!visual) {

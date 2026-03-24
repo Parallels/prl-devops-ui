@@ -1,259 +1,217 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, ConfirmModal, CustomIcon, IconButton, NotificationModal, SplitView, type SplitViewItem } from '@prl/ui-kit';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, ConfirmModal, CustomIcon, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { DevOpsRolesAndClaims } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
-import { RoleDetail, type RoleDetailRef } from './RoleDetail';
-
-const NEW_ROLE_ID = '__new__';
+import { RoleDetail } from './RoleDetail';
+import { PageHeaderIcon } from '@/components/PageHeader';
 
 export const Roles: React.FC = () => {
-    const [roles, setRoles] = useState<DevOpsRolesAndClaims[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>();
-    const { session, hasClaim } = useSession();
-    const { themeColor } = useSystemSettings();
-    const hostname = session?.hostname ?? '';
+  const [roles, setRoles] = useState<DevOpsRolesAndClaims[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>();
+  const { session, hasClaim } = useSession();
+  const { themeColor } = useSystemSettings();
+  const hostname = session?.hostname ?? '';
 
-    const [selectedId, setSelectedId] = useState<string | undefined>();
-    const [newRole, setNewRole] = useState<DevOpsRolesAndClaims | null>(null);
-    const [isDirty, setIsDirty] = useState(false);
-    const [saving, setSaving] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | undefined>();
 
-    const [roleToDelete, setRoleToDelete] = useState<DevOpsRolesAndClaims | null>(null);
-    const [deleting, setDeleting] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState<DevOpsRolesAndClaims | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
-    const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-    const [saveResult, setSaveResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [saveResult, setSaveResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-    const canCreate = useMemo(() => hasClaim('CREATE_ROLE'), [hasClaim]);
-    const canDelete = useMemo(() => hasClaim('DELETE_ROLE'), [hasClaim]);
+  // Create modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [modalName, setModalName] = useState('');
+  const [modalDescription, setModalDescription] = useState('');
+  const [modalSaving, setModalSaving] = useState(false);
 
-    const detailRef = useRef<RoleDetailRef>(null);
+  const canCreate = useMemo(() => hasClaim('CREATE_ROLE'), [hasClaim]);
+  const canDelete = useMemo(() => hasClaim('DELETE_ROLE'), [hasClaim]);
 
-    const fetchRoles = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const result = await devopsService.roles.getRoles(hostname);
-            setRoles(result);
-        } catch (err: any) {
-            setError(err?.message ?? 'Failed to load roles');
-            console.error('Failed to fetch roles:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, [hostname]);
+  const fetchRoles = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await devopsService.roles.getRoles(hostname);
+      setRoles(result);
+    } catch (err: any) {
+      setError(err?.message ?? 'Failed to load roles');
+      console.error('Failed to fetch roles:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [hostname]);
 
-    useEffect(() => {
-        void fetchRoles();
-    }, [fetchRoles]);
+  useEffect(() => {
+    void fetchRoles();
+  }, [fetchRoles]);
 
-    const handleSave = useCallback((created: DevOpsRolesAndClaims) => {
-        setRoles((prev) => [...prev, created]);
-        setNewRole(null);
-        setSelectedId(created.id);
-        setIsDirty(false);
-    }, []);
+  const handleDelete = useCallback(
+    async (role: DevOpsRolesAndClaims) => {
+      if (!role.id) return;
+      setDeleting(true);
+      try {
+        await devopsService.roles.removeRole(hostname, role.id);
+        setRoles((prev) => prev.filter((r) => r.id !== role.id));
+        setRoleToDelete(null);
+        if (selectedId === role.id) setSelectedId(undefined);
+      } catch (err) {
+        console.error('Failed to delete role:', err);
+      } finally {
+        setDeleting(false);
+      }
+    },
+    [hostname, selectedId],
+  );
 
-    const handleDelete = useCallback(async (role: DevOpsRolesAndClaims) => {
-        if (!role.id) return;
-        setDeleting(true);
-        try {
-            await devopsService.roles.removeRole(hostname, role.id);
-            setRoles((prev) => prev.filter((r) => r.id !== role.id));
-            setRoleToDelete(null);
-            if (selectedId === role.id) setSelectedId(undefined);
-        } catch (err) {
-            console.error('Failed to delete role:', err);
-        } finally {
-            setDeleting(false);
-        }
-    }, [hostname, selectedId]);
+  const handleAddNew = useCallback(() => {
+    setShowCreateModal(true);
+  }, []);
 
-    const handleAddNew = useCallback(() => {
-        if (newRole) return;
-        const empty: DevOpsRolesAndClaims = { id: NEW_ROLE_ID, name: '', description: '', users: [] };
-        setNewRole(empty);
-        setSelectedId(NEW_ROLE_ID);
-    }, [newRole]);
+  const handleModalClose = useCallback(() => {
+    setShowCreateModal(false);
+    setModalName('');
+    setModalDescription('');
+  }, []);
 
-    const handleCancelNew = useCallback(() => {
-        setNewRole(null);
-        setIsDirty(false);
-        setSelectedId(roles[0]?.id);
-    }, [roles]);
+  const handleModalCreate = useCallback(async () => {
+    if (!modalName.trim()) return;
+    setModalSaving(true);
+    try {
+      const created = await devopsService.roles.createRole(hostname, {
+        name: modalName.trim(),
+        description: modalDescription.trim() || undefined,
+      });
+      setRoles((prev) => [...prev, created]);
+      setSelectedId(created.id);
+      handleModalClose();
+      setSaveResult({ type: 'success', message: 'The role has been created successfully.' });
+    } catch (err: any) {
+      setSaveResult({ type: 'error', message: err?.message ?? 'An unexpected error occurred while creating the role.' });
+    } finally {
+      setModalSaving(false);
+    }
+  }, [hostname, modalName, modalDescription, handleModalClose]);
 
-    const executeCancel = useCallback(() => {
-        setShowCancelConfirm(false);
-        if (newRole) {
-            handleCancelNew();
-        } else {
-            detailRef.current?.reset();
-        }
-    }, [newRole, handleCancelNew]);
+  const items: SplitViewItem[] = useMemo(
+    () =>
+      roles.map((role) => ({
+        id: role.id ?? '',
+        label: role.name ?? 'Unknown',
+        subtitle: role.description ?? `${(role.users ?? []).length} user(s)`,
+        icon: 'Roles' as const,
+        panel: <RoleDetail role={role} />,
+        actions: <>{canDelete && <IconButton variant="ghost" size="xs" color="danger" icon="Trash" onClick={() => setRoleToDelete(role)} />}</>,
+      })),
+    [roles, canDelete],
+  );
 
-    const handleHeaderSave = useCallback(async () => {
-        setSaving(true);
-        try {
-            await detailRef.current?.save();
-            setSaveResult({ type: 'success', message: 'The role has been created successfully.' });
-        } catch (err: any) {
-            setSaveResult({ type: 'error', message: err?.message ?? 'An unexpected error occurred while saving.' });
-        } finally {
-            setSaving(false);
-        }
-    }, []);
+  const panelHeaderProps = useCallback(
+    (activeItem: SplitViewItem) => {
+      const role = roles.find((r) => r.id === activeItem.id);
+      if (!role) return undefined;
+      return {
+        icon: (
+          <PageHeaderIcon color={themeColor}>
+            <CustomIcon icon="Role" className="w-5 h-5" />
+          </PageHeaderIcon>
+        ),
+        title: `Role: ${role.name ?? 'Unknown'}`,
+        subtitle: role.description ?? `${(role.users ?? []).length} user${(role.users ?? []).length === 1 ? '' : 's'} assigned`,
+      };
+    },
+    [roles, themeColor],
+  );
 
-    const handleHeaderCancel = useCallback(() => {
-        if (isDirty) {
-            setShowCancelConfirm(true);
-        } else if (newRole) {
-            handleCancelNew();
-        }
-    }, [isDirty, newRole, handleCancelNew]);
-
-    const allRoles = useMemo(() => (newRole ? [newRole, ...roles] : roles), [roles, newRole]);
-
-    const items: SplitViewItem[] = useMemo(
-        () =>
-            allRoles.map((role) => {
-                const isNew = role.id === NEW_ROLE_ID;
-                return {
-                    id: role.id ?? '',
-                    label: isNew ? 'New Role' : (role.name ?? 'Unknown'),
-                    subtitle: isNew ? 'Fill in the details below' : (role.description ?? `${(role.users ?? []).length} user(s)`),
-                    icon: 'Roles' as const,
-                    badges: isNew ? [{ label: 'New', tone: 'green' as const }] : undefined,
-                    panel: (
-                        <RoleDetail
-                            ref={detailRef}
-                            role={role}
-                            isNew={isNew}
-                            onSave={handleSave}
-                            onDirtyChange={setIsDirty}
-                        />
-                    ),
-                    actions: isNew ? undefined : (
-                        <>
-                            {canDelete && (
-                                <IconButton
-                                    variant="ghost"
-                                    size="xs"
-                                    color="danger"
-                                    icon="Trash"
-                                    onClick={() => setRoleToDelete(role)}
-                                />
-                            )}
-                        </>
-                    ),
-                };
-            }),
-        [allRoles, handleSave, canDelete],
-    );
-
-    const panelHeaderProps = useCallback(
-        (activeItem: SplitViewItem) => {
-            const isNew = activeItem.id === NEW_ROLE_ID;
-            const role = isNew ? newRole : roles.find((r) => r.id === activeItem.id);
-            if (!role) return undefined;
-            return {
-                icon: (
-                    <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400">
-                        <CustomIcon icon="Role" className="w-5 h-5" />
-                    </div>
-                ),
-                title: isNew ? 'New Role' : (role.name ?? 'Unknown'),
-                subtitle: isNew ? 'Create a new role' : (role.description ?? `${(role.users ?? []).length} user(s) assigned`),
-                actions: isNew ? (
-                    <>
-                        <Button variant="outline" color="theme" size="sm" onClick={handleHeaderCancel}>
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="solid"
-                            color={themeColor}
-                            size="sm"
-                            loading={saving}
-                            onClick={() => void handleHeaderSave()}
-                        >
-                            Save
-                        </Button>
-                    </>
-                ) : undefined,
-            };
-        },
-        [roles, newRole, saving, handleHeaderCancel, handleHeaderSave],
-    );
-
-    return (
-        <div className="flex flex-col h-full">
-            <div className="flex-1 min-h-0">
-                <SplitView
-                    items={items}
-                    value={selectedId}
-                    onChange={(id) => setSelectedId(id)}
-                    collapsible
-                    resizable
-                    loading={loading}
-                    error={error}
-                    onRetry={() => void fetchRoles()}
-                    listTitle={`Roles (${roles.length})`}
-                    panelHeaderProps={panelHeaderProps}
-                    autoHideList={false}
-                    borderLeft
-                    color={themeColor}
-                    searchPlaceholder="Search roles..."
-                    listActions={
-                        <>
-                            {canCreate && (
-                                <IconButton
-                                    variant="ghost"
-                                    size="xs"
-                                    color={themeColor}
-                                    accent={true}
-                                    accentColor={themeColor}
-                                    icon="Add"
-                                    onClick={handleAddNew}
-                                />
-                            )}
-                        </>
-                    }
-                />
-            </div>
-
-            <ConfirmModal
-                isOpen={!!roleToDelete}
-                onClose={() => setRoleToDelete(null)}
-                onConfirm={() => roleToDelete && void handleDelete(roleToDelete)}
-                title="Delete Role"
-                description={`Are you sure you want to delete the role "${roleToDelete?.name ?? 'this role'}"? This action cannot be undone.`}
-                confirmLabel={deleting ? 'Deleting...' : 'Delete'}
-                confirmColor="danger"
-                confirmVariant="solid"
-                isConfirmDisabled={deleting}
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 min-h-0">
+        <SplitView
+          items={items}
+          value={selectedId}
+          onChange={(id) => setSelectedId(id)}
+          collapsible
+          resizable
+          loading={loading}
+          error={error}
+          onRetry={() => void fetchRoles()}
+          listTitle={`Roles (${roles.length})`}
+          panelHeaderProps={panelHeaderProps}
+          autoHideList={false}
+          borderLeft
+          color={themeColor}
+          panelEmptyState={
+            <EmptyState
+              disableBorder
+              icon="Roles"
+              title="No roles found"
+              subtitle="There are no roles in the system. Click the button below to create the first one."
+              actionColor={themeColor}
+              actionLeadingIcon="Add"
+              actionVariant="soft"
+              actionLabel="Add Role"
+              onAction={canCreate ? handleAddNew : undefined}
             />
+          }
+          searchPlaceholder="Search roles..."
+          listActions={<>{canCreate && <IconButton variant="ghost" size="xs" color={themeColor} icon="Add" onClick={handleAddNew} />}</>}
+        />
+      </div>
 
-            <ConfirmModal
-                isOpen={showCancelConfirm}
-                onClose={() => setShowCancelConfirm(false)}
-                onConfirm={executeCancel}
-                title="Discard Changes"
-                description="You have unsaved changes. Are you sure you want to discard them?"
-                confirmLabel="Discard"
-                confirmColor="danger"
-                confirmVariant="solid"
-            />
+      {/* Create Role Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={handleModalClose}
+        title="Add Role"
+        description="Create a new role."
+        size="sm"
+        icon="Roles"
+        actions={
+          <ModalActions>
+            <Button variant="outline" color="theme" size="sm" onClick={handleModalClose} disabled={modalSaving}>
+              Cancel
+            </Button>
+            <Button variant="soft" color={themeColor} size="sm" loading={modalSaving} disabled={!modalName.trim()} onClick={() => void handleModalCreate()}>
+              Create
+            </Button>
+          </ModalActions>
+        }
+      >
+        <FormLayout columns={1}>
+          <FormField label="Name" required>
+            <Input tone={themeColor} value={modalName} onChange={(e) => setModalName(e.target.value)} placeholder="Role name" />
+          </FormField>
+          <FormField label="Description">
+            <Input tone={themeColor} value={modalDescription} onChange={(e) => setModalDescription(e.target.value)} placeholder="Optional description" />
+          </FormField>
+        </FormLayout>
+      </Modal>
 
-            <NotificationModal
-                isOpen={!!saveResult}
-                onClose={() => setSaveResult(null)}
-                type={saveResult?.type ?? 'info'}
-                title={saveResult?.type === 'success' ? 'Saved' : 'Save Failed'}
-                message={saveResult?.message ?? ''}
-                actionLabel="OK"
-            />
-        </div>
-    );
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!roleToDelete}
+        onClose={() => setRoleToDelete(null)}
+        onConfirm={() => roleToDelete && void handleDelete(roleToDelete)}
+        title="Delete Role"
+        description={`Are you sure you want to delete the role "${roleToDelete?.name ?? 'this role'}"? This action cannot be undone.`}
+        confirmLabel={deleting ? 'Deleting...' : 'Delete'}
+        confirmColor="danger"
+        confirmVariant="solid"
+        isConfirmDisabled={deleting}
+      />
+
+      {/* Save Result Notification */}
+      <NotificationModal
+        isOpen={!!saveResult}
+        onClose={() => setSaveResult(null)}
+        type={saveResult?.type ?? 'info'}
+        title={saveResult?.type === 'success' ? 'Saved' : 'Save Failed'}
+        message={saveResult?.message ?? ''}
+        actionLabel="OK"
+      />
+    </div>
+  );
 };

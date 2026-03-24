@@ -1,10 +1,32 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Button, CustomIcon, FormField, Hero, IconButton, Input, Modal, ModalActions, MultiToggle, Pill, Select, Stepper, type Step, Textarea, Toggle } from '@prl/ui-kit';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Button,
+  ConfirmModal,
+  CustomIcon,
+  FormField,
+  Hero,
+  IconButton,
+  Input,
+  Modal,
+  ModalActions,
+  MultiToggle,
+  Picker,
+  type PickerItem,
+  Pill,
+  Select,
+  Stepper,
+  type Step,
+  Textarea,
+  Toggle,
+  Panel,
+} from '@prl/ui-kit';
 import { ReverseProxyHost, ReverseProxyHostHttpRoute, ReverseProxyHostTcpRoute } from '@/interfaces/ReverseProxy';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { devopsService } from '@/services/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { OsIcon } from '@/utils/virtualMachine';
+import { getStateTone } from '@/utils/vmUtils';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -121,10 +143,21 @@ interface RouteCardProps {
 
 const RouteCard: React.FC<RouteCardProps> = ({ index, route, availableVms, errors, onUpdate, onRemove }) => {
   const [expanded, setExpanded] = useState(true);
+  const { themeColor } = useSystemSettings();
 
   const upd = (patch: Partial<HttpRouteForm>) => onUpdate(index, { ...route, ...patch });
 
-  const vmOptions = [{ value: '', label: 'Select a VM…' }, ...availableVms.map((vm) => ({ value: vm.ID ?? '', label: `${vm.Name ?? vm.ID} (${vm.State ?? 'unknown'})` }))];
+  const vmPickerItems = useMemo<PickerItem[]>(
+    () =>
+      availableVms.map((vm) => ({
+        id: vm.ID ?? '',
+        icon: <OsIcon os={vm.OS} className="h-5 w-5" />,
+        title: vm.Name ?? vm.ID ?? '',
+        subtitle: vm.OS,
+        tags: [{ label: vm.State ?? 'unknown', tone: getStateTone(vm.State) }],
+      })),
+    [availableVms],
+  );
 
   const targetSummary = route.targetType === 'vm' ? (availableVms.find((v) => v.ID === route.targetVmId)?.Name ?? (route.targetVmId || '—')) : route.targetHost || '—';
 
@@ -226,13 +259,14 @@ const RouteCard: React.FC<RouteCardProps> = ({ index, route, availableVms, error
             <div className="flex gap-3">
               <div className="flex-1">
                 <FormField label="Virtual Machine" required>
-                  <Select value={route.targetVmId} onChange={(e) => upd({ targetVmId: e.target.value })} validationStatus={errors[`route_${index}_vm`] ? 'error' : 'none'} size="sm">
-                    {vmOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
+                  <Picker
+                    color={themeColor}
+                    items={vmPickerItems}
+                    selectedId={route.targetVmId}
+                    onSelect={(item) => upd({ targetVmId: item.id })}
+                    placeholder="Select a virtual machine…"
+                    escapeBoundary
+                  />
                   {errors[`route_${index}_vm`] && <p className="mt-1 text-xs text-rose-500">{errors[`route_${index}_vm`]}</p>}
                 </FormField>
               </div>
@@ -393,6 +427,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
   const [availableVms, setAvailableVms] = useState<VirtualMachine[]>([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Total steps: 4 for HTTP (includes CORS), 3 for TCP/none
   const totalSteps = routeMode === 'http' ? 4 : 3;
@@ -580,7 +615,23 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
     onClose,
   ]);
 
-  const vmOptions = [{ value: '', label: 'Select a VM…' }, ...availableVms.map((vm) => ({ value: vm.ID ?? '', label: `${vm.Name ?? vm.ID} (${vm.State ?? 'unknown'})` }))];
+  const vmPickerItems = useMemo<PickerItem[]>(
+    () =>
+      availableVms.map((vm) => ({
+        id: vm.ID ?? '',
+        icon: <OsIcon os={vm.OS} className="h-5 w-5" />,
+        title: vm.Name ?? vm.ID ?? '',
+        subtitle: vm.OS,
+        tags: [{ label: vm.State ?? 'unknown', tone: getStateTone(vm.State) }],
+      })),
+    [availableVms],
+  );
+
+  const wizardHasData =
+    name.trim() !== '' ||
+    host.trim() !== '' ||
+    (routeMode === 'http' && httpRoutes.some((r) => r.path !== '/' || r.targetHost !== '' || r.targetVmId !== '')) ||
+    (routeMode === 'tcp' && (tcpTargetHost !== '' || tcpTargetVmId !== ''));
 
   // ── Step content helpers ───────────────────────────────────────────────────
 
@@ -752,20 +803,17 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
             <div className="flex gap-3">
               <div className="flex-1">
                 <FormField label="Virtual Machine" required>
-                  <Select
-                    value={tcpTargetVmId}
-                    onChange={(e) => {
-                      setTcpTargetVmId(e.target.value);
+                  <Picker
+                    color={themeColor}
+                    items={vmPickerItems}
+                    selectedId={tcpTargetVmId}
+                    onSelect={(item) => {
+                      setTcpTargetVmId(item.id);
                       setErrors((p) => ({ ...p, tcpVm: '' }));
                     }}
-                    validationStatus={errors.tcpVm ? 'error' : 'none'}
-                  >
-                    {vmOptions.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
+                    placeholder="Select a virtual machine…"
+                    escapeBoundary
+                  />
                   {errors.tcpVm && <p className="mt-1 text-xs text-rose-500">{errors.tcpVm}</p>}
                 </FormField>
               </div>
@@ -1085,9 +1133,19 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
           />
 
           <ModalActions align="between">
-            <Button variant="outline" color="slate" size="sm" onClick={handleBack}>
-              {step === 0 ? '← Change type' : 'Back'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" color="slate" size="sm" onClick={handleBack}>
+                {step === 0 ? '← Change type' : 'Back'}
+              </Button>
+              <Button
+                variant="ghost"
+                color="slate"
+                size="sm"
+                onClick={() => wizardHasData ? setShowCancelConfirm(true) : onClose()}
+              >
+                Cancel
+              </Button>
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-neutral-400">
                 {step + 1} / {totalSteps}
@@ -1105,6 +1163,16 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
           </ModalActions>
         </>
       )}
+
+      <ConfirmModal
+        isOpen={showCancelConfirm}
+        title="Discard Changes"
+        description="You have unsaved changes. Are you sure you want to discard them and close?"
+        confirmLabel="Discard & Close"
+        confirmColor="rose"
+        onConfirm={() => { setShowCancelConfirm(false); onClose(); }}
+        onClose={() => setShowCancelConfirm(false)}
+      />
     </Modal>
   );
 };
@@ -1146,6 +1214,8 @@ export const HttpRouteModal: React.FC<HttpRouteModalProps> = ({ isOpen, editing,
   const [headerRows, setHeaderRows] = useState<{ key: string; value: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isDirty, setIsDirty] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -1160,6 +1230,8 @@ export const HttpRouteModal: React.FC<HttpRouteModalProps> = ({ isOpen, editing,
       setRequestHeaderRows(headersToEntries(editing?.request_headers));
       setHeaderRows(headersToEntries(editing?.response_headers));
       setErrors({});
+      setIsDirty(false);
+      setShowCancelConfirm(false);
     }
   }, [isOpen, editing]);
 
@@ -1194,194 +1266,241 @@ export const HttpRouteModal: React.FC<HttpRouteModalProps> = ({ isOpen, editing,
     }
   }, [path, schema, targetType, targetHost, targetPort, targetVmId, headerRows, onSubmit, onClose]);
 
-  const vmOptions = [{ value: '', label: 'Select a VM…' }, ...availableVms.map((vm) => ({ value: vm.ID ?? '', label: `${vm.Name ?? vm.ID} (${vm.State ?? 'unknown'})` }))];
+  const vmPickerItems = useMemo<PickerItem[]>(
+    () =>
+      availableVms.map((vm) => ({
+        id: vm.ID ?? '',
+        icon: <OsIcon os={vm.OS} className="h-5 w-5" />,
+        title: vm.Name ?? vm.ID ?? '',
+        subtitle: vm.OS,
+        tags: [{ label: vm.State ?? 'unknown', tone: getStateTone(vm.State) }],
+      })),
+    [availableVms],
+  );
 
   return (
-    <Modal isOpen={isOpen} title={editing ? 'Edit HTTP Route' : 'Add HTTP Route'} onClose={onClose} size="md">
+    <Modal
+      isOpen={isOpen}
+      title={editing ? 'Edit HTTP Route' : 'Add HTTP Route'}
+      onClose={() => isDirty ? setShowCancelConfirm(true) : onClose()}
+      size="md"
+      actions={
+        <>
+          <ModalActions>
+            <Button variant="outline" color="slate" size="sm" onClick={() => isDirty ? setShowCancelConfirm(true) : onClose()}>
+              Cancel
+            </Button>
+            <Button variant="soft" color={themeColor} size="sm" loading={saving} onClick={() => void handleSubmit()}>
+              {editing ? 'Save Route' : 'Add Route'}
+            </Button>
+          </ModalActions>
+          <ConfirmModal
+            isOpen={showCancelConfirm}
+            title="Discard Changes"
+            description="You have unsaved changes. Are you sure you want to discard them and close?"
+            confirmLabel="Discard & Close"
+            confirmColor="rose"
+            onConfirm={() => { setShowCancelConfirm(false); onClose(); }}
+            onClose={() => setShowCancelConfirm(false)}
+          />
+        </>
+      }
+    >
       <div className="space-y-4">
         {/* Path + Schema */}
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <FormField label="Path" required>
-              <Input
-                placeholder="/api/v1"
-                value={path}
-                onChange={(e) => {
-                  setPath(e.target.value);
-                  setErrors((p) => ({ ...p, path: '' }));
-                }}
-                validationStatus={errors.path ? 'error' : 'none'}
-                className="font-mono"
-              />
-              {errors.path && <p className="mt-1 text-xs text-rose-500">{errors.path}</p>}
-            </FormField>
-          </div>
-          <div className="w-28">
-            <FormField label="Schema">
-              <Select value={schema} onChange={(e) => setSchema(e.target.value as 'http' | 'https')}>
-                <option value="http">HTTP</option>
-                <option value="https">HTTPS</option>
-              </Select>
-            </FormField>
-          </div>
-        </div>
-
-        {/* Pattern (optional) */}
-        <FormField label="Match Pattern" description="Optional regex or glob to match request paths. Leave empty to match all requests to the path prefix.">
-          <Input placeholder="e.g. ^/api/.*" value={pattern} onChange={(e) => setPattern(e.target.value)} className="font-mono" />
-        </FormField>
-
-        {/* Target type */}
-        <FormField label="Target Type">
-          <MultiToggle
-            value={targetType}
-            onChange={(v) => setTargetType(v as HttpTargetType)}
-            options={[
-              { value: 'static', label: 'Static IP / Host' },
-              { value: 'vm', label: 'Virtual Machine' },
-            ]}
-            size="sm"
-          />
-        </FormField>
-
-        {/* Target fields */}
-        {targetType === 'static' ? (
+        <Panel variant="glass" backgroundColor="white" padding="xs">
           <div className="flex gap-3">
             <div className="flex-1">
-              <FormField label="Target Host" required>
+              <FormField label="Path" required>
                 <Input
-                  placeholder="10.0.0.5 or hostname"
-                  value={targetHost}
+                  tone={themeColor}
+                  placeholder="/api/v1"
+                  value={path}
                   onChange={(e) => {
-                    setTargetHost(e.target.value);
-                    setErrors((p) => ({ ...p, targetHost: '' }));
+                    setPath(e.target.value);
+                    setErrors((p) => ({ ...p, path: '' }));
+                    setIsDirty(true);
                   }}
-                  validationStatus={errors.targetHost ? 'error' : 'none'}
+                  validationStatus={errors.path ? 'error' : 'none'}
                   className="font-mono"
                 />
-                {errors.targetHost && <p className="mt-1 text-xs text-rose-500">{errors.targetHost}</p>}
+                {errors.path && <p className="mt-1 text-xs text-rose-500">{errors.path}</p>}
               </FormField>
             </div>
             <div className="w-28">
-              <FormField label="Port" required>
-                <Input
-                  placeholder="3000"
-                  value={targetPort}
-                  onChange={(e) => {
-                    setTargetPort(e.target.value);
-                    setErrors((p) => ({ ...p, targetPort: '' }));
-                  }}
-                  validationStatus={errors.targetPort ? 'error' : 'none'}
-                  className="font-mono"
-                />
-                {errors.targetPort && <p className="mt-1 text-xs text-rose-500">{errors.targetPort}</p>}
-              </FormField>
-            </div>
-          </div>
-        ) : (
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <FormField label="Virtual Machine" required>
-                <Select
-                  value={targetVmId}
-                  onChange={(e) => {
-                    setTargetVmId(e.target.value);
-                    setErrors((p) => ({ ...p, targetVmId: '' }));
-                  }}
-                  validationStatus={errors.targetVmId ? 'error' : 'none'}
-                >
-                  {vmOptions.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
+              <FormField label="Schema">
+                <Select tone={themeColor} value={schema} onChange={(e) => { setSchema(e.target.value as 'http' | 'https'); setIsDirty(true); }}>
+                  <option value="http">HTTP</option>
+                  <option value="https">HTTPS</option>
                 </Select>
-                {errors.targetVmId && <p className="mt-1 text-xs text-rose-500">{errors.targetVmId}</p>}
-              </FormField>
-            </div>
-            <div className="w-28">
-              <FormField label="Port" required>
-                <Input
-                  placeholder="3000"
-                  value={targetPort}
-                  onChange={(e) => {
-                    setTargetPort(e.target.value);
-                    setErrors((p) => ({ ...p, targetPort: '' }));
-                  }}
-                  validationStatus={errors.targetPort ? 'error' : 'none'}
-                  className="font-mono"
-                />
-                {errors.targetPort && <p className="mt-1 text-xs text-rose-500">{errors.targetPort}</p>}
               </FormField>
             </div>
           </div>
-        )}
 
-        {/* Request headers */}
-        <FormField label="Request Headers" description="Injected into every request forwarded to the target">
-          <div className="space-y-2">
-            {requestHeaderRows.map((row, i) => (
-              <div key={i} className="flex gap-2">
-                <Input
-                  placeholder="Header name"
-                  value={row.key}
-                  onChange={(e) => setRequestHeaderRows((p) => p.map((r, j) => (j === i ? { ...r, key: e.target.value } : r)))}
-                  className="font-mono flex-1"
-                  size="sm"
-                />
-                <Input
-                  placeholder="Value"
-                  value={row.value}
-                  onChange={(e) => setRequestHeaderRows((p) => p.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))}
-                  className="font-mono flex-1"
-                  size="sm"
-                />
-                <Button variant="ghost" color="rose" size="sm" leadingIcon="Trash" onClick={() => setRequestHeaderRows((p) => p.filter((_, j) => j !== i))} />
-              </div>
-            ))}
-            <Button variant="outline" color="slate" size="sm" leadingIcon="Add" onClick={() => setRequestHeaderRows((p) => [...p, { key: '', value: '' }])}>
-              Add Header
-            </Button>
-          </div>
-        </FormField>
+          {/* Pattern (optional) */}
+          <FormField label="Match Pattern" description="Optional regex or glob to match request paths. Leave empty to match all requests to the path prefix.">
+            <Input tone={themeColor} placeholder="e.g. ^/api/.*" value={pattern} onChange={(e) => { setPattern(e.target.value); setIsDirty(true); }} className="font-mono" />
+          </FormField>
+        </Panel>
+        <Panel variant="glass" backgroundColor="white" padding="xs">
+          {/* Target type */}
+          <FormField label="Target Type">
+            <MultiToggle
+              color={themeColor}
+              variant="solid"
+              value={targetType}
+              onChange={(v) => { setTargetType(v as HttpTargetType); setIsDirty(true); }}
+              options={[
+                { value: 'static', label: 'Static IP / Host', icon: 'Globe' },
+                { value: 'vm', label: 'Virtual Machine', icon: 'VirtualMachine' },
+              ]}
+              size="md"
+            />
+          </FormField>
 
-        {/* Response headers */}
-        <FormField label="Response Headers" description="Injected into every response from this route">
-          <div className="space-y-2">
-            {headerRows.map((row, i) => (
-              <div key={i} className="flex gap-2">
-                <Input
-                  placeholder="Header name"
-                  value={row.key}
-                  onChange={(e) => setHeaderRows((p) => p.map((r, j) => (j === i ? { ...r, key: e.target.value } : r)))}
-                  className="font-mono flex-1"
-                  size="sm"
-                />
-                <Input
-                  placeholder="Value"
-                  value={row.value}
-                  onChange={(e) => setHeaderRows((p) => p.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)))}
-                  className="font-mono flex-1"
-                  size="sm"
-                />
-                <Button variant="ghost" color="rose" size="sm" leadingIcon="Trash" onClick={() => setHeaderRows((p) => p.filter((_, j) => j !== i))} />
+          {/* Target fields */}
+          {targetType === 'static' ? (
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <FormField label="Target Host" required>
+                  <Input
+                    tone={themeColor}
+                    placeholder="10.0.0.5 or hostname"
+                    value={targetHost}
+                    onChange={(e) => {
+                      setTargetHost(e.target.value);
+                      setErrors((p) => ({ ...p, targetHost: '' }));
+                      setIsDirty(true);
+                    }}
+                    validationStatus={errors.targetHost ? 'error' : 'none'}
+                    className="font-mono"
+                  />
+                  {errors.targetHost && <p className="mt-1 text-xs text-rose-500">{errors.targetHost}</p>}
+                </FormField>
               </div>
-            ))}
-            <Button variant="outline" color="slate" size="sm" leadingIcon="Add" onClick={() => setHeaderRows((p) => [...p, { key: '', value: '' }])}>
-              Add Header
-            </Button>
-          </div>
-        </FormField>
+              <div className="w-28">
+                <FormField label="Port" required>
+                  <Input
+                    tone={themeColor}
+                    placeholder="3000"
+                    value={targetPort}
+                    onChange={(e) => {
+                      setTargetPort(e.target.value);
+                      setErrors((p) => ({ ...p, targetPort: '' }));
+                      setIsDirty(true);
+                    }}
+                    validationStatus={errors.targetPort ? 'error' : 'none'}
+                    className="font-mono"
+                  />
+                  {errors.targetPort && <p className="mt-1 text-xs text-rose-500">{errors.targetPort}</p>}
+                </FormField>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <FormField label="Virtual Machine" required>
+                  <Picker
+                    color={themeColor}
+                    items={vmPickerItems}
+                    selectedId={targetVmId}
+                    onSelect={(item) => {
+                      setTargetVmId(item.id);
+                      setErrors((p) => ({ ...p, targetVmId: '' }));
+                      setIsDirty(true);
+                    }}
+                    placeholder="Select a virtual machine…"
+                    escapeBoundary
+                  />
+                  {errors.targetVmId && <p className="mt-1 text-xs text-rose-500">{errors.targetVmId}</p>}
+                </FormField>
+              </div>
+              <div className="w-28">
+                <FormField label="Port" required>
+                  <Input
+                    tone={themeColor}
+                    placeholder="3000"
+                    value={targetPort}
+                    onChange={(e) => {
+                      setTargetPort(e.target.value);
+                      setErrors((p) => ({ ...p, targetPort: '' }));
+                      setIsDirty(true);
+                    }}
+                    validationStatus={errors.targetPort ? 'error' : 'none'}
+                    className="font-mono"
+                  />
+                  {errors.targetPort && <p className="mt-1 text-xs text-rose-500">{errors.targetPort}</p>}
+                </FormField>
+              </div>
+            </div>
+          )}
+        </Panel>
+        <Panel variant="glass" backgroundColor="white" padding="xs">
+          {/* Request headers */}
+          <FormField label="Request Headers" description="Injected into every request forwarded to the target">
+            <div className="space-y-2">
+              {requestHeaderRows.map((row, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input
+                    tone={themeColor}
+                    placeholder="Header name"
+                    value={row.key}
+                    onChange={(e) => { setRequestHeaderRows((p) => p.map((r, j) => (j === i ? { ...r, key: e.target.value } : r))); setIsDirty(true); }}
+                    className="font-mono flex-1"
+                    size="sm"
+                  />
+                  <Input
+                    tone={themeColor}
+                    placeholder="Value"
+                    value={row.value}
+                    onChange={(e) => { setRequestHeaderRows((p) => p.map((r, j) => (j === i ? { ...r, value: e.target.value } : r))); setIsDirty(true); }}
+                    className="font-mono flex-1"
+                    size="sm"
+                  />
+                  <div>
+                    <IconButton variant="ghost" color="rose" size="sm" icon="Trash" onClick={() => { setRequestHeaderRows((p) => p.filter((_, j) => j !== i)); setIsDirty(true); }} />
+                  </div>
+                </div>
+              ))}
+              <Button variant="soft" color={themeColor} size="sm" leadingIcon="Add" onClick={() => { setRequestHeaderRows((p) => [...p, { key: '', value: '' }]); setIsDirty(true); }}>
+                Add Header
+              </Button>
+            </div>
+          </FormField>
+
+          {/* Response headers */}
+          <FormField label="Response Headers" description="Injected into every response from this route">
+            <div className="space-y-2">
+              {headerRows.map((row, i) => (
+                <div key={i} className="flex gap-2">
+                  <Input
+                    tone={themeColor}
+                    placeholder="Header name"
+                    value={row.key}
+                    onChange={(e) => { setHeaderRows((p) => p.map((r, j) => (j === i ? { ...r, key: e.target.value } : r))); setIsDirty(true); }}
+                    className="font-mono flex-1"
+                    size="sm"
+                  />
+                  <Input
+                    tone={themeColor}
+                    placeholder="Value"
+                    value={row.value}
+                    onChange={(e) => { setHeaderRows((p) => p.map((r, j) => (j === i ? { ...r, value: e.target.value } : r))); setIsDirty(true); }}
+                    className="font-mono flex-1"
+                    size="sm"
+                  />
+                  <div>
+                    <IconButton variant="ghost" color="rose" size="sm" icon="Trash" onClick={() => { setHeaderRows((p) => p.filter((_, j) => j !== i)); setIsDirty(true); }} />
+                  </div>
+                </div>
+              ))}
+              <Button variant="soft" color={themeColor} size="sm" leadingIcon="Add" onClick={() => { setHeaderRows((p) => [...p, { key: '', value: '' }]); setIsDirty(true); }}>
+                Add Header
+              </Button>
+            </div>
+          </FormField>
+        </Panel>
       </div>
-
-      <ModalActions>
-        <Button variant="outline" color="slate" size="sm" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button variant="solid" color={themeColor} size="sm" loading={saving} onClick={() => void handleSubmit()}>
-          {editing ? 'Save Route' : 'Add Route'}
-        </Button>
-      </ModalActions>
     </Modal>
   );
 };
