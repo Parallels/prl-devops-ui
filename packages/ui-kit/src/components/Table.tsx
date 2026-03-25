@@ -70,6 +70,11 @@ export interface TableColumn<T> {
    * row/table background show through instead.
    */
   stickyBackground?: string;
+  /**
+   * Per-row variant of `stickyBackground`. When provided, takes precedence over `stickyBackground`
+   * for the matching row. Return `undefined` to fall back to the static `stickyBackground`.
+   */
+  stickyBackgroundFn?: (row: T, index: number) => string | undefined;
 }
 
 export type Column<T> = TableColumn<T>;
@@ -512,6 +517,58 @@ function getHighlightBorderClass(color: ThemeColor): string {
       return 'border-l-stone-500';
     default:
       return 'border-l-blue-500';
+  }
+}
+
+/** Returns static Tailwind hover class for the column resize handle track. */
+function getResizeHandleHoverClass(color: ThemeColor): string {
+  switch (resolveColor(color)) {
+    case 'blue':
+      return 'group-hover/rh:bg-blue-500    dark:group-hover/rh:bg-blue-400';
+    case 'green':
+      return 'group-hover/rh:bg-green-500   dark:group-hover/rh:bg-green-400';
+    case 'teal':
+      return 'group-hover/rh:bg-teal-500    dark:group-hover/rh:bg-teal-400';
+    case 'cyan':
+      return 'group-hover/rh:bg-cyan-500    dark:group-hover/rh:bg-cyan-400';
+    case 'indigo':
+      return 'group-hover/rh:bg-indigo-500  dark:group-hover/rh:bg-indigo-400';
+    case 'purple':
+      return 'group-hover/rh:bg-purple-500  dark:group-hover/rh:bg-purple-400';
+    case 'violet':
+      return 'group-hover/rh:bg-violet-500  dark:group-hover/rh:bg-violet-400';
+    case 'red':
+      return 'group-hover/rh:bg-red-500     dark:group-hover/rh:bg-red-400';
+    case 'orange':
+      return 'group-hover/rh:bg-orange-500  dark:group-hover/rh:bg-orange-400';
+    case 'amber':
+      return 'group-hover/rh:bg-amber-500   dark:group-hover/rh:bg-amber-400';
+    case 'yellow':
+      return 'group-hover/rh:bg-yellow-500  dark:group-hover/rh:bg-yellow-400';
+    case 'lime':
+      return 'group-hover/rh:bg-lime-500    dark:group-hover/rh:bg-lime-400';
+    case 'emerald':
+      return 'group-hover/rh:bg-emerald-500 dark:group-hover/rh:bg-emerald-400';
+    case 'sky':
+      return 'group-hover/rh:bg-sky-500     dark:group-hover/rh:bg-sky-400';
+    case 'fuchsia':
+      return 'group-hover/rh:bg-fuchsia-500 dark:group-hover/rh:bg-fuchsia-400';
+    case 'pink':
+      return 'group-hover/rh:bg-pink-500    dark:group-hover/rh:bg-pink-400';
+    case 'rose':
+      return 'group-hover/rh:bg-rose-500    dark:group-hover/rh:bg-rose-400';
+    case 'slate':
+      return 'group-hover/rh:bg-slate-500   dark:group-hover/rh:bg-slate-400';
+    case 'gray':
+      return 'group-hover/rh:bg-gray-500    dark:group-hover/rh:bg-gray-400';
+    case 'zinc':
+      return 'group-hover/rh:bg-zinc-500    dark:group-hover/rh:bg-zinc-400';
+    case 'neutral':
+      return 'group-hover/rh:bg-neutral-500 dark:group-hover/rh:bg-neutral-400';
+    case 'stone':
+      return 'group-hover/rh:bg-stone-500   dark:group-hover/rh:bg-stone-400';
+    default:
+      return 'group-hover/rh:bg-blue-500    dark:group-hover/rh:bg-blue-400';
   }
 }
 
@@ -1119,6 +1176,10 @@ function TableComponent<T>({
   // can override or clear a code-defined pin at runtime.
   const getEffectiveSticky = (col: TableColumn<T>): 'left' | 'right' | undefined => internalStickyColumns[col.id] ?? col.sticky ?? undefined;
 
+  // True when at least one visible column is pinned to the left (code-defined or user-configured).
+  // Used to decide whether the grouped-row spacer td needs an opaque background.
+  const hasLeftStickyColumn = orderedVisibleColumns.some((col) => getEffectiveSticky(col) === 'left');
+
   // ── Sticky-right column offsets ──────────────────────────────────────────────
   // When multiple columns are pinned to the right (via sticky:'right',
   // stickyActions, or user config), each one needs a `right` offset equal to
@@ -1189,7 +1250,20 @@ function TableComponent<T>({
     const selectedClass = isSelected ? getSelectedRowClass(color) : '';
     const highlightRowClass = isHighlighted ? getHighlightRowClass(color) : '';
     const baseRowBgClass = striped && originalIndex % 2 === 1 ? 'bg-neutral-100 dark:bg-neutral-800/40' : 'bg-white dark:bg-neutral-900';
-    const rowCellHoverClass = !isSelected && !isHighlighted && hoverable ? 'group-hover:bg-neutral-200/60 dark:group-hover:bg-neutral-700/40' : undefined;
+    // Use fully-opaque hover for all cells so the whole row shifts uniformly.
+    // Sticky cells need !important to override their explicit base background class.
+    const rowCellHoverClass =
+      !isSelected && !isHighlighted && hoverable
+        ? striped && originalIndex % 2 === 1
+          ? 'group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700'
+          : 'group-hover:bg-neutral-200 dark:group-hover:bg-neutral-700'
+        : undefined;
+    const stickyCellHoverClass =
+      !isSelected && !isHighlighted && hoverable
+        ? striped && originalIndex % 2 === 1
+          ? 'group-hover:!bg-neutral-200 dark:group-hover:!bg-neutral-700'
+          : 'group-hover:!bg-neutral-200 dark:group-hover:!bg-neutral-700'
+        : undefined;
     const spacerHoverResetClass =
       !isSelected && !isHighlighted && hoverable
         ? striped && originalIndex % 2 === 1
@@ -1212,7 +1286,14 @@ function TableComponent<T>({
         {/* Expand spacer column — only in grouped mode with visible group headers */}
         {showGroupExpandCol && (
           <td
-            className={classNames('w-10 sticky left-0 z-20', isSelected ? getSelectedRowClass(color) : isHighlighted ? getHighlightRowClass(color) : baseRowBgClass, spacerHoverResetClass)}
+            className={classNames(
+              'w-10 sticky left-0 z-20',
+              // Only apply an opaque background when there is a left-sticky data column;
+              // otherwise the spacer can remain transparent.
+              hasLeftStickyColumn && (isSelected ? getSelectedRowClass(color) : isHighlighted ? getHighlightRowClass(color) : baseRowBgClass),
+              // When there are sticky columns use the opaque hover; otherwise use the normal semi-transparent hover.
+              hasLeftStickyColumn ? stickyCellHoverClass : rowCellHoverClass,
+            )}
             aria-hidden="true"
           >
             <div className="w-full h-full" />
@@ -1248,16 +1329,17 @@ function TableComponent<T>({
                       ? getHighlightRowClass(color)
                       : striped && originalIndex % 2 === 1
                         ? 'bg-neutral-100 dark:bg-neutral-800/40'
-                        : (column.stickyBackground ?? 'bg-white dark:bg-neutral-900')),
-                // Apply hover background per-cell so grouped spacer/caret columns can opt out.
-                rowCellHoverClass,
+                        : (column.stickyBackgroundFn?.(row, originalIndex) ?? column.stickyBackground ?? 'bg-white dark:bg-neutral-900')),
+                // Sticky cells must keep an opaque background on hover to avoid scrolled content
+                // bleeding through — use the fully-opaque sticky hover class instead of the semi-transparent hover.
+                isStickyLeft || isStickyRight ? stickyCellHoverClass : rowCellHoverClass,
                 (isStickyLeft || isStickyRight) && isHighlighted && hoverable && 'group-hover:brightness-95',
                 getCellAlignment(column.align),
                 colIndex === 0 && sidePaddingTokens.left,
                 colIndex === orderedVisibleColumns.length - 1 && sidePaddingTokens.right,
                 // Pulsing left border indicator on the first visible cell for highlighted rows
                 colIndex === 0 && isHighlighted && classNames('border-l-4 animate-pulse', getHighlightBorderClass(color)),
-                isStickyRight && 'border-l border-neutral-200 dark:border-neutral-700',
+                isStickyRight && effectiveSticky === 'right' && !noBorders && 'border-l border-neutral-300 dark:border-neutral-700',
                 column.className,
               )}
               style={{
@@ -1629,8 +1711,9 @@ function TableComponent<T>({
 
                       const isResizable = resizableColumns && column.resizable !== false;
                       const resizeWidth = internalColWidths[column.id];
-                      const isStickyLeft = column.sticky === 'left';
-                      const isStickyRight = column.sticky === 'right' || (stickyActions && colIndex === visibleColumns.length - 1);
+                      const thEffectiveSticky = getEffectiveSticky(column);
+                      const isStickyLeft = thEffectiveSticky === 'left';
+                      const isStickyRight = thEffectiveSticky === 'right' || (stickyActions && colIndex === orderedVisibleColumns.length - 1);
                       const rightOffset = isStickyRight ? rightStickyOffsets[column.id] : undefined;
 
                       return (
@@ -1653,7 +1736,7 @@ function TableComponent<T>({
                             getCellAlignment(column.align),
                             'overflow-hidden',
                             isResizable && 'relative',
-                            isStickyRight && 'border-l border-neutral-200 dark:border-neutral-700',
+                            isStickyRight && thEffectiveSticky === 'right' && !noBorders && 'border-l border-neutral-200 dark:border-neutral-700',
                             column.headerClassName,
                           )}
                           style={{
@@ -1692,7 +1775,7 @@ function TableComponent<T>({
                                 handleResizeStart(e, column.id, Math.max(48, isNaN(minW) ? 48 : minW));
                               }}
                             >
-                              <div className="h-1/2 w-px bg-neutral-300 transition-colors group-hover/rh:bg-neutral-500 dark:bg-neutral-600 dark:group-hover/rh:bg-neutral-400" />
+                              <div className={classNames('h-1/2 w-px bg-neutral-300 dark:bg-neutral-600 transition-colors', getResizeHandleHoverClass(color))} />
                             </div>
                           )}
                         </th>

@@ -172,6 +172,7 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
 
   return (
     <Modal
+      icon="Host"
       isOpen={isOpen}
       onBack={handleBack}
       backTooltip={handleBack ? 'Back to options' : undefined}

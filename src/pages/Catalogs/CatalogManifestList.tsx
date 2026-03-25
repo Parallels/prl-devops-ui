@@ -268,13 +268,14 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
 
     if (onDownloadItem) {
       cols.push({
-        id: 'actions',
+        id: 'actions1',
         header: '',
         hideable: false,
         groupable: false,
         resizable: false,
         minWidth: 120,
         align: 'right',
+        sticky: 'right',
         render: (flat) => (
           <Button
             variant="soft"
@@ -531,6 +532,7 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
       onRowClick={(flat) => onSelectItem(flat.manifest)}
       resizableColumns
       groupable
+      userStickyColumns
       panelMinItemWidth="400px"
       panelGap={12}
       stickyActions

@@ -312,7 +312,7 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
   );
 
   const accessMatrixPanel = (
-    <div className="p-1">
+    <div className="h-full flex flex-col p-1">
       {user.isSuperUser && (
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
           This user is a Super User and has unrestricted access regardless of assigned claims.
@@ -330,7 +330,9 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
       ) : matrixPermissions.length === 0 ? (
         <p className="py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">No access data available.</p>
       ) : (
-        <AccessMatrix variant="flat" tone={themeColor} permissions={matrixPermissions} limit={20} hoverable noBorders fullHeight />
+        <div className="flex-1 min-h-0">
+          <AccessMatrix variant="flat" tone={themeColor} permissions={matrixPermissions} limit={20} hoverable noBorders fullHeight />
+        </div>
       )}
     </div>
   );

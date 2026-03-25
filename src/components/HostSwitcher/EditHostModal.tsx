@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Button, Checkbox, FormField, FormLayout, Input, Modal, Toggle, UIModalConfirm } from '../../controls';
+import { Alert, Button, Checkbox, FormField, FormLayout, Input, Modal, Panel, Toggle, UIModalConfirm } from '../../controls';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSession } from '@/contexts/SessionContext';
 import { authService } from '@/services/authService';
@@ -8,6 +8,7 @@ import { getPasswordKey, getApiKeyKey } from '@/utils/secretKeys';
 import { decodeToken } from '@/utils/tokenUtils';
 import { devopsService } from '@/services/devops';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { Section } from '@prl/ui-kit';
 
 interface FormErrors {
   serverUrl?: string;
@@ -225,6 +226,7 @@ export const EditHostModal: React.FC<EditHostModalProps> = ({ isOpen, onClose, h
   return (
     <>
       <Modal
+        icon="Host"
         title={`Edit Host: ${hostLabel}`}
         description="Update host settings. Credentials will be tested before saving."
         isOpen={isOpen}
@@ -234,7 +236,7 @@ export const EditHostModal: React.FC<EditHostModalProps> = ({ isOpen, onClose, h
         closeOnEsc={!isSaving}
         actions={
           <>
-            <Button variant="soft" color={isDirty ? 'red' : themeColor} onClick={handleCancel} disabled={isSaving}>
+            <Button variant="solid" color={isDirty ? 'red' : themeColor} onClick={handleCancel} disabled={isSaving}>
               {isDirty ? 'Discard Changes' : 'Close'}
             </Button>
             {isDirty && (
@@ -248,109 +250,107 @@ export const EditHostModal: React.FC<EditHostModalProps> = ({ isOpen, onClose, h
         {saveError && <Alert variant="outline" tone="danger" title="Save Failed" description={saveError} />}
 
         {/* ── Server ─────────────────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">Server</p>
-          <FormLayout columns={1} gap="sm">
-            <FormField label="Display Name" width="full">
-              <Input type="text" tone={themeColor} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Production (optional)" />
-            </FormField>
+        <Panel variant="glass" padding="xs" backgroundColor="white">
+          <Section title="Server" noPadding>
+            <FormLayout columns={1} gap="sm">
+              <FormField label="Display Name" width="full">
+                <Input type="text" tone={themeColor} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Production (optional)" />
+              </FormField>
 
-            <FormField label="Server URL" required width="full" error={hasError('serverUrl') ? errors.serverUrl : undefined}>
-              <Input
-                type="url"
-                tone={themeColor}
-                value={serverUrl}
-                onChange={(e) => setServerUrl(e.target.value)}
-                onBlur={() => {
-                  if (serverUrl && !/^https?:\/\//i.test(serverUrl)) {
-                    setServerUrl('https://' + serverUrl);
-                  }
-                  handleBlur('serverUrl');
-                }}
-                placeholder="https://your-server.example.com"
-              />
-            </FormField>
-          </FormLayout>
-        </div>
+              <FormField label="Server URL" required width="full" error={hasError('serverUrl') ? errors.serverUrl : undefined}>
+                <Input
+                  type="url"
+                  tone={themeColor}
+                  value={serverUrl}
+                  onChange={(e) => setServerUrl(e.target.value)}
+                  onBlur={() => {
+                    if (serverUrl && !/^https?:\/\//i.test(serverUrl)) {
+                      setServerUrl('https://' + serverUrl);
+                    }
+                    handleBlur('serverUrl');
+                  }}
+                  placeholder="https://your-server.example.com"
+                />
+              </FormField>
+            </FormLayout>
+          </Section>
+        </Panel>
 
         {/* ── Authentication ──────────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">Authentication</p>
+        <Panel variant="glass" padding="xs" backgroundColor="white">
+          <Section title="Authentication" noPadding>
+            <Toggle
+              label="Use API Key"
+              description={authType === 'api_key' ? 'Authenticate with an API key' : 'Authenticate with username and password'}
+              checked={authType === 'api_key'}
+              onChange={(e) => setAuthType(e.target.checked ? 'api_key' : 'credentials')}
+              size="sm"
+              color={themeColor}
+            />
 
-          <Toggle
-            label="Use API Key"
-            description={authType === 'api_key' ? 'Authenticate with an API key' : 'Authenticate with username and password'}
-            checked={authType === 'api_key'}
-            onChange={(e) => setAuthType(e.target.checked ? 'api_key' : 'credentials')}
-            size="sm"
-            color={themeColor}
-          />
-
-          <FormLayout columns={1} gap="sm">
-            {authType === 'credentials' ? (
-              <>
-                <FormField label="Username" required width="full" error={hasError('username') ? errors.username : undefined}>
-                  <Input
-                    type="text"
-                    tone={themeColor}
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    onBlur={() => handleBlur('username')}
-                    placeholder="Enter your username"
-                    autoComplete="username"
-                  />
-                </FormField>
+            <FormLayout columns={authType === 'credentials' ? 2 : 1} gap="sm">
+              {authType === 'credentials' ? (
+                <>
+                  <FormField label="Username" required width="full" error={hasError('username') ? errors.username : undefined}>
+                    <Input
+                      type="text"
+                      tone={themeColor}
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      onBlur={() => handleBlur('username')}
+                      placeholder="Enter your username"
+                      autoComplete="username"
+                    />
+                  </FormField>
+                  <FormField
+                    label="Password"
+                    required={!hasStoredSecret}
+                    width="full"
+                    error={hasError('password') ? errors.password : undefined}
+                    description={hasStoredSecret && !password ? 'Leave blank to keep existing password' : undefined}
+                  >
+                    <Input
+                      type="password"
+                      tone={themeColor}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      onBlur={() => handleBlur('password')}
+                      placeholder={hasStoredSecret ? '••••••••' : 'Enter your password'}
+                      autoComplete="new-password"
+                    />
+                  </FormField>
+                </>
+              ) : (
                 <FormField
-                  label="Password"
+                  label="API Key"
                   required={!hasStoredSecret}
                   width="full"
-                  error={hasError('password') ? errors.password : undefined}
-                  description={hasStoredSecret && !password ? 'Leave blank to keep existing password' : undefined}
+                  error={hasError('apiKey') ? errors.apiKey : undefined}
+                  description={hasStoredSecret && !apiKey ? 'Leave blank to keep existing API key' : undefined}
                 >
                   <Input
                     type="password"
                     tone={themeColor}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onBlur={() => handleBlur('password')}
-                    placeholder={hasStoredSecret ? '••••••••' : 'Enter your password'}
-                    autoComplete="new-password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    onBlur={() => handleBlur('apiKey')}
+                    placeholder={hasStoredSecret ? '••••••••' : 'Enter your API key'}
                   />
                 </FormField>
-              </>
-            ) : (
-              <FormField
-                label="API Key"
-                required={!hasStoredSecret}
-                width="full"
-                error={hasError('apiKey') ? errors.apiKey : undefined}
-                description={hasStoredSecret && !apiKey ? 'Leave blank to keep existing API key' : undefined}
-              >
-                <Input
-                  type="password"
-                  tone={themeColor}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  onBlur={() => handleBlur('apiKey')}
-                  placeholder={hasStoredSecret ? '••••••••' : 'Enter your API key'}
-                />
-              </FormField>
-            )}
-          </FormLayout>
-        </div>
-
-        {/* ── Session ─────────────────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">Session</p>
-          <Checkbox
-            label="Keep me logged in"
-            description="Save credentials securely for future sessions"
-            checked={keepLoggedIn}
-            onChange={(e) => setKeepLoggedIn(e.target.checked)}
-            color={themeColor}
-            size="sm"
-          />
-        </div>
+              )}
+            </FormLayout>
+          </Section>
+          <Section title="Session" noPadding>
+            <Toggle
+              label="Keep me logged in"
+              description="Save credentials securely for future sessions"
+              checked={keepLoggedIn}
+              onChange={(e) => setKeepLoggedIn(e.target.checked)}
+              color={themeColor}
+              size="sm"
+            />
+          </Section>
+        </Panel>
       </Modal>
 
       {/* Cancel confirmation — shown when there are unsaved changes */}

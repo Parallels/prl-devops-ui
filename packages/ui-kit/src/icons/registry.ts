@@ -122,6 +122,7 @@ import { PodmanDesktop } from './components/PodmanDesktop';
 import { Group } from './components/Group';
 import { Pin } from './components/Pin';
 import { Database } from './components/Database';
+import { RemoteHost } from './components/RemoteHost';
 
 export type IconName =
   | 'Add'
@@ -246,7 +247,8 @@ export type IconName =
   | 'PodmanDesktop'
   | 'Group'
   | 'Pin'
-  | 'Database';
+  | 'Database'
+  | 'RemoteHost';
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
   Add: Add,
@@ -372,4 +374,5 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
   Group: Group,
   Pin: Pin,
   Database: Database,
+  RemoteHost: RemoteHost,
 };

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import classNames from 'classnames';
 import Table, { TableColumn } from './Table';
 import Button from './Button';
 import Badge from './Badge';
@@ -191,6 +192,7 @@ const AccessMatrix: React.FC<AccessMatrixProps> = ({
       sortable: false,
       resizable: false,
       hideable: false,
+      stickyBackgroundFn: (row) => (row._isGroupHeader ? 'bg-neutral-50 dark:bg-neutral-800/40' : undefined),
       render: (row) => {
         if (row._isGroupHeader) {
           return (
@@ -224,7 +226,7 @@ const AccessMatrix: React.FC<AccessMatrixProps> = ({
   }, [actions, stickyBackground, tone, collapsedGroups]);
 
   return (
-    <div className={className}>
+    <div className={classNames(fullHeight && 'h-full flex flex-col', className)}>
       <Table<MatrixRow>
         columns={columns}
         data={rows}
@@ -235,6 +237,7 @@ const AccessMatrix: React.FC<AccessMatrixProps> = ({
         noBorders={noBorders}
         hoverable={hoverable}
         fullHeight={fullHeight}
+        className={fullHeight ? 'flex-1 min-h-0' : undefined}
         stickyHeader
         onRowClick={(row) => {
           if (row._isGroupHeader) toggleGroup(row._group);
