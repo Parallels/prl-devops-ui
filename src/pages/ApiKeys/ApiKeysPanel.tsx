@@ -1,7 +1,10 @@
-import React, { useMemo } from 'react';
-import { EmptyState, formatDate, IconButton, Pill, Table, ThemeColor, type Column } from '@prl/ui-kit';
+import React, { useCallback, useMemo } from 'react';
+import { EmptyState, formatDate, IconButton, Pill, Table, ThemeColor, type Column, type TableSettings } from '@prl/ui-kit';
 import { DevOpsApiKey } from '@/interfaces/devops';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { useUserConfig } from '@/contexts/UserConfigContext';
+
+const API_KEYS_TABLE_SETTINGS_SLUG = 'api-keys::tableSettings';
 
 export interface ApiKeysPanelProps {
   keys: DevOpsApiKey[];
@@ -14,6 +17,9 @@ export interface ApiKeysPanelProps {
 
 export const ApiKeysPanel: React.FC<ApiKeysPanelProps> = ({ keys, loading, canCreate, canDelete, onDelete, onCreate }) => {
   const { themeColor } = useSystemSettings();
+  const { isLoaded, getConfig, setConfig } = useUserConfig();
+  const tableSettings = getConfig<TableSettings>(API_KEYS_TABLE_SETTINGS_SLUG, { activeView: 'table' });
+  const handleSettingsChange = useCallback((settings: TableSettings) => void setConfig(API_KEYS_TABLE_SETTINGS_SLUG, settings), [setConfig]);
 
   const getExpiredTone = (expiresAt?: string): ThemeColor => {
     if (!expiresAt) return 'emerald';
@@ -133,6 +139,7 @@ export const ApiKeysPanel: React.FC<ApiKeysPanelProps> = ({ keys, loading, canCr
 
   return (
     <Table<DevOpsApiKey>
+      key={isLoaded ? 'api-keys-ready' : 'api-keys-pending'}
       columns={columns}
       data={keys}
       rowKey={(row) => row.id ?? `${row.name ?? 'key'}-${row.key ?? 'id'}`}
@@ -145,6 +152,8 @@ export const ApiKeysPanel: React.FC<ApiKeysPanelProps> = ({ keys, loading, canCr
       loading={loading}
       loadingMessage="Loading API keys…"
       defaultSort={{ columnId: 'name', direction: 'asc' }}
+      tableSettings={tableSettings}
+      onTableSettingsChange={handleSettingsChange}
       emptyState={
         <EmptyState
           tone="neutral"

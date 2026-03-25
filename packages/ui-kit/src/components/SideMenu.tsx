@@ -57,6 +57,11 @@ export interface SideMenuItemBase {
   guards?: SideMenuItemGuard[];
 }
 
+export interface SideMenuSettings {
+  /** When true, the menu is collapsed */
+  collapsed?: boolean;
+}
+
 export interface SideMenuItemLink extends SideMenuItemBase {
   color?: ThemeColor;
   type?: 'link';

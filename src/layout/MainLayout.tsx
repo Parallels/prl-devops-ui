@@ -6,7 +6,7 @@ import { Route } from '../types/Header';
 import logo from '@/assets/images/parallels-bars-small.png';
 
 import { LayoutProvider, useLayout } from '../contexts/LayoutContext';
-import { BottomSheetProvider, SideMenuLayout, type SideMenuItem, type SideMenuItemGuard } from '@prl/ui-kit';
+import { BottomSheetProvider, SideMenuLayout, type SideMenuItem, type SideMenuItemGuard, type SideMenuSettings } from '@prl/ui-kit';
 import { WebSocketProvider } from '../contexts/WebSocketContext';
 import { NotificationProvider } from '../contexts/NotificationContext';
 import { EventsHubProvider, useEventsHub } from '../contexts/EventsHubContext';
@@ -14,7 +14,7 @@ import { useSession } from '@/contexts/SessionContext';
 import { Claims, Roles } from '@/interfaces/tokenTypes';
 import { JobsProvider, useJobs } from '@/contexts/JobsContext';
 import { HostSettingsProvider } from '@/contexts/HostSettingsContext';
-import { UserConfigProvider } from '@/contexts/UserConfigContext';
+import { UserConfigProvider, useUserConfig } from '@/contexts/UserConfigContext';
 import { SystemSettingsProvider, useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { useModuleView, MODULE_VIEW_NAMES } from '@/components/HostSwitcher/ModuleViewSwitcher';
 import { SettingsModal } from '@/components/Settings/SettingsModal';
@@ -27,6 +27,12 @@ import { resolveJobOutcome } from '@/utils/jobOutcomeResolver';
 export interface MainLayoutProps {
   children?: React.ReactNode;
 }
+
+const sideMenuSettingsSlug = 'layout.sidemenu.settings';
+const IS_DEVELOPMENT_BUILD = (import.meta.env.VITE_IS_DEVELOPMENT ?? '').toLowerCase() === 'true';
+const APP_CHANNEL = (import.meta.env.VITE_CHANNEL ?? 'stable').toLowerCase();
+const IS_PRODUCTION_CHANNEL = APP_CHANNEL === 'stable' || APP_CHANNEL === 'production';
+const SHOW_DEVELOPER_MENU_ITEMS = IS_DEVELOPMENT_BUILD && !IS_PRODUCTION_CHANNEL;
 
 const LayoutModals: React.FC = () => {
   const { isModalOpen, closeModal } = useLayout();
@@ -99,6 +105,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
   const { containerMessages } = useEventsHub();
   const { addHighlight, clearHighlights } = useHighlight();
   const activeModuleView = useModuleView();
+  const { getConfig, setConfig } = useUserConfig();
   const [currentRoute, setCurrentRoute] = useState<Route>('home');
   const [hasFailedWithMultipleActiveJobs, setHasFailedWithMultipleActiveJobs] = useState(false);
   const previousStatesRef = useRef<Record<string, string>>({});
@@ -192,6 +199,38 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
     if (hasRunningJobs) return 'running';
     return 'pending';
   }, [activeCount, hasFailedWithMultipleActiveJobs, hasRunningJobs]);
+
+  const sideMenuSettings = getConfig<SideMenuSettings>(sideMenuSettingsSlug, { collapsed: false });
+
+  const handleSideMenuToggleCollapse = useCallback(() => {
+    void setConfig<SideMenuSettings>(sideMenuSettingsSlug, {
+      collapsed: !Boolean(sideMenuSettings.collapsed),
+    });
+  }, [setConfig, sideMenuSettings.collapsed]);
+
+  const developerSideMenuItems = useMemo<SideMenuItem[]>(() => {
+    if (!SHOW_DEVELOPER_MENU_ITEMS) return [];
+
+    return [
+      {
+        groupName: 'admin',
+        slug: 'events',
+        label: 'Events Hub',
+        path: '/events',
+        icon: 'Log',
+        guards: [{ type: 'role', role: Roles.SUPER_USER }],
+      },
+      { slug: 'demos', label: 'Demos', type: 'group', hasDivider: true },
+      {
+        groupName: 'demos',
+        slug: 'ux-demo',
+        label: 'UX Demo',
+        path: '/ux-demo',
+        icon: 'UX',
+        guards: [{ type: 'role', role: Roles.SUPER_USER }],
+      },
+    ];
+  }, []);
 
   const baseSideMenuItems = useMemo<SideMenuItem[]>(
     () => [
@@ -295,7 +334,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
         icon: 'Jobs',
         badge: activeCount > 0 ? <ActiveJobBadge count={activeCount} tone={jobsBadgeTone} /> : undefined,
       },
-      { groupName: 'admin', slug: 'admin', label: 'Admin', type: 'group', hasDivider: true },
+      { slug: 'admin', label: 'Admin', type: 'group', hasDivider: true },
       {
         groupName: 'admin',
         slug: 'logs',
@@ -304,25 +343,9 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
         icon: 'Log',
         guards: [{ type: 'role', role: Roles.SUPER_USER }],
       },
-      {
-        groupName: 'admin',
-        slug: 'events',
-        label: 'Events Hub',
-        path: '/events',
-        icon: 'Log',
-        guards: [{ type: 'role', role: Roles.SUPER_USER }],
-      },
-      { slug: 'demos', label: 'Demos', type: 'group', hasDivider: true },
-      {
-        groupName: 'demos',
-        slug: 'ux-demo',
-        label: 'UX Demo',
-        path: '/ux-demo',
-        icon: 'UX',
-        guards: [{ type: 'role', role: Roles.SUPER_USER }],
-      },
+      ...developerSideMenuItems,
     ],
-    [activeCount, jobsBadgeTone, isCatalogRoute, isVmRoute, isHostRoute],
+    [activeCount, jobsBadgeTone, isCatalogRoute, isVmRoute, isHostRoute, developerSideMenuItems],
   );
 
   const guardEvaluator = useCallback(
@@ -385,7 +408,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
   const headerElement = useMemo(() => <Header currentRoute={currentRoute} onNavChange={handleNavChange} />, [currentRoute]);
 
   const logoIconElement = (
-    <div className="h-[28px] w-[28px] flex items-center justify-center">
+    <div className="h-7 w-7 flex items-center justify-center">
       <img className="h-full" src={logo} alt="Parallels Logo" />
     </div>
   );
@@ -412,6 +435,8 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
             activeModuleView,
             moduleViewOptions: MODULE_VIEW_NAMES,
             color: themeColor,
+            collapsed: Boolean(sideMenuSettings.collapsed),
+            onToggleCollapse: handleSideMenuToggleCollapse,
           }}
           header={headerElement}
           bodyClassName="bg-white dark:bg-neutral-900"
@@ -433,7 +458,7 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
         <main className={`flex h-full flex-1 flex-col overflow-hidden transition-[flex] duration-300 ease-out`}>
           {headerElement}
           <LayoutModals />
-          <div className="flex h-full min-w-[400px] flex-1 flex-col overflow-hidden">
+          <div className="flex h-full min-w-100 flex-1 flex-col overflow-hidden">
             <div className="flex-1 overflow-y-auto bg-white dark:bg-neutral-900">{children || <Outlet />}</div>
           </div>
           {/* <LogPanel /> */}

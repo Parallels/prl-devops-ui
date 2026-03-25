@@ -1284,13 +1284,12 @@ function TableComponent<T>({
                   <IconButton
                     icon="ViewRows"
                     size="xs"
-                    variant="icon"
-                    color={activeView === 'table' ? color : 'slate'}
-                    rounded="md"
-                    accent={false}
+                    variant="ghost"
+                    color={color}
                     tooltip="Table view"
                     tooltipPosition="bottom"
-                    className={classNames(activeView !== 'table' && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
+                    disabled={activeView === 'table'}
+                    aria-pressed={activeView === 'table'}
                     onClick={() => {
                       setActiveView('table');
                       onViewChange?.('table');
@@ -1301,13 +1300,12 @@ function TableComponent<T>({
                   <IconButton
                     icon="ViewGrid"
                     size="xs"
-                    variant="icon"
-                    color={activeView === 'panel' ? color : 'slate'}
-                    rounded="md"
-                    accent={false}
+                    variant="ghost"
+                    color={color}
                     tooltip="Panel view"
                     tooltipPosition="bottom"
-                    className={classNames(activeView !== 'panel' && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
+                    disabled={activeView === 'panel'}
+                    aria-pressed={activeView === 'panel'}
                     onClick={() => {
                       setActiveView('panel');
                       onViewChange?.('panel');
@@ -1324,13 +1322,11 @@ function TableComponent<T>({
                   <IconButton
                     icon="EyeOpen"
                     size="xs"
-                    variant="icon"
-                    color={colPanelOpen ? color : 'slate'}
-                    rounded="md"
-                    accent={false}
+                    variant="ghost"
+                    color={color}
                     tooltip="Columns"
                     tooltipPosition="bottom"
-                    className={classNames(!colPanelOpen && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
+                    aria-pressed={colPanelOpen}
                     onClick={() => setColPanelOpen((o) => !o)}
                     aria-label="Toggle column visibility"
                   />
@@ -1398,13 +1394,11 @@ function TableComponent<T>({
                     <IconButton
                       icon="Group"
                       size="xs"
-                      variant="icon"
-                      color={groupPanelOpen || resolvedGroupBy ? color : 'slate'}
-                      rounded="md"
-                      accent={false}
+                      variant="ghost"
+                      color={color}
                       tooltip="Group by"
                       tooltipPosition="bottom"
-                      className={classNames(!(groupPanelOpen || resolvedGroupBy) && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
+                      aria-pressed={groupPanelOpen || !!resolvedGroupBy}
                       onClick={() => setGroupPanelOpen((o) => !o)}
                       aria-label="Configure row grouping"
                     />
@@ -1493,13 +1487,11 @@ function TableComponent<T>({
                     <IconButton
                       icon="Pin"
                       size="xs"
-                      variant="icon"
-                      color={stickyPanelOpen || hasStickyColumns ? color : 'slate'}
-                      rounded="md"
-                      accent={false}
+                      variant="ghost"
+                      color={color}
                       tooltip="Sticky columns"
                       tooltipPosition="bottom"
-                      className={classNames(!(stickyPanelOpen || hasStickyColumns) && 'text-neutral-400 hover:text-neutral-600 dark:text-neutral-400 dark:hover:text-neutral-200')}
+                      aria-pressed={stickyPanelOpen || hasStickyColumns}
                       onClick={() => setStickyPanelOpen((o) => !o)}
                       aria-label="Configure sticky columns"
                     />

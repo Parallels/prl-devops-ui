@@ -4,7 +4,7 @@ import type { Job } from '@/interfaces/Jobs';
 import { jobsService } from '@/services/devops/jobsService';
 import { useSession } from './SessionContext';
 import { useEventsHub } from './EventsHubContext';
-import { useNotifications } from './NotificationContext';
+import { useOptionalNotifications } from './NotificationContext';
 import { drainUnseenMessages } from '@/utils/messageQueue';
 import { GLOBAL_NOTIFICATION_CHANNEL } from '@/constants/constants';
 import { resolveJobOutcome } from '@/utils/jobOutcomeResolver';
@@ -65,7 +65,7 @@ const JobsContext = createContext<JobsContextType | null>(null);
 export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { session } = useSession();
   const { containerMessages } = useEventsHub();
-  const { addNotification } = useNotifications();
+  const notifications = useOptionalNotifications();
   const navigate = useNavigate();
   const hostname = session?.hostname ?? '';
 
@@ -166,7 +166,7 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const baseActions = recordAction ? [viewAction, recordAction] : [viewAction];
 
       if (msg === 'JOB_CREATED') {
-        addNotification({
+        notifications?.addNotification({
           id: job.id,
           channel: GLOBAL_NOTIFICATION_CHANNEL,
           type: 'info',
@@ -181,7 +181,7 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
           actions: baseActions,
         });
       } else if (msg === 'JOB_COMPLETED') {
-        addNotification({
+        notifications?.addNotification({
           id: job.id,
           channel: GLOBAL_NOTIFICATION_CHANNEL,
           type: 'success',
@@ -198,7 +198,7 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
           actions: baseActions,
         });
       } else if (msg === 'JOB_FAILED') {
-        addNotification({
+        notifications?.addNotification({
           id: job.id,
           channel: GLOBAL_NOTIFICATION_CHANNEL,
           type: 'error',
@@ -215,7 +215,7 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
       }
     }
-  }, [containerMessages['job_manager'], isLocallyDeletedJob]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [containerMessages['job_manager'], isLocallyDeletedJob, notifications]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Derived values ────────────────────────────────────────────────────────
 

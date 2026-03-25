@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Button, CustomIcon, EmptyState, IconButton, Panel, Pill, SearchBar, SidePanel, SplitView, Table, TooltipWrapper, type Column, type SplitViewItem } from '@prl/ui-kit';
+import { Button, CustomIcon, EmptyState, IconButton, Panel, Pill, SearchBar, SidePanel, SplitView, Table, type Column, type SplitViewItem, type TableSettings } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { useSession } from '@/contexts/SessionContext';
@@ -22,6 +22,8 @@ import { PageHeaderIcon } from '@/components/PageHeader';
 
 const SLUG_LOCAL_COLS = 'vms::localColumns';
 const SLUG_ORCH_COLS = 'vms::orchestratorColumns';
+const SLUG_LOCAL_TABLE_SETTINGS = 'vms::localTableSettings';
+const SLUG_ORCH_TABLE_SETTINGS = 'vms::orchestratorTableSettings';
 
 // ── Table columns ──────────────────────────────────────────────────────────
 
@@ -157,10 +159,24 @@ interface VmTablePanelProps {
   onRowClick: (vm: VirtualMachine) => void;
   columnVisibility?: Record<string, boolean>;
   onColumnVisibilityChange?: (v: Record<string, boolean>) => void;
+  tableSettings?: TableSettings;
+  onTableSettingsChange?: (settings: TableSettings) => void;
   highlightRecordId?: string;
 }
 
-function VmTablePanel({ columns, data, defaultSort, emptyTitle, emptySubtitle, onRowClick, columnVisibility, onColumnVisibilityChange, highlightRecordId }: VmTablePanelProps) {
+function VmTablePanel({
+  columns,
+  data,
+  defaultSort,
+  emptyTitle,
+  emptySubtitle,
+  onRowClick,
+  columnVisibility,
+  onColumnVisibilityChange,
+  tableSettings,
+  onTableSettingsChange,
+  highlightRecordId,
+}: VmTablePanelProps) {
   const { themeColor } = useSystemSettings();
 
   return (
@@ -183,6 +199,8 @@ function VmTablePanel({ columns, data, defaultSort, emptyTitle, emptySubtitle, o
           onRowClick={onRowClick}
           columnVisibility={columnVisibility}
           onColumnVisibilityChange={onColumnVisibilityChange}
+          tableSettings={tableSettings}
+          onTableSettingsChange={onTableSettingsChange}
           rowHighlight={highlightRecordId ? (vm) => vm.ID === highlightRecordId : undefined}
           emptyState={<EmptyState icon="Container" title={emptyTitle} subtitle={emptySubtitle} />}
           panelItem={(vm) => (
@@ -234,6 +252,28 @@ export const Vms: React.FC = () => {
 
   const localColVisibility = getConfig<Record<string, boolean>>(SLUG_LOCAL_COLS, {});
   const orchColVisibility = getConfig<Record<string, boolean>>(SLUG_ORCH_COLS, {});
+  const localTableSettings = getConfig<TableSettings>(SLUG_LOCAL_TABLE_SETTINGS, { columnVisibility: localColVisibility, activeView: 'table' });
+  const orchTableSettings = getConfig<TableSettings>(SLUG_ORCH_TABLE_SETTINGS, { columnVisibility: orchColVisibility, activeView: 'table' });
+
+  const handleLocalTableSettingsChange = useCallback(
+    (settings: TableSettings) => {
+      void setConfig(SLUG_LOCAL_TABLE_SETTINGS, settings);
+      if (settings.columnVisibility) {
+        void setConfig(SLUG_LOCAL_COLS, settings.columnVisibility);
+      }
+    },
+    [setConfig],
+  );
+
+  const handleOrchTableSettingsChange = useCallback(
+    (settings: TableSettings) => {
+      void setConfig(SLUG_ORCH_TABLE_SETTINGS, settings);
+      if (settings.columnVisibility) {
+        void setConfig(SLUG_ORCH_COLS, settings.columnVisibility);
+      }
+    },
+    [setConfig],
+  );
   const { highlights, clearHighlights } = useHighlight();
   const [orchestratorVms, setOrchestratorVms] = useState<VirtualMachine[]>([]);
   const [localVms, setLocalVms] = useState<VirtualMachine[]>([]);
@@ -531,6 +571,7 @@ export const Vms: React.FC = () => {
         ),
         panel: (
           <VmTablePanel
+            key="local-vm-table"
             title="Local VMs"
             columns={localColumns}
             data={filteredLocalVms}
@@ -543,6 +584,8 @@ export const Vms: React.FC = () => {
             }}
             columnVisibility={configLoaded ? localColVisibility : undefined}
             onColumnVisibilityChange={(v) => void setConfig(SLUG_LOCAL_COLS, v)}
+            tableSettings={configLoaded ? localTableSettings : undefined}
+            onTableSettingsChange={handleLocalTableSettingsChange}
             highlightRecordId={highlightedRecordId}
           />
         ),
@@ -570,6 +613,7 @@ export const Vms: React.FC = () => {
         ),
         panel: (
           <VmTablePanel
+            key="orchestrator-vm-table"
             title="Orchestrator VMs"
             columns={orchestratorColumns}
             data={filteredOrchestratorVms}
@@ -582,6 +626,8 @@ export const Vms: React.FC = () => {
             }}
             columnVisibility={configLoaded ? orchColVisibility : undefined}
             onColumnVisibilityChange={(v) => void setConfig(SLUG_ORCH_COLS, v)}
+            tableSettings={configLoaded ? orchTableSettings : undefined}
+            onTableSettingsChange={handleOrchTableSettingsChange}
             highlightRecordId={highlightedRecordId}
           />
         ),
@@ -598,6 +644,10 @@ export const Vms: React.FC = () => {
     configLoaded,
     localColVisibility,
     orchColVisibility,
+    localTableSettings,
+    orchTableSettings,
+    handleLocalTableSettingsChange,
+    handleOrchTableSettingsChange,
     setConfig,
     toCatalogs,
     themeColor,

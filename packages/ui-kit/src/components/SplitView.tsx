@@ -710,6 +710,7 @@ const SplitView: React.FC<SplitViewProps> = ({
                 filteredItems.map((item) => {
                   const isActive = item.id === activeId;
                   const isExpanded = item.id === expandedId;
+                  const hasExpandControl = !autoExpand && item.subContent !== undefined;
                   return (
                     <div key={item.id}>
                       {/* Row wrapper – uses a div so that action/expand buttons inside are not nested buttons */}
@@ -737,68 +738,66 @@ const SplitView: React.FC<SplitViewProps> = ({
                               : 'border-l-[3px] border-l-transparent hover:bg-gray-100/80 dark:hover:bg-gray-800/60',
                         )}
                       >
-                        <div className="flex items-start gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
                           {/* Item content */}
                           <div className="flex-1 min-w-0">
-                            <div className={classNames('flex gap-2 font-semibold leading-tight', tokens.label, isActive || item.highlight ? accent.text : 'text-gray-900 dark:text-gray-100')}>
+                            <div className="flex min-w-0 items-start gap-2">
                               {item.icon && (
                                 <div className="flex items-start">
                                   <CustomIcon icon={item.icon} className={classNames('shrink-0', iconSizeClasses[size])} />
                                 </div>
                               )}
-                              <div className="flex items-center w-full gap-1.5">
-                                <span className="truncate">{item.label}</span>
-                                {item.highlight && <span className={classNames('h-2 w-2 shrink-0 rounded-full', highlightAccent.dot, !isActive && 'animate-pulse')} />}
-                              </div>
-                            </div>
-                            {item.subtitle && (
-                              <div className={classNames('mt-0.5 leading-tight truncate', tokens.subtitle, isActive ? accent.subtitle : 'text-gray-500 dark:text-gray-400', item.icon && 'ml-7')}>
-                                {item.subtitle}
-                              </div>
-                            )}
-                            {item.badges && item.badges.length > 0 && (
-                              <div className={classNames('flex flex-wrap gap-1.5 mt-1.5', item.icon && 'ml-7')}>{item.badges.map((badge, idx) => renderBadge(badge, idx))}</div>
-                            )}
-                          </div>
-                          {/* Item actions (hover-reveal) */}
-                          {item.actions && (
-                            <div
-                              className="shrink-0 flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity duration-150"
-                              onClick={(e) => e.stopPropagation()}
-                              onMouseDown={(e) => e.stopPropagation()}
-                            >
-                              {item.actions}
-                            </div>
-                          )}
-                          {/* Expand button – only when autoExpand=false */}
-                          {!autoExpand && (
-                            <div className="shrink-0 flex items-center" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
-                              <button
-                                type="button"
-                                disabled={item.disabled || item.subContent === undefined}
-                                onClick={() => handleExpand(item)}
-                                title={isExpanded ? 'Collapse details' : 'Expand details'}
-                                aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
-                                aria-expanded={isExpanded}
-                                className={classNames(
-                                  'rounded p-1 transition-colors duration-150',
-                                  item.subContent === undefined
-                                    ? 'invisible'
-                                    : isExpanded
-                                      ? classNames(accent.text, 'opacity-100')
-                                      : 'text-gray-400 opacity-0 group-hover/item:opacity-100 hover:text-gray-700 dark:hover:text-gray-200',
+                              <div className="min-w-0 flex-1">
+                                <div className={classNames('font-semibold leading-tight truncate', tokens.label, isActive || item.highlight ? accent.text : 'text-gray-900 dark:text-gray-100')}>
+                                  {item.label}
+                                </div>
+                                {item.subtitle && (
+                                  <div className={classNames('mt-0.5 leading-tight truncate', tokens.subtitle, isActive ? accent.subtitle : 'text-gray-500 dark:text-gray-400')}>{item.subtitle}</div>
                                 )}
-                              >
-                                <svg
-                                  className={classNames('h-4 w-4 transition-transform duration-200 ease-in-out', isExpanded ? 'rotate-90' : 'rotate-0')}
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth={2}
+                                {item.badges && item.badges.length > 0 && <div className="mt-1.5 flex flex-wrap gap-1.5">{item.badges.map((badge, idx) => renderBadge(badge, idx))}</div>}
+                              </div>
+                            </div>
+                          </div>
+                          {/* Right rail order: actions, highlight dot, expand/collapse */}
+                          {(item.actions || hasExpandControl || item.highlight) && (
+                            <div className="shrink-0 flex items-center gap-0.5">
+                              {item.actions && (
+                                <div
+                                  className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity duration-150"
+                                  onClick={(e) => e.stopPropagation()}
+                                  onMouseDown={(e) => e.stopPropagation()}
                                 >
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
+                                  {item.actions}
+                                </div>
+                              )}
+                              {item.highlight && <span className={classNames('h-2 w-2 shrink-0 rounded-full', highlightAccent.dot, !isActive && 'animate-pulse')} />}
+                              {/* Expand button – only when autoExpand=false */}
+                              {hasExpandControl && (
+                                <div className="flex items-center" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    disabled={item.disabled}
+                                    onClick={() => handleExpand(item)}
+                                    title={isExpanded ? 'Collapse details' : 'Expand details'}
+                                    aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
+                                    aria-expanded={isExpanded}
+                                    className={classNames(
+                                      'rounded p-1 transition-colors duration-150',
+                                      isExpanded ? classNames(accent.text, 'opacity-100') : 'text-gray-400 opacity-0 group-hover/item:opacity-100 hover:text-gray-700 dark:hover:text-gray-200',
+                                    )}
+                                  >
+                                    <svg
+                                      className={classNames('h-4 w-4 transition-transform duration-200 ease-in-out', isExpanded ? 'rotate-90' : 'rotate-0')}
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth={2}
+                                    >
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>

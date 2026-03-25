@@ -36,7 +36,7 @@ const RANDOM_THEME_COLORS: ThemeColor[] = [
   'parallels',
 ];
 
-const randomFrom = <T,>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
+const randomFrom = <T>(arr: readonly T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 export interface RandomThemeColorValue {
   color: string;

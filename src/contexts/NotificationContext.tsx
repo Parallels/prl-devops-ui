@@ -1,21 +1,16 @@
-
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { Notification } from '../types/Notification';
 import notificationService from '@/services/NotificationService';
 import toastService from '@/services/ToastService';
-import {
-  NotificationAction,
-  NotificationContextValue,
-  NotificationUpdate,
-} from '@/interfaces/NotificationContext';
+import { NotificationAction, NotificationContextValue, NotificationUpdate } from '@/interfaces/NotificationContext';
 import { NotificationState } from '../types/Notification';
 
 // We need to define NotificationState here if it was removed from types or ensure it exists
 // Based on previous file content, NotificationState was imported from types/Notification
-// Let's assume we need to re-export or re-define if the types file didn't include it. 
+// Let's assume we need to re-export or re-define if the types file didn't include it.
 // The newly created types/Notification.ts DID NOT include NotificationState interface.
-// We should add it to types/Notification.ts or define it here. 
+// We should add it to types/Notification.ts or define it here.
 // Given the context is consuming it, let's define it here for now or update types.
 // Ideally, update types. But to proceed fast, let's look at what was there.
 
@@ -36,10 +31,7 @@ const NotificationContext = createContext<NotificationContextValue | undefined>(
 const STORAGE_KEY = 'notifications';
 const MAX_NOTIFICATIONS_PER_CHANNEL = 500;
 
-function notificationReducer(
-  state: NotificationState,
-  action: NotificationAction
-): NotificationState {
+function notificationReducer(state: NotificationState, action: NotificationAction): NotificationState {
   let newState: NotificationState = state;
 
   switch (action.type) {
@@ -161,14 +153,12 @@ function notificationReducer(
 
       const updatedNotifications = channelNotifications.filter((n) => n.id !== id);
       const shouldDecrementUnread = !notificationToDelete.isRead;
-      const channelUnreadCount = shouldDecrementUnread
-        ? Math.max(0, (state.unreadCount[channel] || 0) - 1)
-        : state.unreadCount[channel] || 0;
+      const channelUnreadCount = shouldDecrementUnread ? Math.max(0, (state.unreadCount[channel] || 0) - 1) : state.unreadCount[channel] || 0;
 
       const totalUnread = shouldDecrementUnread
         ? Object.keys(state.unreadCount)
-          .filter((c) => c !== channel)
-          .reduce((sum, c) => sum + (state.unreadCount[c] || 0), 0) + channelUnreadCount
+            .filter((c) => c !== channel)
+            .reduce((sum, c) => sum + (state.unreadCount[c] || 0), 0) + channelUnreadCount
         : state.totalUnread;
 
       newState = {
@@ -250,15 +240,12 @@ function notificationReducer(
               acc[c] = 0;
               return acc;
             },
-            {} as typeof state.unreadCount
+            {} as typeof state.unreadCount,
           ),
         };
       }
 
-      newState.totalUnread = Object.values(newState.unreadCount).reduce(
-        (sum, count) => sum + count,
-        0
-      );
+      newState.totalUnread = Object.values(newState.unreadCount).reduce((sum, count) => sum + count, 0);
       break;
     }
 
@@ -267,10 +254,7 @@ function notificationReducer(
       if (channel) {
         const { [channel]: _, ...remainingNotifications } = state.notifications;
         const { [channel]: __, ...remainingUnreadCount } = state.unreadCount;
-        const totalUnread = Object.values(remainingUnreadCount).reduce(
-          (sum, count) => sum + count,
-          0
-        );
+        const totalUnread = Object.values(remainingUnreadCount).reduce((sum, count) => sum + count, 0);
         newState = {
           ...state,
           notifications: remainingNotifications,
@@ -327,9 +311,7 @@ function notificationReducer(
         },
         unreadCount: {
           ...state.unreadCount,
-          [channel]: shouldDecrementUnread
-            ? Math.max(0, (state.unreadCount[channel] || 0) - 1)
-            : state.unreadCount[channel] || 0,
+          [channel]: shouldDecrementUnread ? Math.max(0, (state.unreadCount[channel] || 0) - 1) : state.unreadCount[channel] || 0,
         },
         totalUnread: shouldDecrementUnread ? Math.max(0, state.totalUnread - 1) : state.totalUnread,
       };
@@ -415,29 +397,32 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
     notificationService.markAsRead(id);
   }, []);
 
-  const addNotification = useCallback((notification: Notification) => {
-    dispatch({ type: 'ADD_NOTIFICATION', notification });
-    if (notification.showAsToast && !notification.alreadyShownToast) {
-      const toastActions = notification.actions?.map((action) => ({
-        ...action,
-        onClick: () => {
-          markAsRead(notification.id, notification.channel);
-          action.onClick?.();
-        },
-      }));
+  const addNotification = useCallback(
+    (notification: Notification) => {
+      dispatch({ type: 'ADD_NOTIFICATION', notification });
+      if (notification.showAsToast && !notification.alreadyShownToast) {
+        const toastActions = notification.actions?.map((action) => ({
+          ...action,
+          onClick: () => {
+            markAsRead(notification.id, notification.channel);
+            action.onClick?.();
+          },
+        }));
 
-      toastService.showToast({
-        id: notification.id,
-        message: notification.message,
-        details: notification.details,
-        type: notification.type as 'info' | 'success' | 'warning' | 'error',
-        autoClose: notification.autoClose,
-        autoCloseDuration: notification.autoCloseDuration,
-        dismissible: notification.dismissible,
-        actions: toastActions,
-      });
-    }
-  }, [markAsRead]);
+        toastService.showToast({
+          id: notification.id,
+          message: notification.message,
+          details: notification.details,
+          type: notification.type as 'info' | 'success' | 'warning' | 'error',
+          autoClose: notification.autoClose,
+          autoCloseDuration: notification.autoCloseDuration,
+          dismissible: notification.dismissible,
+          actions: toastActions,
+        });
+      }
+    },
+    [markAsRead],
+  );
 
   const updateNotification = useCallback((notification: Notification) => {
     dispatch({ type: 'UPDATE_NOTIFICATION', notification });
@@ -467,12 +452,9 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
     dispatch({ type: 'REMOVE_NOTIFICATION', channel, id });
   }, []);
 
-  const setAlreadyShownToast = useCallback(
-    (id: string, channel: string, alreadyShownToast: boolean) => {
-      dispatch({ type: 'SET_ALREADY_SHOWN_TOAST', id, channel, alreadyShownToast });
-    },
-    []
-  );
+  const setAlreadyShownToast = useCallback((id: string, channel: string, alreadyShownToast: boolean) => {
+    dispatch({ type: 'SET_ALREADY_SHOWN_TOAST', id, channel, alreadyShownToast });
+  }, []);
 
   const openModal = useCallback((payload: import('../types/Notification').NotificationModalPayload) => {
     dispatch({ type: 'OPEN_MODAL', payload });
@@ -543,11 +525,14 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
   );
 };
 
-
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
   if (context === undefined) {
     throw new Error('useNotifications must be used within a NotificationProvider');
   }
   return context;
+};
+
+export const useOptionalNotifications = () => {
+  return useContext(NotificationContext);
 };
