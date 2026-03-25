@@ -32,7 +32,7 @@ const sideMenuSettingsSlug = 'layout.sidemenu.settings';
 const IS_DEVELOPMENT_BUILD = (import.meta.env.VITE_IS_DEVELOPMENT ?? '').toLowerCase() === 'true';
 const APP_CHANNEL = (import.meta.env.VITE_CHANNEL ?? 'stable').toLowerCase();
 const IS_PRODUCTION_CHANNEL = APP_CHANNEL === 'stable' || APP_CHANNEL === 'production';
-const SHOW_DEVELOPER_MENU_ITEMS = IS_DEVELOPMENT_BUILD && !IS_PRODUCTION_CHANNEL;
+const SHOW_DEVELOPER_MENU_ITEMS = IS_DEVELOPMENT_BUILD;
 
 const LayoutModals: React.FC = () => {
   const { isModalOpen, closeModal } = useLayout();

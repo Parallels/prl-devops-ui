@@ -387,6 +387,17 @@ export interface TagPickerProps {
    * Default: false
    */
   escapeBoundary?: boolean;
+  /**
+   * Maximum number of tag pills shown before a "+N" overflow pill appears.
+   * Set to 0 or undefined to show all tags. Default: 3
+   */
+  tagLimit?: number;
+  /**
+   * When true, items added during this session (not present in the initial value)
+   * are highlighted with an emerald color cue — both in the trigger pills and in
+   * the dropdown list. Default: true
+   */
+  highlightNew?: boolean;
   className?: string;
   disabled?: boolean;
 }
@@ -408,6 +419,8 @@ const TagPicker: React.FC<TagPickerProps> = ({
   color = 'blue',
   itemColor = null,
   escapeBoundary = false,
+  tagLimit = 3,
+  highlightNew = true,
   className,
   disabled = false,
 }) => {
@@ -421,11 +434,21 @@ const TagPicker: React.FC<TagPickerProps> = ({
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const [style, setStyle] = useState<React.CSSProperties>();
   const [computedMaxHeight, setComputedMaxHeight] = useState(MAX_DROPDOWN_HEIGHT);
+  const [showAllTags, setShowAllTags] = useState(false);
 
   const colorTokens = toneTokens[color] ?? toneTokens.blue;
   if (!itemColor) {
     itemColor = color;
   }
+
+  // ── Session-new tracking ───────────────────────────────────────────────────
+
+  const initialValueRef = useRef<Set<string>>(new Set(value));
+
+  const sessionAddedSet = useMemo(
+    () => (highlightNew ? new Set(value.filter((v) => !initialValueRef.current.has(v))) : new Set<string>()),
+    [value, highlightNew],
+  );
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -459,19 +482,26 @@ const TagPicker: React.FC<TagPickerProps> = ({
     const offset = 4;
     const minMargin = 8;
 
-    const computedWidth = Math.min(Math.max(anchorRect.width, menuRect.width), boundary.width - minMargin * 2);
-    const computedHeight = menuRect.height;
+    // The dropdown is portaled to document.body, so it is never clipped by an
+    // intermediate scroll ancestor. Use the viewport for all vertical decisions
+    // (flip direction + clamping). Use the boundary only for horizontal alignment.
+    const vp = viewportBounds();
+
+    const computedWidth = Math.min(Math.max(anchorRect.width, menuRect.width), Math.min(boundary.width, vp.width) - minMargin * 2);
+    // When the menu hasn't rendered yet its height is 0; assume max height so the
+    // flip decision is made conservatively (prefers opening above when space is tight).
+    const computedHeight = menuRect.height || MAX_DROPDOWN_HEIGHT;
 
     const belowTop = anchorRect.bottom + offset;
     const aboveTop = anchorRect.top - offset - computedHeight;
 
-    const overflowFor = (top: number) => Math.max(0, boundary.top + minMargin - top) + Math.max(0, top + computedHeight - (boundary.bottom - minMargin));
+    const overflowFor = (top: number) => Math.max(0, vp.top + minMargin - top) + Math.max(0, top + computedHeight - (vp.bottom - minMargin));
 
     const isTopSide = overflowFor(aboveTop) < overflowFor(belowTop);
     const rawTop = isTopSide ? aboveTop : belowTop;
-    const clampedTop = Math.min(Math.max(rawTop, boundary.top + minMargin), Math.max(boundary.top + minMargin, boundary.bottom - computedHeight - minMargin));
+    const clampedTop = Math.min(Math.max(rawTop, vp.top + minMargin), Math.max(vp.top + minMargin, vp.bottom - computedHeight - minMargin));
 
-    const availableSpace = isTopSide ? Math.max(120, anchorRect.top - offset - (boundary.top + minMargin)) : Math.max(120, boundary.bottom - minMargin - belowTop);
+    const availableSpace = isTopSide ? Math.max(120, anchorRect.top - offset - (vp.top + minMargin)) : Math.max(120, vp.bottom - minMargin - belowTop);
 
     const startLeft = anchorRect.left;
     const clampedLeft = Math.min(Math.max(startLeft, boundary.left + minMargin), Math.max(boundary.left + minMargin, boundary.right - computedWidth - minMargin));
@@ -669,6 +699,7 @@ const TagPicker: React.FC<TagPickerProps> = ({
                 filtered.map((item, index) => {
                   const isSelected = selectedSet.has(item.id);
                   const isFocused = index === focusedIndex;
+                  const isNew = sessionAddedSet.has(item.id);
                   return (
                     <li
                       key={item.id}
@@ -679,25 +710,32 @@ const TagPicker: React.FC<TagPickerProps> = ({
                       onClick={() => handleToggle(item)}
                       className={classNames(
                         'flex cursor-pointer select-none items-center gap-3 px-4 py-2.5 transition-colors',
-                        isSelected ? colorTokens.optionSelectedBg : isFocused ? colorTokens.focusedBg : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/60',
+                        isSelected ? (isNew ? 'bg-emerald-50 dark:bg-emerald-900/20' : colorTokens.optionSelectedBg) : isFocused ? colorTokens.focusedBg : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/60',
                       )}
                     >
                       {/* Checkmark slot */}
                       <span className="flex h-4 w-4 shrink-0 items-center justify-center">
                         {isSelected && (
-                          <svg className={classNames('h-3.5 w-3.5', colorTokens.optionSelectedIcon)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                          <svg className={classNames('h-3.5 w-3.5', isNew ? 'text-emerald-500 dark:text-emerald-400' : colorTokens.optionSelectedIcon)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="m5 13 4 4L19 7" />
                           </svg>
                         )}
                       </span>
 
                       {/* Icon */}
-                      {item.icon && <span className={classNames('shrink-0', isSelected ? colorTokens.optionSelectedIcon : 'text-neutral-400 dark:text-neutral-500')}>{item.icon}</span>}
+                      {item.icon && <span className={classNames('shrink-0', isSelected ? (isNew ? 'text-emerald-500 dark:text-emerald-400' : colorTokens.optionSelectedIcon) : 'text-neutral-400 dark:text-neutral-500')}>{item.icon}</span>}
 
                       {/* Label */}
-                      <span className={classNames('min-w-0 flex-1 truncate text-sm font-medium', isSelected ? colorTokens.optionSelectedText : 'text-neutral-800 dark:text-neutral-200')}>
+                      <span className={classNames('min-w-0 flex-1 truncate text-sm font-medium', isSelected ? (isNew ? 'text-emerald-700 dark:text-emerald-300' : colorTokens.optionSelectedText) : 'text-neutral-800 dark:text-neutral-200')}>
                         {item.label}
                       </span>
+
+                      {/* New badge */}
+                      {isNew && (
+                        <span className="shrink-0 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400">
+                          new
+                        </span>
+                      )}
 
                       {/* Tags */}
                       {item.tags && item.tags.length > 0 && (
@@ -759,7 +797,7 @@ const TagPicker: React.FC<TagPickerProps> = ({
           if (!disabled) setOpen((prev) => !prev);
         }}
         className={classNames(
-          'flex w-full min-h-10.5 flex-wrap items-center gap-1.5 rounded-lg border px-3 py-2 text-left transition-colors',
+          'flex w-full min-h-10.5 flex-wrap items-start gap-1.5 rounded-lg border px-3 py-2 text-left transition-colors',
           'bg-white dark:bg-neutral-900',
           open ? colorTokens.triggerOpen : 'border-neutral-300 hover:border-neutral-400 dark:border-neutral-600 dark:hover:border-neutral-500',
           disabled && 'cursor-not-allowed opacity-50',
@@ -776,9 +814,9 @@ const TagPicker: React.FC<TagPickerProps> = ({
           </>
         ) : value.length > 0 ? (
           <span className="flex flex-1 flex-wrap items-center gap-1.5">
-            {value.map((v) => (
+            {(multi && tagLimit > 0 && !showAllTags ? value.slice(0, tagLimit) : value).map((v) => (
               <span key={v} className="inline-flex items-center">
-                <Pill size="sm" tone={itemColor ?? color} variant="soft">
+                <Pill size="sm" tone={sessionAddedSet.has(v) ? 'emerald' : (itemColor ?? color)} variant="soft">
                   {labelFor(v)}
                 </Pill>
                 {multi && (
@@ -802,13 +840,36 @@ const TagPicker: React.FC<TagPickerProps> = ({
                 )}
               </span>
             ))}
+            {multi && tagLimit > 0 && value.length > tagLimit && !showAllTags && (
+              <button
+                type="button"
+                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={(e) => { e.stopPropagation(); setShowAllTags(true); }}
+                className="inline-flex"
+                aria-label={`Show ${value.length - tagLimit} more tags`}
+              >
+                <Pill size="sm" tone="neutral" variant="soft">
+                  +{value.length - tagLimit}
+                </Pill>
+              </button>
+            )}
+            {multi && tagLimit > 0 && showAllTags && value.length > tagLimit && (
+              <button
+                type="button"
+                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={(e) => { e.stopPropagation(); setShowAllTags(false); }}
+                className="text-xs text-neutral-400 underline-offset-2 hover:underline dark:text-neutral-500"
+              >
+                Show less
+              </button>
+            )}
           </span>
         ) : (
           <span className="flex-1 text-sm text-neutral-400 dark:text-neutral-500">{placeholder}</span>
         )}
 
         {/* Chevron */}
-        <svg className={classNames('ml-auto h-4 w-4 shrink-0 text-neutral-400 transition-transform', open && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <svg className={classNames('ml-auto mt-1 h-4 w-4 shrink-0 self-start text-neutral-400 transition-transform', open && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
         </svg>
       </button>

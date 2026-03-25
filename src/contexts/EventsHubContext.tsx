@@ -5,7 +5,7 @@ import { WebSocketState, type WebSocketMessage } from '../types/WebSocket';
 import { authService } from '../services/authService';
 
 export const EVENTS_HUB_SERVER_ID = 'events-hub';
-const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy,job_manager';
+const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy,job_manager,auth';
 // Keep a larger in-memory buffer so consumers using queue cursors can catch up
 // during short spikes without losing intermediate events.
 const DEFAULT_LIMIT = 2000;
@@ -252,7 +252,7 @@ interface EventsHubContextType {
 const EventsHubContext = createContext<EventsHubContextType | null>(null);
 
 export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { session, isConnected: isSessionConnected } = useSession();
+    const { session, isConnected: isSessionConnected, clearSession } = useSession();
     const { connect, disconnect, service } = useWebSocketContext();
     const [containers, dispatch] = useReducer(containersReducer, undefined, initialContainers);
     const [hostStats, dispatchHostStats] = useReducer(hostStatsReducer, {});
@@ -263,6 +263,10 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Always-current hostname for the subscribeRaw closure (avoids stale closure)
     const hostnameRef = useRef<string>('');
     hostnameRef.current = session?.hostname ?? '';
+
+    // Always-current session for auth event handling (avoids stale closure)
+    const sessionRef = useRef(session);
+    sessionRef.current = session;
 
     // -----------------------------------------------------------------------
     // Async helper: obtain a **fresh** token and build the WS URL.
@@ -420,10 +424,52 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 // fall through to general container dispatch
             }
 
+            // ── Auth events — session management ────────────────────────────────
+            // These are handled here (centrally) so the app reacts to backend
+            // mutations that affect the current logged-in user without any page
+            // needing to subscribe individually.  The message is still dispatched
+            // into the 'auth' container below so event history remains intact.
+            if (msg.event_type === 'auth') {
+                const s = sessionRef.current;
+                const uid = s?.tokenPayload?.uid;
+                const roles = s?.tokenPayload?.roles ?? [];
+                const hostname = s?.hostname ?? '';
+                const serverUrl = s?.serverUrl;
+
+                switch (msg.message) {
+                    case 'USER_UPDATED': {
+                        const body = msg.body as { user_id?: string } | undefined;
+                        if (uid && body?.user_id === uid) {
+                            console.log('[EventsHub] USER_UPDATED for current user — refreshing session token');
+                            void authService.refreshSession(hostname, serverUrl);
+                        }
+                        break;
+                    }
+                    case 'USER_REMOVED': {
+                        const body = msg.body as { user_id?: string } | undefined;
+                        if (uid && body?.user_id === uid) {
+                            console.log('[EventsHub] USER_REMOVED for current user — logging out');
+                            authService.logout(hostname);
+                            clearSession();
+                        }
+                        break;
+                    }
+                    case 'ROLE_CLAIM_ADDED':
+                    case 'ROLE_CLAIM_REMOVED': {
+                        const body = msg.body as { role_id?: string } | undefined;
+                        if (body?.role_id && roles.includes(body.role_id)) {
+                            console.log(`[EventsHub] ${msg.message} on role "${body.role_id}" held by current user — refreshing session token`);
+                            void authService.refreshSession(hostname, serverUrl);
+                        }
+                        break;
+                    }
+                }
+            }
+
             dispatch({ type: 'ADD', key: msg.event_type ?? '_other', msg: entry });
         });
         return unsub;
-    }, [service]);
+    }, [service, clearSession]);
 
     // -----------------------------------------------------------------------
     // Stable derived values

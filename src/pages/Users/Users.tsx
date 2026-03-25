@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, ConfirmModal, EmptyState, FormField, FormLayout, getGravatarUrl, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, UserAvatar, type SplitViewItem } from '@prl/ui-kit';
+import { Button, ConfirmModal, EmptyState, FormField, FormLayout, getGravatarUrl, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, TagPicker, UserAvatar, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
-import { DevOpsUser } from '@/interfaces/devops';
+import { ClaimResponse, DevOpsUser, RoleResponse } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { UserDetail, type UserDetailRef } from './UserDetail';
@@ -10,8 +10,8 @@ export const Users: React.FC = () => {
   const [users, setUsers] = useState<DevOpsUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>();
-  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
-  const [availableClaims, setAvailableClaims] = useState<string[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<RoleResponse[]>([]);
+  const [availableClaims, setAvailableClaims] = useState<ClaimResponse[]>([]);
   const { session } = useSession();
   const { themeColor } = useSystemSettings();
   const hostname = session?.hostname ?? '';
@@ -32,6 +32,9 @@ export const Users: React.FC = () => {
   const [modalEmail, setModalEmail] = useState('');
   const [modalUsername, setModalUsername] = useState('');
   const [modalPassword, setModalPassword] = useState('');
+  const [modalConfirmPassword, setModalConfirmPassword] = useState('');
+  const [modalRoles, setModalRoles] = useState<string[]>([]);
+  const [modalClaims, setModalClaims] = useState<string[]>([]);
   const [modalSaving, setModalSaving] = useState(false);
 
   const { hasClaim } = useSession();
@@ -53,12 +56,18 @@ export const Users: React.FC = () => {
     try {
       const [usersResult, rolesResult, claimsResult] = await Promise.all([
         devopsService.users.getUsers(hostname),
-        devopsService.roles.getRoles(hostname).catch(() => []),
+        devopsService.roles.getRoles(hostname).catch(() => [] as RoleResponse[]),
         devopsService.claims.getClaims(hostname).catch(() => []),
       ]);
       setUsers(usersResult);
-      setAvailableRoles(rolesResult.map((r) => r.name ?? '').filter(Boolean));
-      setAvailableClaims(claimsResult.map((c) => c.name ?? '').filter(Boolean));
+      setAvailableRoles(rolesResult);
+      setAvailableClaims(
+        claimsResult.map((c) => ({
+          id: c.id ?? '',
+          name: c.name ?? '',
+          description: c.description,
+        } as ClaimResponse))
+      );
     } catch (err: any) {
       const message = err?.message ?? 'Failed to load users';
       setError(message);
@@ -105,6 +114,9 @@ export const Users: React.FC = () => {
     setModalEmail('');
     setModalUsername('');
     setModalPassword('');
+    setModalConfirmPassword('');
+    setModalRoles([]);
+    setModalClaims([]);
   }, []);
 
   const handleModalCreate = useCallback(async () => {
@@ -115,9 +127,11 @@ export const Users: React.FC = () => {
         email: modalEmail,
         password: modalPassword,
         username: modalUsername,
+        ...(modalRoles.length > 0 && { roles: modalRoles }),
+        ...(modalClaims.length > 0 && { claims: modalClaims }),
       });
       if (!created?.id) throw new Error('Failed to create user: invalid server response');
-      setUsers((prev) => [...prev, created]);
+      setUsers((prev) => [...prev, { ...created, roles: modalRoles, claims: modalClaims }]);
       setSelectedId(created.id);
       handleModalClose();
       setSaveResult({ type: 'success', message: 'The user account has been created successfully.' });
@@ -126,7 +140,7 @@ export const Users: React.FC = () => {
     } finally {
       setModalSaving(false);
     }
-  }, [hostname, modalName, modalEmail, modalPassword, modalUsername, handleModalClose]);
+  }, [hostname, modalName, modalEmail, modalPassword, modalUsername, modalRoles, modalClaims, handleModalClose]);
 
   const handleHeaderSave = useCallback(async () => {
     setSaving(true);
@@ -199,7 +213,22 @@ export const Users: React.FC = () => {
     [users, isDirty, saving, canUpdate, handleHeaderCancel, handleHeaderSave, themeColor],
   );
 
-  const isModalValid = modalUsername.trim() !== '' && modalPassword.trim() !== '';
+  const modalPasswordMismatch = modalPassword !== '' && modalConfirmPassword !== '' && modalPassword !== modalConfirmPassword;
+  const isModalValid =
+    modalUsername.trim() !== '' &&
+    modalPassword.trim() !== '' &&
+    modalPassword === modalConfirmPassword &&
+    modalRoles.length > 0;
+
+  const modalRoleItems = useMemo(
+    () => availableRoles.map((r) => ({ id: r.id, label: r.name })),
+    [availableRoles],
+  );
+
+  const modalClaimItems = useMemo(
+    () => availableClaims.map((c) => ({ id: c.id || c.name, label: c.name })),
+    [availableClaims],
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -242,7 +271,7 @@ export const Users: React.FC = () => {
         onClose={handleModalClose}
         title="Add User"
         description="Create a new user account."
-        size="sm"
+        size="md"
         icon="User"
         actions={
           <ModalActions>
@@ -255,20 +284,71 @@ export const Users: React.FC = () => {
           </ModalActions>
         }
       >
-        <FormLayout columns={1}>
-          <FormField label="Name">
-            <Input tone={themeColor} value={modalName} onChange={(e) => setModalName(e.target.value)} placeholder="Full name" />
-          </FormField>
-          <FormField label="Email">
-            <Input tone={themeColor} value={modalEmail} onChange={(e) => setModalEmail(e.target.value)} placeholder="Email address" type="email" />
-          </FormField>
-          <FormField label="Username" required>
-            <Input tone={themeColor} value={modalUsername} onChange={(e) => setModalUsername(e.target.value)} placeholder="Username" />
-          </FormField>
-          <FormField label="Password" required>
-            <Input type="password" value={modalPassword} onChange={(e) => setModalPassword(e.target.value)} placeholder="Password" />
-          </FormField>
-        </FormLayout>
+        <div className="space-y-4">
+          <FormLayout columns={2}>
+            <FormField label="Name">
+              <Input tone={themeColor} value={modalName} onChange={(e) => setModalName(e.target.value)} placeholder="Full name" />
+            </FormField>
+            <FormField label="Email">
+              <Input tone={themeColor} value={modalEmail} onChange={(e) => setModalEmail(e.target.value)} placeholder="Email address" type="email" />
+            </FormField>
+            <FormField label="Username" required>
+              <Input tone={themeColor} value={modalUsername} onChange={(e) => setModalUsername(e.target.value)} placeholder="Username" />
+            </FormField>
+          </FormLayout>
+
+          <FormLayout columns={2}>
+            <FormField label="Password" required error={modalPasswordMismatch ? 'Passwords do not match' : undefined}>
+              <Input
+                tone={themeColor}
+                type="password"
+                value={modalPassword}
+                onChange={(e) => {
+                  setModalPassword(e.target.value);
+                  if (!e.target.value) setModalConfirmPassword('');
+                }}
+                placeholder="Password"
+              />
+            </FormField>
+            <FormField label="Confirm Password" required error={modalPasswordMismatch ? 'Passwords do not match' : undefined}>
+              <Input
+                tone={themeColor}
+                type="password"
+                value={modalConfirmPassword}
+                onChange={(e) => setModalConfirmPassword(e.target.value)}
+                placeholder="Re-enter password"
+                disabled={modalPassword === ''}
+              />
+            </FormField>
+          </FormLayout>
+
+          <FormLayout columns={1}>
+            <FormField label="Roles" required hint={modalRoles.length === 0 ? 'At least one role is required' : undefined}>
+              <TagPicker
+                color={themeColor}
+                items={modalRoleItems}
+                value={modalRoles}
+                onChange={setModalRoles}
+                placeholder="Assign roles…"
+                emptyMessage="No roles available"
+                escapeBoundary
+                highlightNew={false}
+              />
+            </FormField>
+            <FormField label="Direct Claims">
+              <TagPicker
+                color={themeColor}
+                items={modalClaimItems}
+                value={modalClaims}
+                onChange={setModalClaims}
+                placeholder="Assign claims…"
+                emptyMessage="No claims available"
+                escapeBoundary
+                highlightNew={false}
+              />
+            </FormField>
+          </FormLayout>
+        </div>
       </Modal>
 
       {/* Delete Confirm Modal */}

@@ -264,7 +264,7 @@ const createTheme = (): ThemeDefinition => {
       theme.button.soft[color] =
         `bg-${c}-50 text-${c}-600 ring-1 ring-inset ring-${c}-200 hover:bg-${c}-100 focus-visible:ring-2 focus-visible:ring-${c}-400 focus-visible:ring-offset-2 dark:bg-${c}-500/10 dark:text-${c}-200 dark:ring-${c}-500/40`;
       theme.button.outline[color] =
-        `border border-${c}-200 text-${c}-600 hover:bg-${c}-50 focus-visible:ring-2 focus-visible:ring-${c}-400 focus-visible:ring-offset-2 dark:border-${c}-500/50 dark:text-${c}-200 dark:hover:bg-${c}-500/10`;
+        `border border-${c}-200 text-${c}-600 hover:bg-${c}-200 focus-visible:ring-2 focus-visible:ring-${c}-400 focus-visible:ring-offset-2 dark:border-${c}-500/50 dark:text-${c}-200 dark:hover:bg-${c}-500/10`;
       theme.button.ghost[color] = `text-${c}-600 hover:bg-${c}-100 focus-visible:ring-2 focus-visible:ring-${c}-400 focus-visible:ring-offset-2 dark:text-${c}-200 dark:hover:bg-${c}-500/5`;
       theme.button.link[color] = `text-${c}-600 hover:text-${c}-500 hover:underline dark:text-${c}-200`;
       theme.button.clear[color] = `text-${c}-600 hover:text-${c}-500 dark:text-${c}-200`;

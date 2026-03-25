@@ -7,7 +7,7 @@ import { EventsHubProvider } from "./contexts/EventsHubContext";
 import { SystemStatsProvider } from "./contexts/SystemStatsContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LockedHostProvider } from "./contexts/LockedHostContext";
-import { IconProvider } from "@prl/ui-kit";
+import { IconProvider, BottomSheetProvider } from "@prl/ui-kit";
 import { renderIcon } from '@prl/ui-kit';
 
 function App() {
@@ -20,7 +20,9 @@ function App() {
             <EventsHubProvider>
               <SystemStatsProvider>
                 <IconProvider renderIcon={renderIcon}>
-                  <AppRouter />
+                  <BottomSheetProvider>
+                    <AppRouter />
+                  </BottomSheetProvider>
                 </IconProvider>
               </SystemStatsProvider>
             </EventsHubProvider>

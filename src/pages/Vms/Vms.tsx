@@ -204,18 +204,23 @@ function VmTablePanel({
           rowHighlight={highlightRecordId ? (vm) => vm.ID === highlightRecordId : undefined}
           emptyState={<EmptyState icon="Container" title={emptyTitle} subtitle={emptySubtitle} />}
           panelItem={(vm) => (
-            <Panel variant="glass" padding="sm" tone={getStateTone(vm.State)} decoration="both" hoverable onClick={() => onRowClick(vm)}>
+            <Panel variant="glass" padding="xs" decoration="both" hoverable onClick={() => onRowClick(vm)}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <OsIcon os={vm.OS} />
+                  <div className="flex items-center justify-center ">
+                    <OsIcon os={vm.OS} className="w-10 h-10" />
+                  </div>
                   <div className="min-w-0">
+                    <div className="flex justify-end ">
+                      <Pill size="sm" tone={getStateTone(vm.State)} variant="soft" className="shrink-0">
+                        {vm.State ?? 'Unknown'}
+                      </Pill>
+                    </div>
                     <p className="font-medium text-sm text-neutral-900 dark:text-neutral-100 truncate">{vm.Name ?? '—'}</p>
+
                     <p className="text-xs text-neutral-400 dark:text-neutral-500 font-mono truncate">{vm.ID ?? '—'}</p>
                   </div>
                 </div>
-                <Pill size="sm" tone={getStateTone(vm.State)} variant="soft" className="shrink-0">
-                  {vm.State ?? 'Unknown'}
-                </Pill>
               </div>
               {(vm.internal_ip_address || vm.Description) && (
                 <div className="mt-2 space-y-0.5 text-xs text-neutral-500 dark:text-neutral-400">

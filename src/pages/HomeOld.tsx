@@ -1,17 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PagedPanel, Panel, Pill, StatGraphTile, MultiProgressBar, formatMB, ThemeColor, InfoRow, Section, Button, TagPanel } from '@prl/ui-kit';
+import { PagedPanel, Panel, Pill, StatGraphTile, MultiProgressBar, formatMB, ThemeColor, InfoRow, Section } from '@prl/ui-kit';
 import { useSystemStats } from '@/contexts/SystemStatsContext';
 import { useSession } from '@/contexts/SessionContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useEventsHub } from '@/contexts/EventsHubContext';
-import { useUserConfig } from '@/contexts/UserConfigContext';
-import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { OrchestratorResource } from '@/interfaces/Orchestrator';
 import { HostConfig } from '@/interfaces/Host';
 import { devopsService } from '@/services/devops';
 import { useModuleView } from '@/components/HostSwitcher/ModuleViewSwitcher';
 import { drainUnseenMessages } from '@/utils/messageQueue';
-import { SmartGridLayout, type SmartGridItemDefinition, type SmartGridLayoutState } from '@prl/ui-kit/components/SmartGridLayout';
 
 // ── Orchestrator resource card ────────────────────────────────────────────────
 
@@ -41,17 +38,6 @@ const UNKNOWN_META = {
   bg: 'bg-neutral-50 dark:bg-neutral-900/40',
   border: 'border-neutral-200 dark:border-neutral-700',
   chip: 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300',
-};
-
-const HOME_SMART_GRID_LAYOUT_SLUG = 'home.smart_grid_layout';
-
-const MODULE_COLORS: Record<string, ThemeColor> = {
-  host: 'blue',
-  catalog: 'emerald',
-  orchestrator: 'violet',
-  api: 'sky',
-  reverse_proxy: 'amber',
-  cache: 'lime',
 };
 
 function OrchestratorResourceCard({ res }: { res: OrchestratorResource }) {
@@ -207,19 +193,14 @@ function VmStatCard({ label, value, color }: { label: string; value: number; col
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
-export const Home: React.FC = () => {
+export const HomeOld: React.FC = () => {
   const { session, updateHardwareInfo, hasModule } = useSession();
-  const { themeColor } = useSystemSettings();
-  const { isLoaded: userConfigLoaded, getConfig, setConfig } = useUserConfig();
   const moduleView = useModuleView();
   const config = useConfig();
   const { currentStats, history, setHardwareInfo } = useSystemStats();
   const { containerMessages } = useEventsHub();
   const lastOrchEventIdRef = useRef<string | null>(null);
-  const pendingLayoutRef = useRef<SmartGridLayoutState | null>(null);
   const hw = session?.hardwareInfo;
-  const [isLayoutEditMode, setIsLayoutEditMode] = useState(false);
-  const [layoutRenderKey, setLayoutRenderKey] = useState(0);
   const [orchResources, setOrchResources] = useState<OrchestratorResource[]>([]);
   const [orchLoading, setOrchLoading] = useState(false);
   const [orchError, setOrchError] = useState<string | null>(null);
@@ -332,204 +313,15 @@ export const Home: React.FC = () => {
   const memTotal = currentStats ? autoScaleBytes(currentStats.memoryTotalBytes) : { value: '—', unit: 'GB' };
   const memUsedDisplay = `${memUsed.value} ${memUsed.unit}`;
   const memTotalDisplay = `${memTotal.value} ${memTotal.unit}`;
-  const hasGraphData = history.length > 0;
 
-  const persistedLayout = getConfig<SmartGridLayoutState | null>(HOME_SMART_GRID_LAYOUT_SLUG, null);
-
-  const handleLayoutChange = useCallback(
-    (layout: SmartGridLayoutState) => {
-      pendingLayoutRef.current = layout;
-      if (!isLayoutEditMode) {
-        void setConfig(HOME_SMART_GRID_LAYOUT_SLUG, layout);
-      }
-    },
-    [isLayoutEditMode, setConfig],
-  );
-
-  const startLayoutEdit = useCallback(() => {
-    pendingLayoutRef.current = null;
-    setIsLayoutEditMode(true);
-  }, []);
-
-  const saveLayoutEdit = useCallback(() => {
-    if (pendingLayoutRef.current) {
-      void setConfig(HOME_SMART_GRID_LAYOUT_SLUG, pendingLayoutRef.current);
-    }
-    pendingLayoutRef.current = null;
-    setIsLayoutEditMode(false);
-  }, [setConfig]);
-
-  const cancelLayoutEdit = useCallback(() => {
-    pendingLayoutRef.current = null;
-    setIsLayoutEditMode(false);
-    // Force SmartGridLayout to reload from persisted layout snapshot.
-    setLayoutRenderKey((prev) => prev + 1);
-  }, []);
-
-  const smartGridItems = useMemo<SmartGridItemDefinition[]>(
-    () => [
-      {
-        id: 'system-info-host',
-        title: 'Host Information',
-        group: 'System Info',
-        defaultSpan: 4,
-        render: () => (
-          <Panel variant="glass" padding="sm">
-            <Section title="Host" size="lg" noPadding />
-            <InfoRow noBorder labelSize="sm" noPadding label="CPU" value={hw?.cpu_brand ?? hw?.cpu_type} />
-            <InfoRow noBorder labelSize="sm" noPadding label="Architecture" value={hw?.cpu_type} />
-            <InfoRow noBorder labelSize="sm" noPadding label="OS" value={hw?.os_name && hw?.os_version ? `${hw.os_name} ${hw.os_version}` : hw?.os_name} />
-            <InfoRow noBorder labelSize="sm" noPadding label="External IP" value={hw?.external_ip_address} />
-            <Section title="Software" size="lg" noPadding />
-            {(hw?.parallels_desktop_version || hw?.parallels_desktop_licensed) && (
-              <>
-                <InfoRow noBorder labelSize="sm" noPadding label="Parallels Desktop" value={hw?.parallels_desktop_version} />
-                <InfoRow noBorder labelSize="sm" noPadding label="PD Licensed" value={hw?.parallels_desktop_licensed != null ? (hw.parallels_desktop_licensed ? 'Yes' : 'No') : undefined} />
-              </>
-            )}
-            <InfoRow noBorder labelSize="sm" noPadding label="DevOps Version" value={hw?.devops_version} />
-            {hw?.enabled_modules && hw.enabled_modules.length > 0 && (
-              <div className="pt-2 mt-1 border-t border-neutral-100 dark:border-neutral-800">
-                <Section title="Enabled Modules" size="lg" noPadding className="py-3" />
-                <div className="flex flex-wrap gap-1.5">
-                  <TagPanel tags={hw.enabled_modules.map((m) => ({ label: m, tone: MODULE_COLORS[m] ?? 'neutral', variant: 'soft' }))} tagLimit={5} />
-                  {/* {hw.enabled_modules.map((m) => (
-                    <Pill key={m} size="sm" tone={MODULE_COLORS[m] ?? 'neutral'} variant="soft">
-                      {m}
-                    </Pill>
-                  ))} */}
-                </div>
-              </div>
-            )}
-          </Panel>
-        ),
-      },
-      {
-        id: 'system-info-resources',
-        title: 'Available Resources',
-        group: 'System Info',
-        defaultSpan: 8,
-        render: () => (
-          <Panel variant="glass" padding="sm" className="h-full">
-            <Section title="Available Resources" size="lg" noPadding />
-            <PagedPanel
-              variant="glass"
-              padding="xs"
-              bare={true}
-              loading={orchLoading}
-              error={orchError}
-              title={resourcePages.map((p) => p.title)}
-              pages={resourcePages.map((p) => (
-                <OrchestratorResourceCard key={p.title} res={p.res} />
-              ))}
-              className="col-span-2 w-full"
-            />
-          </Panel>
-        ),
-      },
-      {
-        id: 'agent-resources-cpu',
-        title: 'CPU Utilization',
-        group: 'Agent Resources',
-        defaultSpan: 4,
-        defaultHidden: !hasGraphData,
-        render: () =>
-          hasGraphData ? (
-            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 h-full">
-              <StatGraphTile
-                title="CPU Utilization"
-                value={`${cpuTotal}%`}
-                subtitle="Total load"
-                data={graphData}
-                variant="sparkline"
-                series={[{ key: 'cpuPercent', label: 'CPU %', color: 'blue' }]}
-                maxDataPoints={90}
-                yDomain={['auto', 'auto']}
-                height={120}
-                showLegend={false}
-                showAxes={false}
-                showGrid={false}
-                withDecoration={false}
-                className="shadow-none! border-none bg-transparent"
-              />
-            </div>
-          ) : (
-            <Panel variant="glass" padding="sm" className="h-full">
-              <Section title="CPU Utilization" size="lg" noPadding />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Waiting for metrics...</p>
-            </Panel>
-          ),
-      },
-      {
-        id: 'agent-resources-memory',
-        title: 'Memory Usage',
-        group: 'Agent Resources',
-        defaultSpan: 4,
-        defaultHidden: !hasGraphData,
-        render: () =>
-          hasGraphData ? (
-            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 h-full">
-              <StatGraphTile
-                title="Memory Usage"
-                value={memUsedDisplay}
-                subtitle={`of ${memTotalDisplay} total`}
-                data={graphData}
-                variant="sparkline"
-                series={[{ key: 'memoryBytes', label: 'Used', color: 'amber' }]}
-                maxDataPoints={90}
-                yDomain={['auto', 'auto']}
-                height={120}
-                showLegend={false}
-                showAxes={false}
-                showGrid={false}
-                withDecoration={false}
-                className="shadow-none! border-none bg-transparent"
-              />
-            </div>
-          ) : (
-            <Panel variant="glass" padding="sm" className="h-full">
-              <Section title="Memory Usage" size="lg" noPadding />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Waiting for metrics...</p>
-            </Panel>
-          ),
-      },
-      {
-        id: 'agent-resources-goroutines',
-        title: 'Goroutines',
-        group: 'Agent Resources',
-        defaultSpan: 4,
-        defaultHidden: !hasGraphData,
-        render: () =>
-          hasGraphData ? (
-            <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 h-full">
-              <StatGraphTile
-                title="Goroutines"
-                value={String(currentStats?.goroutinesSmoothed ?? 0)}
-                subtitle="Active Go routines"
-                data={graphData}
-                variant="sparkline"
-                series={[{ key: 'goroutines', label: 'Goroutines', color: 'violet' }]}
-                maxDataPoints={90}
-                chartAnimation={false}
-                height={120}
-                showLegend={false}
-                showAxes={false}
-                showGrid={false}
-                withDecoration={false}
-                className="shadow-none! border-none bg-transparent"
-              />
-            </div>
-          ) : (
-            <Panel variant="glass" padding="sm" className="h-full">
-              <Section title="Goroutines" size="lg" noPadding />
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">Waiting for metrics...</p>
-            </Panel>
-          ),
-      },
-    ],
-    [cpuTotal, currentStats?.goroutinesSmoothed, graphData, hasGraphData, hw, memTotalDisplay, memUsedDisplay, orchError, orchLoading, resourcePages],
-  );
-
+  const moduleColors: Record<string, ThemeColor> = {
+    host: 'blue',
+    catalog: 'emerald',
+    orchestrator: 'violet',
+    api: 'sky',
+    reverse_proxy: 'amber',
+    cache: 'lime',
+  };
   return (
     <div className="flex flex-col w-full h-full bg-neutral-50 dark:bg-neutral-950">
       {/* ── Sticky header ───────────────────────────────────────── */}
@@ -538,39 +330,121 @@ export const Home: React.FC = () => {
           <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{session?.hostname ?? 'Dashboard'}</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Connected {session?.connectedAt ? `since ${new Date(session.connectedAt).toLocaleTimeString()}` : ''}</p>
         </div>
-        {isLayoutEditMode ? (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" color="rose" size="sm" onClick={cancelLayoutEdit}>
-              Cancel
-            </Button>
-            <Button variant="outline" color="emerald" size="sm" onClick={saveLayoutEdit}>
-              Save Layout
-            </Button>
-          </div>
-        ) : (
-          <Button variant="outline" color={themeColor} size="sm" leadingIcon="Edit" onClick={startLayoutEdit}>
-            Edit Layout
-          </Button>
-        )}
-        {hasModule('notifications') && (
-          <div className="flex gap-2">
-            <VmStatCard label="No Alerts" value={0} color="emerald" />
-          </div>
-        )}
+        <div className="flex gap-2">
+          <VmStatCard label="No Alerts" value={0} color="emerald" />
+        </div>
       </div>
 
       {/* ── Scrollable body ─────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto flex flex-col gap-6 p-6">
-        <SmartGridLayout
-          key={layoutRenderKey}
-          items={smartGridItems}
-          persistedLayout={userConfigLoaded ? persistedLayout : null}
-          onLayoutChange={handleLayoutChange}
-          maxColumns={12}
-          editThemeColor={themeColor}
-          isEditMode={isLayoutEditMode}
-          onEditModeChange={setIsLayoutEditMode}
-        />
+        {/* ── System info ─────────────────────────────────────────── */}
+        <div>
+          <Section title="System Info" size="lg" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Panel variant="glass" padding="sm">
+              <Section title="Host" size="lg" noPadding />
+              <InfoRow noBorder labelSize="sm" noPadding label="CPU" value={hw?.cpu_brand ?? hw?.cpu_type} />
+              <InfoRow noBorder labelSize="sm" noPadding label="Architecture" value={hw?.cpu_type} />
+              <InfoRow noBorder labelSize="sm" noPadding label="OS" value={hw?.os_name && hw?.os_version ? `${hw.os_name} ${hw.os_version}` : hw?.os_name} />
+              <InfoRow noBorder labelSize="sm" noPadding label="External IP" value={hw?.external_ip_address} />
+              <Section title="Software" size="lg" noPadding />
+              {(hw?.parallels_desktop_version || hw?.parallels_desktop_licensed) && (
+                <>
+                  <InfoRow noBorder labelSize="sm" noPadding label="Parallels Desktop" value={hw?.parallels_desktop_version} />
+                  <InfoRow noBorder labelSize="sm" noPadding label="PD Licensed" value={hw?.parallels_desktop_licensed != null ? (hw.parallels_desktop_licensed ? 'Yes' : 'No') : undefined} />
+                </>
+              )}
+              <InfoRow noBorder labelSize="sm" noPadding label="DevOps Version" value={hw?.devops_version} />
+              {hw?.enabled_modules && hw.enabled_modules.length > 0 && (
+                <div className="pt-2 mt-1 border-t border-neutral-100 dark:border-neutral-800">
+                  <Section title="Enabled Modules" size="lg" noPadding className="py-3" />
+                  <div className="flex flex-wrap gap-1.5">
+                    {hw.enabled_modules.map((m) => (
+                      <Pill key={m} size="sm" tone={moduleColors[m] ?? 'neutral'} variant="soft">
+                        {m}
+                      </Pill>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Panel>
+            <Panel variant="glass" padding="sm" className="col-span-2">
+              <Section title="Available Resources" size="lg" noPadding />
+              <PagedPanel
+                variant="glass"
+                padding="xs"
+                bare={true}
+                loading={orchLoading}
+                error={orchError}
+                title={resourcePages.map((p) => p.title)}
+                pages={resourcePages.map((p) => (
+                  <OrchestratorResourceCard key={p.title} res={p.res} />
+                ))}
+                className="col-span-2 w-full"
+              />
+            </Panel>
+          </div>
+        </div>
+        {resourcePages.length > 0 && (
+          <div>
+            <Section title="Agent Resources" size="lg" />
+            {/* ── Live graphs — only rendered once we have at least one data point ── */}
+            {history.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                  <StatGraphTile
+                    title="CPU Utilization"
+                    value={`${cpuTotal}%`}
+                    subtitle="Total load"
+                    data={graphData}
+                    variant="sparkline"
+                    series={[{ key: 'cpuPercent', label: 'CPU %', color: 'blue' }]}
+                    yDomain={['auto', 'auto']}
+                    height={120}
+                    showLegend={false}
+                    showAxes={false}
+                    showGrid={false}
+                    withDecoration={false}
+                    className="shadow-none! border-none bg-transparent"
+                  />
+                </div>
+                <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                  <StatGraphTile
+                    title="Memory Usage"
+                    value={memUsedDisplay}
+                    subtitle={`of ${memTotalDisplay} total`}
+                    data={graphData}
+                    variant="sparkline"
+                    series={[{ key: 'memoryBytes', label: 'Used', color: 'amber' }]}
+                    yDomain={['auto', 'auto']}
+                    height={120}
+                    showLegend={false}
+                    showAxes={false}
+                    showGrid={false}
+                    withDecoration={false}
+                    className="shadow-none! border-none bg-transparent"
+                  />
+                </div>
+                <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4">
+                  <StatGraphTile
+                    title="Goroutines"
+                    value={String(currentStats?.goroutinesSmoothed ?? 0)}
+                    subtitle="Active Go routines"
+                    data={graphData}
+                    variant="sparkline"
+                    series={[{ key: 'goroutines', label: 'Goroutines', color: 'violet' }]}
+                    height={120}
+                    showLegend={false}
+                    showAxes={false}
+                    showGrid={false}
+                    withDecoration={false}
+                    className="shadow-none! border-none bg-transparent"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
       {/* end scrollable body */}
     </div>

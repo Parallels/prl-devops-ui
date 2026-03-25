@@ -138,34 +138,36 @@ export const ApiKeysPanel: React.FC<ApiKeysPanelProps> = ({ keys, loading, canCr
   }
 
   return (
-    <Table<DevOpsApiKey>
-      key={isLoaded ? 'api-keys-ready' : 'api-keys-pending'}
-      columns={columns}
-      data={keys}
-      rowKey={(row) => row.id ?? `${row.name ?? 'key'}-${row.key ?? 'id'}`}
-      variant="flat"
-      stickyHeader
-      fullHeight
-      hoverable
-      noBorders
-      resizableColumns
-      loading={loading}
-      loadingMessage="Loading API keys…"
-      defaultSort={{ columnId: 'name', direction: 'asc' }}
-      tableSettings={tableSettings}
-      onTableSettingsChange={handleSettingsChange}
-      emptyState={
-        <EmptyState
-          tone="neutral"
-          iconSize="sm"
-          fullWidth
-          fullHeight
-          icon="KeyManagement"
-          title="No API keys yet"
-          subtitle={canCreate ? 'Click "New API Key" to create your first key.' : 'No API keys have been created.'}
-          disableBorder
-        />
-      }
-    />
+    <div className="p-2">
+      <Table<DevOpsApiKey>
+        key={isLoaded ? 'api-keys-ready' : 'api-keys-pending'}
+        columns={columns}
+        data={keys}
+        rowKey={(row) => row.id ?? `${row.name ?? 'key'}-${row.key ?? 'id'}`}
+        variant="flat"
+        stickyHeader
+        fullHeight
+        hoverable
+        noBorders
+        resizableColumns
+        loading={loading}
+        loadingMessage="Loading API keys…"
+        defaultSort={{ columnId: 'name', direction: 'asc' }}
+        tableSettings={tableSettings}
+        onTableSettingsChange={handleSettingsChange}
+        emptyState={
+          <EmptyState
+            tone="neutral"
+            iconSize="sm"
+            fullWidth
+            fullHeight
+            icon="KeyManagement"
+            title="No API keys yet"
+            subtitle={canCreate ? 'Click "New API Key" to create your first key.' : 'No API keys have been created.'}
+            disableBorder
+          />
+        }
+      />
+    </div>
   );
 };

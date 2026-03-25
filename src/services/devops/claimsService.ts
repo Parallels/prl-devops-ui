@@ -1,5 +1,5 @@
 import { apiService } from '../api';
-import { DevOpsRolesAndClaims, DevOpsRolesAndClaimsCreateRequest } from '../../interfaces/devops';
+import { ClaimGroupResponse, DevOpsRolesAndClaims, DevOpsRolesAndClaimsCreateRequest } from '../../interfaces/devops';
 
 /**
  * Claims Service - Handles claim management operations for Parallels DevOps API
@@ -74,6 +74,28 @@ class ClaimsService {
       return true;
     } catch (error) {
       console.error(`Failed to remove claim ${claimId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all claims pre-organised into the permissions matrix hierarchy
+   *
+   * @param hostname - The hostname identifier for the target server
+   * @returns Array of claim groups, each containing resource rows and their claims
+   * @throws ApiError
+   */
+  async getGroupedClaims(hostname: string): Promise<ClaimGroupResponse[]> {
+    try {
+      const groups = await apiService.get<ClaimGroupResponse[]>(
+        hostname,
+        '/api/v1/auth/claims/grouped',
+        { errorPrefix: 'Failed to get grouped claims' }
+      );
+
+      return groups || [];
+    } catch (error) {
+      console.error('Failed to get grouped claims:', error);
       throw error;
     }
   }

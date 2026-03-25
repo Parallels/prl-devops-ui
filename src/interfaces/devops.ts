@@ -189,6 +189,54 @@ export interface DevOpsRemoteHostResource {
 }
 
 /**
+ * Claim assigned to a role or user (from /auth/claims or embedded in a role/user response)
+ */
+export interface ClaimResponse {
+  id: string;
+  name: string;
+  description?: string;
+  /** Display group (e.g. "Administration", "VMs"). Present on built-in claims. */
+  group?: string;
+  /** Resource row within the group (e.g. "User", "VM"). */
+  resource?: string;
+  /** Action column (e.g. "create", "read", "update", "delete"). */
+  action?: string;
+  /** Users that hold this claim directly. Only populated on /auth/claims endpoints. */
+  users?: DevOpsUser[];
+}
+
+/**
+ * A resource row within a claim group (returned by GET /v1/auth/claims/grouped)
+ */
+export interface ClaimGroupResourceResponse {
+  resource: string;
+  claims: ClaimResponse[];
+}
+
+/**
+ * A top-level group section from GET /v1/auth/claims/grouped
+ */
+export interface ClaimGroupResponse {
+  group: string;
+  resources: ClaimGroupResourceResponse[];
+}
+
+/**
+ * Effective claim on a user — may be directly assigned or inherited from a role
+ */
+export interface UserClaimResponse {
+  id: string;
+  name: string;
+  /** true → claim comes from a role, not assigned directly */
+  is_inherited: boolean;
+  /**
+   * ID of the first role (in the user's role list) that granted this claim.
+   * Only set when is_inherited is true.
+   */
+  source_role?: string;
+}
+
+/**
  * DevOps user
  */
 export interface DevOpsUser {
@@ -196,8 +244,15 @@ export interface DevOpsUser {
   name?: string;
   email?: string;
   username?: string;
+  /** IDs of roles assigned to this user */
   roles?: string[];
+  /** IDs of claims assigned directly to this user */
   claims?: string[];
+  /**
+   * Merged set of all claims this user actually has (direct + role-inherited).
+   * Use this for access checks, not `claims`.
+   */
+  effective_claims?: UserClaimResponse[];
   isSuperUser?: boolean;
   [key: string]: unknown;
 }
@@ -210,6 +265,11 @@ export interface DevOpsCreateUserRequest {
   email: string;
   password: string;
   username: string;
+  /** Role IDs to assign. Defaults to ["USER"] if omitted. */
+  roles?: string[];
+  /** Direct claim IDs to assign. */
+  claims?: string[];
+  is_super_user?: boolean;
 }
 
 /**
@@ -262,7 +322,7 @@ export interface CatalogPushRequest {
 }
 
 /**
- * Roles and claims entity
+ * Roles and claims entity (legacy — kept for claims service compatibility)
  */
 export interface DevOpsRolesAndClaims {
   id?: string;
@@ -278,6 +338,37 @@ export interface DevOpsRolesAndClaims {
 export interface DevOpsRolesAndClaimsCreateRequest {
   name: string;
   description?: string;
+}
+
+/**
+ * Role response from API — includes full claims and users lists
+ */
+export interface RoleResponse {
+  id: string;
+  name: string;
+  description?: string;
+  /** All claims that members of this role inherit */
+  claims: ClaimResponse[];
+  /** All users that currently have this role assigned */
+  users: DevOpsUser[];
+}
+
+/**
+ * Request body for creating or updating a role
+ */
+export interface RoleRequest {
+  name: string;
+  description?: string;
+  /** Optional claim IDs to attach on creation */
+  claims?: string[];
+}
+
+/**
+ * Request body for adding a claim to a role
+ */
+export interface RoleClaimRequest {
+  /** Claim name / ID to add to the role */
+  name: string;
 }
 
 /**

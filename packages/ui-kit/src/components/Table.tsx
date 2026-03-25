@@ -64,6 +64,12 @@ export interface TableColumn<T> {
    * Falls back to: accessor result → sortValue → render result (only if a primitive string/number).
    */
   groupValue?: (row: T) => string;
+  /**
+   * Background Tailwind class(es) applied to sticky cells so they remain opaque over scrolled
+   * content. Defaults to `'bg-white dark:bg-neutral-900'`. Pass `'bg-transparent'` to let the
+   * row/table background show through instead.
+   */
+  stickyBackground?: string;
 }
 
 export type Column<T> = TableColumn<T>;
@@ -1182,12 +1188,19 @@ function TableComponent<T>({
 
     const selectedClass = isSelected ? getSelectedRowClass(color) : '';
     const highlightRowClass = isHighlighted ? getHighlightRowClass(color) : '';
+    const baseRowBgClass = striped && originalIndex % 2 === 1 ? 'bg-neutral-100 dark:bg-neutral-800/40' : 'bg-white dark:bg-neutral-900';
+    const rowCellHoverClass = !isSelected && !isHighlighted && hoverable ? 'group-hover:bg-neutral-200/60 dark:group-hover:bg-neutral-700/40' : undefined;
+    const spacerHoverResetClass =
+      !isSelected && !isHighlighted && hoverable
+        ? striped && originalIndex % 2 === 1
+          ? 'group-hover:!bg-neutral-100 dark:group-hover:!bg-neutral-800/40 hover:!bg-neutral-100 dark:hover:!bg-neutral-800/40'
+          : 'group-hover:!bg-neutral-200/60 dark:group-hover:!bg-neutral-900 hover:!bg-white dark:hover:!bg-neutral-900'
+        : undefined;
 
     const rowClasses = classNames(
       cellPadding,
       'group',
       isSelected ? selectedClass : isHighlighted ? highlightRowClass : striped && originalIndex % 2 === 1 && 'bg-neutral-100 dark:bg-neutral-800/40',
-      !isSelected && !isHighlighted && hoverable && 'hover:bg-neutral-200/60 dark:hover:bg-neutral-700/40',
       isHighlighted && hoverable && 'hover:brightness-95',
       'transition-colors duration-150 ease-out',
       onRowClick ? 'cursor-pointer' : 'cursor-default',
@@ -1197,7 +1210,14 @@ function TableComponent<T>({
     return (
       <tr key={key} className={rowClasses} onClick={onRowClick ? () => onRowClick(row, originalIndex) : undefined}>
         {/* Expand spacer column — only in grouped mode with visible group headers */}
-        {showGroupExpandCol && <td className="w-10" aria-hidden="true" />}
+        {showGroupExpandCol && (
+          <td
+            className={classNames('w-10 sticky left-0 z-20', isSelected ? getSelectedRowClass(color) : isHighlighted ? getHighlightRowClass(color) : baseRowBgClass, spacerHoverResetClass)}
+            aria-hidden="true"
+          >
+            <div className="w-full h-full" />
+          </td>
+        )}
         {/* Indent spacer — only in grouped mode without group headers */}
         {resolvedGroupBy && !showGroupExpandCol && <td className="w-4" aria-hidden="true" />}
         {orderedVisibleColumns.map((column, colIndex) => {
@@ -1217,7 +1237,7 @@ function TableComponent<T>({
               className={classNames(
                 'whitespace-nowrap align-middle text-sm text-neutral-700 dark:text-neutral-200',
                 (isStickyLeft || isStickyRight) && 'sticky',
-                isStickyLeft && 'left-0',
+                isStickyLeft && (showGroupExpandCol ? 'left-10' : 'left-0'),
                 // right position is set via inline style when offset > 0
                 isStickyRight && !rightOffset && 'right-0',
                 (isStickyLeft || isStickyRight) && 'z-10',
@@ -1228,9 +1248,9 @@ function TableComponent<T>({
                       ? getHighlightRowClass(color)
                       : striped && originalIndex % 2 === 1
                         ? 'bg-neutral-100 dark:bg-neutral-800/40'
-                        : 'bg-white dark:bg-neutral-900'),
-                // Apply hover background to sticky cells when row is hovered
-                (isStickyLeft || isStickyRight) && !isHighlighted && hoverable && 'group-hover:bg-neutral-200/60 dark:group-hover:bg-neutral-700/40',
+                        : (column.stickyBackground ?? 'bg-white dark:bg-neutral-900')),
+                // Apply hover background per-cell so grouped spacer/caret columns can opt out.
+                rowCellHoverClass,
                 (isStickyLeft || isStickyRight) && isHighlighted && hoverable && 'group-hover:brightness-95',
                 getCellAlignment(column.align),
                 colIndex === 0 && sidePaddingTokens.left,
@@ -1597,7 +1617,9 @@ function TableComponent<T>({
                   <tr className={classNames(headerToneClasses, 'border-b dark:border-opacity-60')}>
                     {/* Extra leading th for expand/collapse when grouping with group headers */}
                     {showGroupExpandCol && (
-                      <th scope="col" className={classNames(headerToneClasses, stickyHeader && 'sticky top-0', stickyHeader ? 'z-20' : '', 'w-10 pl-3 pr-1')} aria-hidden="true" />
+                      <th scope="col" className={classNames(headerToneClasses, 'sticky left-0', stickyHeader && 'top-0', stickyHeader ? 'z-30' : 'z-10', 'w-10 pl-3 pr-1')} aria-hidden="true">
+                        <div className="w-full h-full" />
+                      </th>
                     )}
                     {/* Indent spacer th for grouped mode without group headers */}
                     {resolvedGroupBy && !showGroupExpandCol && <th scope="col" className="w-4" aria-hidden="true" />}
@@ -1624,7 +1646,7 @@ function TableComponent<T>({
                             cellPadding,
                             stickyHeader && 'sticky top-0',
                             (isStickyLeft || isStickyRight) && 'sticky',
-                            isStickyLeft && 'left-0',
+                            isStickyLeft && (showGroupExpandCol ? 'left-10' : 'left-0'),
                             // right position is set via inline style when offset > 0
                             isStickyRight && !rightOffset && 'right-0',
                             stickyHeader && (isStickyLeft || isStickyRight) ? 'z-30' : stickyHeader ? 'z-20' : isStickyLeft || isStickyRight ? 'z-10' : '',
@@ -1692,8 +1714,8 @@ function TableComponent<T>({
                                   className="cursor-pointer select-none border-b border-neutral-100 bg-neutral-50 transition-colors duration-150 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800/40 dark:hover:bg-neutral-700/50"
                                   onClick={() => toggleGroup(group.key)}
                                 >
-                                  <td colSpan={visibleColumns.length + 1} className={classNames('py-2', sidePaddingTokens.left)}>
-                                    <div className="flex items-center gap-2">
+                                  <td colSpan={visibleColumns.length + 1} className="py-2 bg-neutral-50 hover:bg-neutral-100 dark:bg-neutral-800/40 dark:hover:bg-neutral-700/50">
+                                    <div className={classNames('sticky left-0 flex w-fit items-center gap-2 bg-inherit', sidePaddingTokens.left)}>
                                       <span className={classNames('inline-flex text-neutral-400 dark:text-neutral-500')}>
                                         <ChevronSvg expanded={isExpanded} />
                                       </span>

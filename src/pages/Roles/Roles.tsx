@@ -1,14 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, ConfirmModal, CustomIcon, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, type SplitViewItem } from '@prl/ui-kit';
+import { Button, ConfirmModal, CustomIcon, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, TagPicker, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
-import { DevOpsRolesAndClaims } from '@/interfaces/devops';
+import { ClaimResponse, RoleResponse } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { RoleDetail } from './RoleDetail';
 import { PageHeaderIcon } from '@/components/PageHeader';
 
 export const Roles: React.FC = () => {
-  const [roles, setRoles] = useState<DevOpsRolesAndClaims[]>([]);
+  const [roles, setRoles] = useState<RoleResponse[]>([]);
+  const [availableClaims, setAvailableClaims] = useState<ClaimResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>();
   const { session, hasClaim } = useSession();
@@ -17,7 +18,7 @@ export const Roles: React.FC = () => {
 
   const [selectedId, setSelectedId] = useState<string | undefined>();
 
-  const [roleToDelete, setRoleToDelete] = useState<DevOpsRolesAndClaims | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<RoleResponse | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [saveResult, setSaveResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -26,6 +27,7 @@ export const Roles: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [modalName, setModalName] = useState('');
   const [modalDescription, setModalDescription] = useState('');
+  const [modalClaims, setModalClaims] = useState<string[]>([]);
   const [modalSaving, setModalSaving] = useState(false);
 
   const canCreate = useMemo(() => hasClaim('CREATE_ROLE'), [hasClaim]);
@@ -35,8 +37,18 @@ export const Roles: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await devopsService.roles.getRoles(hostname);
-      setRoles(result);
+      const [rolesResult, claimsResult] = await Promise.all([
+        devopsService.roles.getRoles(hostname),
+        devopsService.claims.getClaims(hostname).catch(() => []),
+      ]);
+      setRoles(rolesResult);
+      setAvailableClaims(
+        claimsResult.map((c) => ({
+          id: c.id ?? '',
+          name: c.name ?? '',
+          description: c.description,
+        } as ClaimResponse))
+      );
     } catch (err: any) {
       setError(err?.message ?? 'Failed to load roles');
       console.error('Failed to fetch roles:', err);
@@ -49,8 +61,12 @@ export const Roles: React.FC = () => {
     void fetchRoles();
   }, [fetchRoles]);
 
+  const handleClaimsChange = useCallback((updated: RoleResponse) => {
+    setRoles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  }, []);
+
   const handleDelete = useCallback(
-    async (role: DevOpsRolesAndClaims) => {
+    async (role: RoleResponse) => {
       if (!role.id) return;
       setDeleting(true);
       try {
@@ -75,6 +91,7 @@ export const Roles: React.FC = () => {
     setShowCreateModal(false);
     setModalName('');
     setModalDescription('');
+    setModalClaims([]);
   }, []);
 
   const handleModalCreate = useCallback(async () => {
@@ -84,8 +101,13 @@ export const Roles: React.FC = () => {
       const created = await devopsService.roles.createRole(hostname, {
         name: modalName.trim(),
         description: modalDescription.trim() || undefined,
+        ...(modalClaims.length > 0 && { claims: modalClaims }),
       });
-      setRoles((prev) => [...prev, created]);
+      // Merge selected claims into the local role so the detail panel reflects them immediately
+      const claimObjects = modalClaims
+        .map((id) => availableClaims.find((c) => c.id === id || c.name === id))
+        .filter((c): c is ClaimResponse => c !== undefined);
+      setRoles((prev) => [...prev, { ...created, claims: claimObjects }]);
       setSelectedId(created.id);
       handleModalClose();
       setSaveResult({ type: 'success', message: 'The role has been created successfully.' });
@@ -94,7 +116,7 @@ export const Roles: React.FC = () => {
     } finally {
       setModalSaving(false);
     }
-  }, [hostname, modalName, modalDescription, handleModalClose]);
+  }, [hostname, modalName, modalDescription, modalClaims, availableClaims, handleModalClose]);
 
   const items: SplitViewItem[] = useMemo(
     () =>
@@ -103,10 +125,17 @@ export const Roles: React.FC = () => {
         label: role.name ?? 'Unknown',
         subtitle: role.description ?? `${(role.users ?? []).length} user(s)`,
         icon: 'Roles' as const,
-        panel: <RoleDetail role={role} />,
+        panel: (
+          <RoleDetail
+            role={role}
+            hostname={hostname}
+            availableClaims={availableClaims}
+            onClaimsChange={handleClaimsChange}
+          />
+        ),
         actions: <>{canDelete && <IconButton variant="ghost" size="xs" color="danger" icon="Trash" onClick={() => setRoleToDelete(role)} />}</>,
       })),
-    [roles, canDelete],
+    [roles, canDelete, hostname, availableClaims, handleClaimsChange],
   );
 
   const panelHeaderProps = useCallback(
@@ -124,6 +153,11 @@ export const Roles: React.FC = () => {
       };
     },
     [roles, themeColor],
+  );
+
+  const modalClaimItems = useMemo(
+    () => availableClaims.map((c) => ({ id: c.id || c.name, label: c.name })),
+    [availableClaims],
   );
 
   return (
@@ -167,7 +201,7 @@ export const Roles: React.FC = () => {
         onClose={handleModalClose}
         title="Add Role"
         description="Create a new role."
-        size="sm"
+        size="md"
         icon="Roles"
         actions={
           <ModalActions>
@@ -180,14 +214,30 @@ export const Roles: React.FC = () => {
           </ModalActions>
         }
       >
-        <FormLayout columns={1}>
-          <FormField label="Name" required>
-            <Input tone={themeColor} value={modalName} onChange={(e) => setModalName(e.target.value)} placeholder="Role name" />
-          </FormField>
-          <FormField label="Description">
-            <Input tone={themeColor} value={modalDescription} onChange={(e) => setModalDescription(e.target.value)} placeholder="Optional description" />
-          </FormField>
-        </FormLayout>
+        <div className="space-y-4">
+          <FormLayout columns={1}>
+            <FormField label="Name" required>
+              <Input tone={themeColor} value={modalName} onChange={(e) => setModalName(e.target.value)} placeholder="Role name" />
+            </FormField>
+            <FormField label="Description">
+              <Input tone={themeColor} value={modalDescription} onChange={(e) => setModalDescription(e.target.value)} placeholder="Optional description" />
+            </FormField>
+          </FormLayout>
+          <FormLayout columns={1}>
+            <FormField label="Claims">
+              <TagPicker
+                color={themeColor}
+                items={modalClaimItems}
+                value={modalClaims}
+                onChange={setModalClaims}
+                placeholder="Assign claims…"
+                emptyMessage="No claims available"
+                escapeBoundary
+                highlightNew={false}
+              />
+            </FormField>
+          </FormLayout>
+        </div>
       </Modal>
 
       {/* Delete Confirm Modal */}

@@ -28,6 +28,7 @@ export { default as Select, type SelectProps } from './Select';
 export { default as Combobox, type ComboboxProps } from './Combobox';
 export { default as Picker, type PickerProps, type PickerItem, type PickerTag, type PickerFilter } from './Picker';
 export { default as TagPicker, type TagPickerProps, type TagPickerItem } from './TagPicker';
+export { default as TagPanel, type TagPanelProps, type TagPanelTag } from './TagPanel';
 export { default as Checkbox, type CheckboxProps } from './Checkbox';
 export { default as Toggle, type ToggleProps } from './Toggle';
 export { default as MultiToggle, type MultiToggleProps, type MultiToggleOption, type MultiToggleVariant } from './MultiToggle';
@@ -100,6 +101,7 @@ export { default as StatGraphTile, type StatGraphTileProps, type StatGraphSeries
 export { default as StatTile, type StatTileProps } from './StatTile';
 export { default as Stepper, type StepperProps, type Step } from './Stepper';
 export { default as Table, type TableProps, type TableColumn, type TableSortState, type TablePaginationState, type TableSettings, type Column } from './Table';
+export { default as AccessMatrix, type AccessMatrixProps, type AccessMatrixPermission } from './AccessMatrix';
 export { default as VariablePicker } from './VariablePicker';
 export { default as KeyValueArrayField, type KeyValueArrayFieldProps } from './KeyValueArrayField';
 export { default as ApiErrorState, type ApiErrorStateProps } from './ApiErrorState';
