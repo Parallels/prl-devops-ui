@@ -38,7 +38,7 @@ const CollapsiblePanel: React.FC<CollapsiblePanelProps> = ({
   variant = 'elevated',
   tone = 'neutral',
   padding = 'md',
-  corner = 'rounded-md',
+  corner = 'rounded-sm',
   hoverable = false,
   ...panelProps
 }) => {

@@ -2,7 +2,7 @@
 import React from 'react';
 import { createBrowserRouter, RouterProvider, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { MainLayout } from '../layout/MainLayout';
-import { Home } from '../pages/Home';
+import { Home } from '../pages/Home/index';
 import { UxDemo } from '@prl/ui-kit/pages/UxDemo/UxDemo';
 import { Catalogs } from '../pages/Catalogs/Catalogs';
 import { Vms } from '../pages/Vms/Vms';

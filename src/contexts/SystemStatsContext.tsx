@@ -21,7 +21,6 @@ export interface CalculatedStats {
   memoryUsedBytes: number;
   memoryTotalBytes: number;
   memoryAllocBytes: number;
-  memoryTotalAllocBytes: number;
   cpuIdlePercent: number;
   cpuPercent: number;
   goroutines: number;

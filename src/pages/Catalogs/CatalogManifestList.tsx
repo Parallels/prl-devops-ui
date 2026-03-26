@@ -324,9 +324,8 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
           key={manifest.id}
           variant="glass"
           padding="xs"
-          tone="neutral"
+          color={panelColor}
           decoration="both"
-          maxWidth="400px"
           bodyClassName="overflow-hidden w-full"
           className={active ? `border-${themeColor}-300/80 ring-1 ring-${themeColor}-200/80 dark:border-${themeColor}-500/70 dark:ring-${themeColor}-500/30` : ''}
           onClick={(e) => {
@@ -533,7 +532,7 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
       resizableColumns
       groupable
       userStickyColumns
-      panelMinItemWidth="400px"
+      panelMinItemWidth="300px"
       panelGap={12}
       stickyActions
       loading={loading && flatRows.length > 0}

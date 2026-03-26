@@ -175,6 +175,12 @@ export interface TableProps<T> {
    */
   panelGap?: string | number;
   /**
+   * Maximum width of each panel card when `panelMinItemWidth` is set. Prevents cards from
+   * growing too wide on large containers. Accepts a CSS length string ("480px", "30rem") or
+   * a number treated as px. When omitted, cards stretch to fill available space (`1fr`).
+   */
+  panelMaxItemWidth?: string | number;
+  /**
    * When provided, the panel view only renders the first row for each unique key value.
    * Use this when `data` is a flattened list but panels should show one card per logical entity.
    * Example: `panelDeduplicateBy={(row) => row.manifest.id}`
@@ -728,6 +734,7 @@ function TableComponent<T>({
   onViewChange,
   panelGridClassName,
   panelMinItemWidth,
+  panelMaxItemWidth,
   panelGap,
   panelDeduplicateBy,
   headerTitle = '',
@@ -1264,13 +1271,6 @@ function TableComponent<T>({
           ? 'group-hover:!bg-neutral-200 dark:group-hover:!bg-neutral-700'
           : 'group-hover:!bg-neutral-200 dark:group-hover:!bg-neutral-700'
         : undefined;
-    const spacerHoverResetClass =
-      !isSelected && !isHighlighted && hoverable
-        ? striped && originalIndex % 2 === 1
-          ? 'group-hover:!bg-neutral-100 dark:group-hover:!bg-neutral-800/40 hover:!bg-neutral-100 dark:hover:!bg-neutral-800/40'
-          : 'group-hover:!bg-neutral-200/60 dark:group-hover:!bg-neutral-900 hover:!bg-white dark:hover:!bg-neutral-900'
-        : undefined;
-
     const rowClasses = classNames(
       cellPadding,
       'group',
@@ -1844,11 +1844,16 @@ function TableComponent<T>({
                 )}
                 style={
                   panelMinItemWidth != null
-                    ? {
-                        gridTemplateColumns: `repeat(auto-fill, minmax(min(${typeof panelMinItemWidth === 'number' ? `${panelMinItemWidth}px` : panelMinItemWidth}, 100%), 1fr))`,
-                        // inline style wins over any class — gap is always consistent
-                        gap: panelGap != null ? (typeof panelGap === 'number' ? `${panelGap}px` : panelGap) : '1rem',
-                      }
+                    ? (() => {
+                        const minW = typeof panelMinItemWidth === 'number' ? `${panelMinItemWidth}px` : panelMinItemWidth;
+                        const maxW = panelMaxItemWidth != null
+                          ? `min(${typeof panelMaxItemWidth === 'number' ? `${panelMaxItemWidth}px` : panelMaxItemWidth}, 1fr)`
+                          : '1fr';
+                        return {
+                          gridTemplateColumns: `repeat(auto-fill, minmax(min(${minW}, 100%), ${maxW}))`,
+                          gap: panelGap != null ? (typeof panelGap === 'number' ? `${panelGap}px` : panelGap) : '1rem',
+                        };
+                      })()
                     : undefined
                 }
               >

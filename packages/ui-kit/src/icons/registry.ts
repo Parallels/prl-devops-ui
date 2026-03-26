@@ -123,6 +123,8 @@ import { Group } from './components/Group';
 import { Pin } from './components/Pin';
 import { Database } from './components/Database';
 import { RemoteHost } from './components/RemoteHost';
+import { Login } from './components/Login';
+import { Logout } from './components/Logout';
 
 export type IconName =
   | 'Add'
@@ -248,7 +250,9 @@ export type IconName =
   | 'Group'
   | 'Pin'
   | 'Database'
-  | 'RemoteHost';
+  | 'RemoteHost'
+  | 'Login'
+  | 'Logout';
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
   Add: Add,
@@ -375,4 +379,6 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
   Pin: Pin,
   Database: Database,
   RemoteHost: RemoteHost,
+  Login: Login,
+  Logout: Logout,
 };

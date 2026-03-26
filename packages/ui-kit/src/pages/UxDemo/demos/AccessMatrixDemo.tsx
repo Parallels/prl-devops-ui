@@ -93,7 +93,7 @@ const SAMPLE_PERMISSIONS: AccessMatrixPermission[] = [
 export const AccessMatrixDemo: React.FC = () => {
   const [variant, setVariant] = useState<TableVariant>('default');
   const [tone, setTone] = useState<PanelTone>('neutral');
-  const [limit, setLimit] = useState(4);
+  const [limit, setLimit] = useState<number>(4);
   const [striped, setStriped] = useState(true);
 
   return (
@@ -116,13 +116,13 @@ export const AccessMatrixDemo: React.FC = () => {
             <MultiToggle
               fullWidth
               options={[
-                { label: '3', value: 3 },
-                { label: '4', value: 4 },
-                { label: '5', value: 5 },
+                { label: '3', value: '3' },
+                { label: '4', value: '4' },
+                { label: '5', value: '5' },
               ]}
-              value={limit}
+              value={String(limit)}
               size="sm"
-              onChange={(value) => setLimit(value as number)}
+              onChange={(value) => setLimit(Number(value))}
             />
           </label>
           <label className="flex items-center justify-between">

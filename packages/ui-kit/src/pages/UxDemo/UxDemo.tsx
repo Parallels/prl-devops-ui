@@ -39,6 +39,7 @@ import { InfiniteScrollDemo } from './demos/InfiniteScrollDemo';
 import { AppDividerDemo } from './demos/AppDividerDemo';
 import { BadgeDemo } from './demos/BadgeDemo';
 import { AccessMatrixDemo } from './demos/AccessMatrixDemo';
+import { TimelinePanelDemo } from './demos/TimelinePanelDemo';
 
 export const UxDemo: React.FC = () => {
   const [sectionSearch, setSectionSearch] = useState('');
@@ -51,6 +52,7 @@ export const UxDemo: React.FC = () => {
       { id: 'sections-search-bar', title: 'Search Bar', render: () => <SearchBarDemo /> },
       { id: 'sections-form', title: 'Form Components', render: () => <FormDemo /> },
       { id: 'sections-panels', title: 'Panel Controls', render: () => <PanelDemo /> },
+      { id: 'sections-timeline-panel', title: 'Timeline Panel', render: () => <TimelinePanelDemo /> },
       { id: 'sections-bottom-sheet', title: 'Bottom Sheet', render: () => <BottomSheetDemo /> },
       { id: 'sections-help-text', title: 'Collapsible Help Text', render: () => <CollapsibleHelpDemo /> },
       { id: 'sections-collapsible-panel', title: 'Collapsible Panel', render: () => <CollapsiblePanelDemo /> },

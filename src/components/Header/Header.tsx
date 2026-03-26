@@ -1,12 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GLOBAL_NOTIFICATION_CHANNEL } from '@/constants/constants';
-import { HeaderGroup, UserAvatar, getGravatarUrl, useSideMenuActions } from '@prl/ui-kit';
+import { HeaderGroup, Logout, UserAvatar, getGravatarUrl, useSideMenuActions } from '@prl/ui-kit';
 import { NotificationWrapper } from '../Notification/NotificationWrapper';
 import { useLayout } from '@/contexts/LayoutContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSession } from '@/contexts/SessionContext';
-import { useTheme } from '@/contexts/ThemeContext';
 import { authService } from '@/services/authService';
 import { HostConfig } from '@/interfaces/Host';
 import { getPasswordKey, getApiKeyKey } from '@/utils/secretKeys';
@@ -37,34 +36,6 @@ const FeedbackIcon = () => (
   </svg>
 );
 
-const LogoutIcon = () => (
-  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-    <polyline points="16 17 21 12 16 7" />
-    <line x1="21" y1="12" x2="9" y2="12" />
-  </svg>
-);
-
-const SunIcon = () => (
-  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="5" />
-    <line x1="12" y1="1" x2="12" y2="3" />
-    <line x1="12" y1="21" x2="12" y2="23" />
-    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-    <line x1="1" y1="12" x2="3" y2="12" />
-    <line x1="21" y1="12" x2="23" y2="12" />
-    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-  </svg>
-);
-
-const MoonIcon = () => (
-  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-  </svg>
-);
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface HeaderProps {
@@ -79,7 +50,6 @@ export const Header: React.FC<HeaderProps> = () => {
   const { sideItemActions, sidePanelActions } = useSideMenuActions();
   const config = useConfig();
   const { session, setSession, clearSession, hasModule } = useSession();
-  const { theme, toggleTheme } = useTheme();
   const { isLocked, hostUrl } = useLockedHost();
   const { isConnected } = useEventsHub();
   const navigate = useNavigate();
@@ -218,7 +188,7 @@ export const Header: React.FC<HeaderProps> = () => {
         <div className="flex grow" />
 
         {/* Theme toggle */}
-        <HeaderGroup>
+        {/* <HeaderGroup>
           <button
             type="button"
             onClick={toggleTheme}
@@ -227,7 +197,7 @@ export const Header: React.FC<HeaderProps> = () => {
           >
             {theme === 'light' ? <MoonIcon /> : <SunIcon />}
           </button>
-        </HeaderGroup>
+        </HeaderGroup> */}
 
         {/* Notifications */}
         <HeaderGroup>
@@ -300,16 +270,18 @@ export const Header: React.FC<HeaderProps> = () => {
                     {isSettingsOpen && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />}
                   </button>
 
-                  <button
-                    onClick={handleFeedback}
-                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-700/60"
-                  >
-                    <span className="text-neutral-400 dark:text-neutral-500">
-                      <FeedbackIcon />
-                    </span>
-                    Send Feedback
-                    {isFeedbackOpen && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />}
-                  </button>
+                  {hasModule('feedback') && (
+                    <button
+                      onClick={handleFeedback}
+                      className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-neutral-700 transition-colors hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-700/60"
+                    >
+                      <span className="text-neutral-400 dark:text-neutral-500">
+                        <FeedbackIcon />
+                      </span>
+                      Send Feedback
+                      {isFeedbackOpen && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-blue-500" />}
+                    </button>
+                  )}
                 </div>
 
                 <div className="border-t border-neutral-100 py-1 dark:border-neutral-700">
@@ -317,7 +289,7 @@ export const Header: React.FC<HeaderProps> = () => {
                     onClick={() => void handleLogout()}
                     className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                   >
-                    <LogoutIcon />
+                    <Logout className="h-4 w-4" />
                     Log Out
                   </button>
                 </div>

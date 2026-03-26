@@ -18,6 +18,7 @@ import {
   type PickerFilter,
   type ThemeColor,
   Panel,
+  CollapsiblePanel,
 } from '@prl/ui-kit';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { CatalogPushRequest } from '@/interfaces/devops';
@@ -811,8 +812,8 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({ isOpen, 
             </Panel>
 
             {/* ── Access & Metadata ───────────────────────────────────────────── */}
-            <Panel padding="xs" variant="glass" backgroundColor="white">
-              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Access & Metadata</p>
+            <CollapsiblePanel title={( <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Access & Metadata <span className="font-normal normal-case text-neutral-400">(optional)</span></p>)} padding="xs" variant="glass" backgroundColor="white">
+             
               <div className="space-y-3">
                 <FormField label="Tags" width="full" helpText="Free-form labels to help categorize this image.">
                   <ChipInput values={form.tags} onChange={(v) => set('tags', v)} placeholder="e.g. production, ubuntu, base" />
@@ -829,13 +830,15 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({ isOpen, 
                   <Input tone={themeColor} size="sm" placeholder="Leave empty to auto-generate" value={form.uuid} onChange={(e) => set('uuid', e.target.value)} className="font-mono text-xs" />
                 </FormField>
               </div>
-            </Panel>
+            </CollapsiblePanel>
 
             {/* ── Minimum Requirements ────────────────────────────────────────── */}
-            <Panel padding="xs" variant="glass" backgroundColor="white">
-              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+            <CollapsiblePanel title={(
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
                 Minimum Requirements <span className="font-normal normal-case text-neutral-400">(optional)</span>
               </p>
+            )} padding="xs" variant="glass" backgroundColor="white">
+ 
               <FormLayout columns={3} gap="sm">
                 <FormField label="CPU (cores)" width="full">
                   <Input tone={themeColor} size="sm" type="number" min={1} placeholder="e.g. 2" value={form.min_cpu} onChange={(e) => set('min_cpu', e.target.value)} />
@@ -847,7 +850,7 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({ isOpen, 
                   <Input tone={themeColor} size="sm" type="number" min={1} placeholder="e.g. 20480" value={form.min_disk} onChange={(e) => set('min_disk', e.target.value)} />
                 </FormField>
               </FormLayout>
-            </Panel>
+            </CollapsiblePanel>
 
             {displayError && <Alert tone="danger" variant="subtle" title={validationError ? 'Validation Error' : 'Upload Failed'} description={displayError} />}
           </>

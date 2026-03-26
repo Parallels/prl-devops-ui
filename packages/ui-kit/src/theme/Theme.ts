@@ -488,6 +488,22 @@ const createTheme = (): ThemeDefinition => {
         decorationShape: 'bg-neutral-200/15 dark:bg-neutral-100/5',
         decorationGradient: 'from-neutral-200/15 to-transparent dark:from-neutral-600/10 dark:to-transparent',
       };
+      
+    } else if (color === 'slate') {
+      theme.panel[color] = {
+        border: 'border-neutral-200 dark:border-neutral-700',
+        heading: 'text-neutral-900 dark:text-neutral-100',
+        muted: 'text-neutral-600 dark:text-neutral-300',
+        badge: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200',
+        subtleBg: 'bg-neutral-50/80 dark:bg-neutral-900/70',
+        tonalBg: 'bg-neutral-100/80 dark:bg-neutral-800/70',
+        glassBg: 'bg-white/70 dark:bg-neutral-900/70',
+        glassBorder: 'border-neutral-200 dark:border-neutral-700',
+        overlayGradient: 'from-neutral-900/70 via-neutral-900/30 to-neutral-900/20',
+        decorationShape: 'bg-neutral-200/15 dark:bg-neutral-100/5',
+        decorationGradient: 'from-neutral-200/15 to-transparent dark:from-neutral-600/10 dark:to-transparent',
+      };
+      
     } else {
       theme.panel[color] = {
         border: `border-${c}-300 dark:border-${c}-500/50`,

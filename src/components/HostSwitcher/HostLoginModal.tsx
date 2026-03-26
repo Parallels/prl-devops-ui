@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Button, Checkbox, FormField, FormLayout, Input, Modal } from '../../controls';
+import { Alert, Button, Checkbox, FormField, FormLayout, Input, Modal, Panel } from '../../controls';
 import { HostConfig } from '@/interfaces/Host';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { Section, Toggle } from '@prl/ui-kit';
 
 export interface HostLoginModalProps {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const HostLoginModal: React.FC<HostLoginModalProps> = ({ isOpen, onClose,
       setKeepLoggedIn(true);
       setError(null);
       setIsLoading(false);
+      setKeepLoggedIn(host.keepLoggedIn ?? true);
       setTouched({ username: false, password: false, apiKey: false });
     }
   }, [isOpen, host]);
@@ -68,6 +70,7 @@ export const HostLoginModal: React.FC<HostLoginModalProps> = ({ isOpen, onClose,
 
   return (
     <Modal
+      icon="Login"
       title={`Connect to ${hostLabel}`}
       description="Your credentials are required to switch to this host."
       isOpen={isOpen}
@@ -87,14 +90,13 @@ export const HostLoginModal: React.FC<HostLoginModalProps> = ({ isOpen, onClose,
       }
     >
       {/* Host info card */}
-      <div className={`rounded-lg border border-${themeColor}-200 bg-${themeColor}-50 px-3 py-2.5 dark:border-neutral-700 dark:bg-neutral-800/60`}>
-        <div className="flex items-center gap-2.5">
-          <div className="min-w-0">
+      <Panel variant="glass" padding="xs" className="mb-4">
+        <Section title="Authentication" subtitle={(
+          <>
             <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">{hostLabel}</p>
             <p className="truncate text-xs text-neutral-500 dark:text-neutral-400">{host.baseUrl}</p>
-          </div>
-        </div>
-      </div>
+          </>
+        )} size="md" noPadding  />
 
       {error && <Alert variant="outline" tone="danger" title="Connection Failed" description={error} />}
 
@@ -140,7 +142,7 @@ export const HostLoginModal: React.FC<HostLoginModalProps> = ({ isOpen, onClose,
           </FormField>
         )}
 
-        <Checkbox
+        <Toggle
           label="Keep me logged in"
           description="Save credentials securely for future sessions"
           checked={keepLoggedIn}
@@ -148,7 +150,8 @@ export const HostLoginModal: React.FC<HostLoginModalProps> = ({ isOpen, onClose,
           color={themeColor}
           size="sm"
         />
-      </FormLayout>
+        </FormLayout>
+        </Panel>
     </Modal>
   );
 };

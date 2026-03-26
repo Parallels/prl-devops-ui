@@ -122,3 +122,5 @@ export * from './components/Group';
 export * from './components/Database';
 export * from './components/Pin';
 export * from './components/RemoteHost';
+export * from './components/Login';
+export * from './components/Logout';

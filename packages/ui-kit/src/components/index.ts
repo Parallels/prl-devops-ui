@@ -100,7 +100,7 @@ export { default as StatGoalTile, type StatGoalTileProps } from './StatGoalTile'
 export { default as StatGraphTile, type StatGraphTileProps, type StatGraphSeries } from './StatGraphTile';
 export { default as StatTile, type StatTileProps } from './StatTile';
 export { default as Stepper, type StepperProps, type Step } from './Stepper';
-export { default as Table, type TableProps, type TableColumn, type TableSortState, type TablePaginationState, type TableSettings, type Column } from './Table';
+export { default as Table, type TableProps, type TableColumn, type TableSortState, type TablePaginationState, type TableSettings, type Column, type TableVariant } from './Table';
 export { default as AccessMatrix, type AccessMatrixProps, type AccessMatrixPermission } from './AccessMatrix';
 export { default as VariablePicker } from './VariablePicker';
 export { default as KeyValueArrayField, type KeyValueArrayFieldProps } from './KeyValueArrayField';
@@ -109,6 +109,19 @@ export { default as CustomIcon, type CustomIconProps } from './CustomIcon';
 export { default as DynamicFormField, type DynamicFormFieldProps } from './DynamicFormField';
 export { default as NotificationModal, type NotificationModalProps, type NotificationType } from './NotificationModal';
 export { default as SidePanel, type SidePanelProps } from './SidePanel';
+
+// TimelinePanel
+export {
+  TimelinePanel,
+  type TimelinePanelProps,
+  type TimelinePanelItem,
+  type TimelinePanelAction,
+  type TimelinePanelOverflowItem,
+  type TimelinePanelHeaderAction,
+  type TimelinePanelVariant,
+  type TimelinePanelPadding,
+  type TimelinePanelCorner,
+} from './TimelinePanel';
 
 // ConnectionFlow
 export * from './ConnectionFlow';
