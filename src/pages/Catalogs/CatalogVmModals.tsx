@@ -20,6 +20,7 @@ interface DownloadCatalogVmModalProps {
   error: string | null;
   form: DownloadVmFormData;
   catalogId: string;
+  isLocal: boolean;
   version?: string;
   architecture?: string;
   managerId?: string;
@@ -46,6 +47,7 @@ export const DownloadCatalogVmModal: React.FC<DownloadCatalogVmModalProps> = ({
   version,
   architecture,
   managerId,
+  isLocal,
   hasHostModule = false,
   hasOrchestratorModule = false,
   forcedTarget,
@@ -54,7 +56,7 @@ export const DownloadCatalogVmModal: React.FC<DownloadCatalogVmModalProps> = ({
   onFormChange,
 }) => {
   const { themeColor } = useSystemSettings();
-  const showTargetSelector = !forcedTarget && hasHostModule && hasOrchestratorModule;
+  const showTargetSelector = !forcedTarget && hasHostModule && hasOrchestratorModule && !isLocal;
 
   return (
     <Modal

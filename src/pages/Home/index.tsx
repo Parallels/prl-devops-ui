@@ -21,6 +21,8 @@ import {
   CpuUtilizationPanel,
   MemoryUsagePanel,
   GoroutinesPanel,
+  VmsPanel,
+  HostsPanel,
 } from './panels';
 
 const HOME_SMART_GRID_LAYOUT_SLUG = 'home.smart_grid_layout';
@@ -224,8 +226,28 @@ export const Home: React.FC = () => {
         defaultHidden: !hasGraphData,
         render: () => <GoroutinesPanel hasGraphData={hasGraphData} goroutinesSmoothed={currentStats?.goroutinesSmoothed} graphData={graphData} />,
       },
+      {
+        id: 'overview-vms',
+        title: 'Virtual Machines',
+        description: 'Combined list of all virtual machines from local host and orchestrator, deduplicated.',
+        group: 'Overview',
+        defaultSpan: 12,
+        defaultHidden: true,
+        defaultRemoved: !hasModule('host') && !hasModule('orchestrator'),
+        render: () => <VmsPanel />,
+      },
+      {
+        id: 'overview-hosts',
+        title: 'Hosts',
+        description: 'All remote hosts registered in the orchestrator with their addresses and health state.',
+        group: 'Overview',
+        defaultSpan: 12,
+        defaultHidden: true,
+        defaultRemoved: !hasModule('orchestrator'),
+        render: () => <HostsPanel />,
+      },
     ],
-    [cpuTotal, currentStats?.goroutinesSmoothed, graphData, hasGraphData, hw, memTotalDisplay, memUsedDisplay, orchError, orchLoading, resourcePages],
+    [cpuTotal, currentStats?.goroutinesSmoothed, graphData, hasGraphData, hasModule, hw, memTotalDisplay, memUsedDisplay, orchError, orchLoading, resourcePages],
   );
 
   return (

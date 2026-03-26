@@ -6,6 +6,7 @@ import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { OsIcon } from '@/utils/virtualMachine';
 import { getStateTone } from '@/utils/vmUtils';
+import { SnapshotsTab } from './tabs/SnapshotsTab';
 
 // ── Shared helpers (also used by table columns in Vms.tsx) ──────────────────
 
@@ -379,9 +380,10 @@ export function VmDetailContent({ vm, hostname, isOrchestrator }: VmDetailConten
         panelClassName="pb-6"
         panelIdPrefix="vm-detail"
         items={[
-          { id: 'overview', label: 'Overview', panel: <OverviewTab vm={vm} /> },
-          { id: 'hardware', label: 'Hardware', panel: <HardwareTab vm={vm} /> },
-          { id: 'settings', label: 'Settings', panel: <SettingsTab vm={vm} /> },
+          { id: 'overview',   label: 'Overview',   panel: <OverviewTab vm={vm} /> },
+          { id: 'hardware',   label: 'Hardware',   panel: <HardwareTab vm={vm} /> },
+          { id: 'settings',   label: 'Settings',   panel: <SettingsTab vm={vm} /> },
+          { id: 'snapshots',  label: 'Snapshots',  panel: <SnapshotsTab vm={vm} hostname={hostname} /> },
         ]}
       />
     </div>

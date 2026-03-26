@@ -124,3 +124,4 @@ export * from './components/Pin';
 export * from './components/RemoteHost';
 export * from './components/Login';
 export * from './components/Logout';
+export * from './components/Snapshot'

@@ -6,9 +6,16 @@ import { authService } from '../services/authService';
 
 export const EVENTS_HUB_SERVER_ID = 'events-hub';
 const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy,job_manager,auth';
-// Keep a larger in-memory buffer so consumers using queue cursors can catch up
-// during short spikes without losing intermediate events.
-const DEFAULT_LIMIT = 2000;
+
+const IS_DEVELOPMENT = (import.meta.env.VITE_IS_DEVELOPMENT ?? '').toLowerCase() === 'true';
+
+// In development keep a large rolling history so the Events debug view works.
+// In production use a tiny sliding window — enough for drainUnseenMessages
+// consumers to drain on each render tick without accumulating history.
+const DEFAULT_LIMIT = IS_DEVELOPMENT ? 2000 : 20;
+// system_logs is always kept at full capacity regardless of environment:
+// consumers need the full log buffer to display host/system log streams.
+const SYSTEM_LOGS_LIMIT = 1000;
 const HOST_STATS_LIMIT = 60; // ~1 min of data at 1-second intervals
 const HOST_LOGS_LIMIT = 1000;
 const REVERSE_PROXY_LIMIT = 100;
@@ -99,7 +106,10 @@ type Action =
 
 function initialContainers(): ContainersState {
     return Object.fromEntries(
-        [...SUBSCRIBED_TYPES, '_other'].map((k) => [k, { messages: [], limit: DEFAULT_LIMIT }])
+        [...SUBSCRIBED_TYPES, '_other'].map((k) => [
+            k,
+            { messages: [], limit: k === 'system_logs' ? SYSTEM_LOGS_LIMIT : DEFAULT_LIMIT },
+        ])
     );
 }
 

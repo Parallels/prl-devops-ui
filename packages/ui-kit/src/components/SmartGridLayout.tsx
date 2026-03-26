@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, IconButton, type ThemeColor } from '@prl/ui-kit';
+import { Button, CustomIcon, IconButton, type ThemeColor } from '@prl/ui-kit';
 
 export interface SmartGridItemDefinition {
   id: string;
   title: string;
   group?: string;
   description?: string;
+  screenshot?: string;
   defaultSpan?: number;
   defaultHidden?: boolean;
   defaultRemoved?: boolean;
@@ -226,8 +227,15 @@ function normalizeLayout(items: SmartGridSeedItem[], persistedLayout: SmartGridL
 
   items.forEach((item, index) => {
     const persisted = persistedItems[item.id];
-    const sectionId = typeof persisted?.group === 'string' && persisted.group.trim().length > 0 ? persisted.group : (item.group ?? DEFAULT_SECTION);
-    const section = ensureSection(sectionId, sectionId, index);
+    // Hidden items with no persisted placement don't pre-create their group's section.
+    // Their group is left undefined until the user explicitly adds them to a row.
+    const isUnplacedHidden = !persisted && Boolean(item.defaultHidden) && !Boolean(item.defaultRemoved);
+    const sectionId: string | undefined = isUnplacedHidden
+      ? undefined
+      : typeof persisted?.group === 'string' && persisted.group.trim().length > 0
+        ? persisted.group
+        : (item.group ?? DEFAULT_SECTION);
+    const section = sectionId ? ensureSection(sectionId, sectionId, index) : undefined;
     const rowKey = typeof persisted?.rowKey === 'string' && persisted.rowKey.trim().length > 0 ? persisted.rowKey : undefined;
 
     next.items[item.id] = {
@@ -239,7 +247,7 @@ function normalizeLayout(items: SmartGridSeedItem[], persistedLayout: SmartGridL
       rowKey,
     };
 
-    if (rowKey && !section.rowOrder.includes(rowKey)) {
+    if (rowKey && section && !section.rowOrder.includes(rowKey)) {
       section.rowOrder.push(rowKey);
     }
   });
@@ -324,11 +332,17 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
 
   const activeItems = useMemo(() => orderedItems.filter((row) => !row.state?.removed), [orderedItems]);
   const visibleItems = useMemo(() => activeItems.filter((row) => !row.state?.hidden), [activeItems]);
-  const removedItems = useMemo(() => orderedItems.filter((row) => row.state?.removed), [orderedItems]);
+  // Items available to add via the modal: anything not currently rendered (hidden or removed)
+  const addableItems = useMemo(() => orderedItems.filter((row) => row.state?.removed || row.state?.hidden), [orderedItems]);
 
   const orderedSectionIds = useMemo(() => {
-    return sortByOrder(Object.entries(layout.sections).map(([id, section]) => ({ id, order: section.order }))).map((entry) => entry.id);
-  }, [layout.sections]);
+    const sectionIdsWithContent = new Set(visibleItems.map((e) => e.state.group).filter(Boolean));
+    return sortByOrder(
+      Object.entries(layout.sections)
+        .filter(([id]) => sectionIdsWithContent.has(id))
+        .map(([id, section]) => ({ id, order: section.order })),
+    ).map((entry) => entry.id);
+  }, [layout.sections, isEditMode, visibleItems]);
 
   const entriesBySection = useMemo(() => {
     const map = new Map<string, VisibleEntry[]>();
@@ -367,7 +381,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
       section.rowOrder.forEach((rowId) => {
         const rowEntries = sortByOrder((byRow.get(rowId) ?? []).map((e) => ({ ...e, order: e.order })));
         if (rowEntries.length === 0) {
-          rows.push({ id: rowId, cells: [], isEmpty: true });
+          // Skip empty managed rows — they're pruned on save and should not render
           return;
         }
         const spans = normalizeRowSpans(
@@ -397,7 +411,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
     }
 
     return result;
-  }, [entriesBySection, isEditMode, layout.sections, maxColumns, orderedSectionIds]);
+  }, [entriesBySection, layout.sections, maxColumns, orderedSectionIds]);
 
   const updateLayout = useCallback(
     (updater: (prev: SmartGridLayoutState) => SmartGridLayoutState) => {
@@ -409,6 +423,35 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
     },
     [onLayoutChange],
   );
+
+  // When leaving edit mode (save), prune empty managed rows from section rowOrder.
+  const prevEditModeRef = useRef(isEditMode);
+  useEffect(() => {
+    const wasEditing = prevEditModeRef.current;
+    prevEditModeRef.current = isEditMode;
+    if (!wasEditing || isEditMode) return; // only fires on true → false transition
+
+    updateLayout((prev) => {
+      const populatedRowKeys = new Set(
+        Object.values(prev.items)
+          .filter((item) => !item.removed && item.rowKey)
+          .map((item) => item.rowKey as string),
+      );
+
+      let changed = false;
+      const nextSections = { ...prev.sections };
+
+      Object.entries(prev.sections).forEach(([sectionId, section]) => {
+        const filteredRowOrder = section.rowOrder.filter((rowId) => populatedRowKeys.has(rowId));
+        if (filteredRowOrder.length !== section.rowOrder.length) {
+          nextSections[sectionId] = { ...section, rowOrder: filteredRowOrder };
+          changed = true;
+        }
+      });
+
+      return changed ? { ...prev, sections: nextSections } : prev;
+    });
+  }, [isEditMode, updateLayout]);
 
   const updateItem = useCallback(
     (itemId: string, updater: (prev: SmartGridItemState) => SmartGridItemState) => {
@@ -571,6 +614,24 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
     ensureSection(sectionId, 'New Section');
     return sectionId;
   }, [ensureSection]);
+
+  const removeSection = useCallback(
+    (sectionId: string) => {
+      updateLayout((prev) => {
+        const nextSections = { ...prev.sections };
+        delete nextSections[sectionId];
+        // Clear group for any items that belonged to this section so they reappear in the add modal cleanly
+        const nextItems = { ...prev.items };
+        Object.entries(nextItems).forEach(([itemId, item]) => {
+          if (item.group === sectionId) {
+            nextItems[itemId] = { ...item, group: undefined, rowKey: undefined };
+          }
+        });
+        return { ...prev, sections: nextSections, items: nextItems };
+      });
+    },
+    [updateLayout],
+  );
 
   const setItemPlacement = useCallback(
     (itemId: string, sectionId: string, rowKey?: string) => {
@@ -774,30 +835,48 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                 Close
               </button>
             </div>
-            {removedItems.length === 0 ? (
-              <p className="text-sm text-neutral-500 dark:text-neutral-400">No hidden items available to add.</p>
+            {addableItems.length === 0 ? (
+              <p className="text-sm text-neutral-500 dark:text-neutral-400">No items available to add.</p>
             ) : (
               <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
-                {removedItems.map((row) => (
-                  <div key={row.id} className="flex items-center justify-between rounded-md border border-neutral-200 p-2 dark:border-neutral-700">
-                    <div>
-                      <div className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{row.item.title}</div>
-                      <div className="text-[11px] text-neutral-500 dark:text-neutral-400">{layout.sections[row.state.group ?? '']?.title ?? row.state.group ?? DEFAULT_SECTION}</div>
+                {addableItems.map((row) => {
+                  const categoryLabel = row.item.group ?? layout.sections[row.state.group ?? '']?.title ?? row.state.group ?? DEFAULT_SECTION;
+                  return (
+                    <div key={row.id} className="flex items-center gap-3 rounded-md border border-neutral-200 p-2 dark:border-neutral-700">
+                      {/* Thumbnail */}
+                      <div className="shrink-0 overflow-hidden rounded border border-neutral-200 dark:border-neutral-700" style={{ width: 100, height: 100 }}>
+                        {row.item.screenshot ? (
+                          <img src={row.item.screenshot} alt={row.item.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-white dark:bg-neutral-900">
+                            <CustomIcon icon="Dashboard" className="h-8 w-8 text-neutral-300 dark:text-neutral-600" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">{row.item.title}</span>
+                          <span className="text-[10px] text-neutral-400 dark:text-neutral-500">· {categoryLabel}</span>
+                        </div>
+                        {row.item.description && (
+                          <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">{row.item.description}</div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!rowAddTarget) return;
+                          addItemToRow(row.id, rowAddTarget.sectionId, rowAddTarget.rowId);
+                          setRowAddTarget(null);
+                          setIsAddModalOpen(false);
+                        }}
+                        className="shrink-0 rounded border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                      >
+                        Add
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!rowAddTarget) return;
-                        addItemToRow(row.id, rowAddTarget.sectionId, rowAddTarget.rowId);
-                        setRowAddTarget(null);
-                        setIsAddModalOpen(false);
-                      }}
-                      className="rounded border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
-                    >
-                      Add
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -852,6 +931,17 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                   >
                     Rename
                   </Button>
+                  {rows.every((row) => row.cells.length === 0) && (
+                    <IconButton
+                      icon="Trash"
+                      size="xs"
+                      variant="ghost"
+                      color="rose"
+                      onClick={() => removeSection(sectionId)}
+                      title="Remove empty section"
+                      aria-label="Remove empty section"
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -895,6 +985,26 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
 
                 return (
                   <div key={row.id} className={`relative flex items-stretch gap-2 rounded-lg ${isEditMode ? `${editTheme.border} border border-dashed p-2` : ''}`}>
+                    {isEditMode && row.cells.length > 0 && (
+                      <div className="z-20 flex w-7 shrink-0 items-start justify-center pt-1">
+                        <IconButton
+                          icon="Trash"
+                          size="xs"
+                          variant="ghost"
+                          color="rose"
+                          onClick={() =>
+                            removeRowItems(
+                              sectionId,
+                              row.id,
+                              row.cells.map((cell) => cell.entry.id),
+                              isManagedRow,
+                            )
+                          }
+                          aria-label="Remove row"
+                          title="Remove row"
+                        />
+                      </div>
+                    )}
                     <div
                       ref={(element) => {
                         rowRefs.current[rowDomKey] = element;
@@ -977,27 +1087,6 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                         resetDragState();
                       }}
                     >
-                      {isEditMode && row.cells.length > 0 && (
-                        <div className="absolute left-2 top-2 z-20">
-                          <IconButton
-                            icon="Trash"
-                            size="xs"
-                            variant="ghost"
-                            color="rose"
-                            onClick={() =>
-                              removeRowItems(
-                                sectionId,
-                                row.id,
-                                row.cells.map((cell) => cell.entry.id),
-                                isManagedRow,
-                              )
-                            }
-                            aria-label="Remove row"
-                            title="Remove row"
-                          />
-                        </div>
-                      )}
-
                       {row.isEmpty && (
                         <div
                           className={`rounded-md border border-dashed p-4 text-center text-xs transition ${emptyRowDropTarget === rowDomKey ? `${editTheme.border} ${editTheme.tint} text-neutral-900 dark:text-neutral-100` : 'border-neutral-300 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400'}`}

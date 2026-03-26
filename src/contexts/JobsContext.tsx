@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { Job } from '@/interfaces/Jobs';
+import type { Job, HostJobEvent } from '@/interfaces/Jobs';
 import { jobsService } from '@/services/devops/jobsService';
 import { useSession } from './SessionContext';
 import { useEventsHub } from './EventsHubContext';
@@ -124,7 +124,11 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const msg = event.raw.message; // JOB_CREATED | JOB_UPDATED | JOB_COMPLETED | JOB_FAILED
       if (!msg) continue;
 
-      const job = event.raw.body as Job | undefined;
+      // Detect forwarded host job events (body.host_id present) vs local jobs
+      const rawBody = event.raw.body as Job | HostJobEvent | undefined;
+      const isForwarded = !!rawBody && 'host_id' in rawBody;
+      const job: Job | undefined = isForwarded ? (rawBody as HostJobEvent).event : (rawBody as Job | undefined);
+      const forwardedHostId: string | undefined = isForwarded ? (rawBody as HostJobEvent).host_id : undefined;
       if (!job?.id) continue;
 
       if (msg === 'JOB_DELETED') {
@@ -139,7 +143,8 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       dispatch({ type: 'UPSERT', job });
 
-      const jobLabel = `${titleCase(job.job_type)} · ${titleCase(job.job_operation)}`;
+      const hostSuffix = forwardedHostId ? ` (host ${forwardedHostId})` : '';
+      const jobLabel = `${titleCase(job.job_type)} · ${titleCase(job.job_operation)}${hostSuffix}`;
       const viewAction = {
         label: 'View Job',
         icon: 'ArrowRight' as const,

@@ -85,6 +85,7 @@ export const Catalogs: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [activeItem, setActiveItem] = useState<string | null>(null)
 
   const hasHostModule = hasModule(Modules.HOST);
   const hasOrchestratorModule = hasModule(Modules.ORCHESTRATOR);
@@ -498,6 +499,8 @@ export const Catalogs: React.FC = () => {
           const stats = sourceStats[activeItem.id] ?? { manifests: 0, versions: 0, images: 0 };
           const hasDetails = stats.manifests > 0 || stats.versions > 0 || stats.images > 0;
           const hasItems = stats.manifests > 0;
+          setActiveItem(activeItem.id)
+
 
           return {
             title: <span className="text-neutral-700 dark:text-neutral-300">{activeItem.label}</span>,
@@ -671,6 +674,7 @@ export const Catalogs: React.FC = () => {
         loading={downloadVmLoading}
         error={downloadVmError}
         form={downloadVmForm}
+        isLocal={activeItem === 'local'}
         catalogId={downloadVmModalItem?.row.manifestId ?? ''}
         version={downloadVmModalItem?.row.version !== '-' ? downloadVmModalItem?.row.version : undefined}
         architecture={downloadVmModalItem?.row.architecture !== '-' ? downloadVmModalItem?.row.architecture : undefined}

@@ -41,6 +41,7 @@ import { orchestratorService } from './orchestratorService';
 import { reverseProxyService } from './reverseProxyService';
 import { rolesService } from './rolesService';
 import { userConfigService } from './userConfigService';
+import { snapshotsService } from './snapshotsService';
 import { usersService } from './usersService';
 
 /**
@@ -81,6 +82,9 @@ export const devopsService = {
   /** User config persistence operations */
   userConfig: userConfigService,
 
+  /** VM snapshot operations */
+  snapshots: snapshotsService,
+
   /** User management operations */
   users: usersService,
 };
@@ -99,8 +103,9 @@ export {
   orchestratorService,
   reverseProxyService,
   rolesService,
+  snapshotsService,
   userConfigService,
-  usersService
+  usersService,
 };
 
 /**

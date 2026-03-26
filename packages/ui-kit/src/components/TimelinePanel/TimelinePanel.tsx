@@ -9,7 +9,7 @@ import classNames from 'classnames';
 import Button from '../Button';
 import DropdownMenu from '../DropdownMenu';
 import type { DropdownMenuOption } from '../DropdownMenu';
-import { getPanelToneStyles } from '../../theme/Theme';
+import { getPanelToneStyles, ThemeColor } from '../../theme/Theme';
 import { paddingStyles } from '../Panel';
 import type {
   TimelinePanelProps,
@@ -17,6 +17,7 @@ import type {
   TimelinePanelAction,
 } from './types';
 import type { PanelVariant, PanelCorner, PanelPadding } from '../Panel';
+import Loader from '../Loader';
 
 // ── useIsDark — detects Tailwind dark class on <html> ────────────────────────
 
@@ -116,21 +117,27 @@ const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark })
 
   if (totalSvgH === 0 || midYs.length === 0) return null;
 
-  // Trunk: spans only depth-0 items (first to last)
+  // Trunk anchors: depth-0 items PLUS any isRoot / isCurrent items at any depth.
+  // isCurrent always renders its circle on the trunk (TRUNK_X), so the trunk
+  // must extend down to it even when depth > 0.
   const d0Indices = items
-    .map((it, idx) => ((it.depth ?? 0) === 0 ? idx : -1))
+    .map((it, idx) => ((it.depth ?? 0) === 0 || it.isRoot || it.isCurrent ? idx : -1))
     .filter((idx) => idx >= 0);
   const trunkColor = TC.trunk[ci];
   const branchColor = TC.branch[ci];
 
   // Trunk segments: one segment between each consecutive pair of depth-0 items,
   // leaving a gap of (ROOT_RING_R + L_GAP) around each anchor circle.
+  // Segments up to/including current are solid; segments after current are dashed.
   const ANCHOR_GAP = ROOT_RING_R + L_GAP;
+  const currentIdx = items.findIndex((it) => it.isCurrent);
   const trunkSegments = d0Indices.slice(0, -1).map((fromIdx, i) => {
     const toIdx = d0Indices[i + 1];
+    const dashed = currentIdx >= 0 && fromIdx >= currentIdx;
     return {
       y1: midYs[fromIdx] + ANCHOR_GAP,
       y2: midYs[toIdx] - ANCHOR_GAP,
+      dashed,
     };
   });
 
@@ -144,7 +151,7 @@ const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark })
       style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
     >
       {/* ── Vertical trunk — depth-0 items only, gaps around anchors ────────── */}
-      {trunkSegments.map(({ y1, y2 }, i) => (
+      {trunkSegments.map(({ y1, y2, dashed }, i) => (
         <line
           key={i}
           x1={TRUNK_X} y1={y1}
@@ -152,6 +159,7 @@ const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark })
           stroke={trunkColor}
           strokeWidth={2}
           strokeLinecap="round"
+          {...(dashed ? { strokeDasharray: '3 4' } : {})}
         />
       ))}
 
@@ -171,10 +179,22 @@ const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark })
         }
 
         if (item.isCurrent) {
+          const hasMoreAfter = d0Indices.some((idx) => idx > i);
           return (
             <g key={item.id}>
               <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} fill={TC.curFill[ci]} />
               <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} stroke={TC.curBorder[ci]} strokeWidth={BW} fill="none" />
+              {/* Trailing dashed stub only when no more depth-0 items follow */}
+              {!hasMoreAfter && (
+                <line
+                  x1={TRUNK_X} y1={my + ROOT_RING_R + 4}
+                  x2={TRUNK_X} y2={my + ROOT_RING_R + 20}
+                  stroke={TC.trunk[ci]}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeDasharray="2 3"
+                />
+              )}
             </g>
           );
         }
@@ -188,7 +208,7 @@ const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark })
         // X = center of the parent icon (depth - 1 level)
         const lx = SVG_W + (depth - 1) * ITEM_DEPTH_PX + ICON_W / 2;
         const prevDepth = items[i - 1] ? (items[i - 1].depth ?? 0) : 0;
-        const topGap = prevDepth < depth ? ICON_W / 2 + L_GAP : L_GAP;
+        const topGap = prevDepth < depth ? ICON_W / 2 + L_GAP : -L_CORNER_R;
         const topY = (midYs[i - 1] ?? my) + topGap;
         const rightX = SVG_W + depth * ITEM_DEPTH_PX - L_GAP;
         const cornerY = Math.max(topY, my - L_CORNER_R);
@@ -250,7 +270,7 @@ const OverflowButton: React.FC<OverflowButtonProps> = ({ options, onSelect }) =>
         type="button"
         aria-label="More actions"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-600 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-neutral-300"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
           <circle cx="2.5" cy="8" r="1.5" />
@@ -275,11 +295,12 @@ const OverflowButton: React.FC<OverflowButtonProps> = ({ options, onSelect }) =>
 
 interface TimelineItemRowProps {
   item: TimelinePanelItem;
+  color: ThemeColor;
   itemRef: (el: HTMLDivElement | null) => void;
   actionSize: TimelinePanelAction['size'];
 }
 
-const TimelineItemRow: React.FC<TimelineItemRowProps> = ({ item, itemRef, actionSize }) => {
+const TimelineItemRow: React.FC<TimelineItemRowProps> = ({ item, color, itemRef, actionSize }) => {
   const depth = Math.min(item.depth ?? 0, 3);
   const depthPx = depth * ITEM_DEPTH_PX;
 
@@ -295,40 +316,35 @@ const TimelineItemRow: React.FC<TimelineItemRowProps> = ({ item, itemRef, action
     item.overflowActions?.find((a) => a.value === option.value)?.onClick?.();
   };
 
+  const iconColorClasses = classNames(item.iconBackground ? `rounded-full bg-${color}-100`:'')
+
   return (
     // paddingLeft = SVG_W + depthPx so the whole row is column-shifted (total inside parent)
     <div ref={itemRef} className="flex items-center gap-2 py-2.5" style={{ paddingLeft: SVG_W + depthPx }}>
       {/* Icon + text */}
       <div className="flex min-w-0 flex-1 items-center gap-3">
-        {/* Icon slot — not shown on current-state rows */}
-        {!item.isCurrent && item.icon && (
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 dark:bg-neutral-800 dark:text-neutral-400">
+        {/* Icon slot */}
+        {item.icon && (
+          <div className={classNames('flex h-8 w-8 shrink-0 items-center justify-center text-blue-500 dark:bg-neutral-800 dark:text-neutral-400', iconColorClasses)}>
             {item.icon}
           </div>
         )}
 
-        {/* Current-state badge */}
-        {item.isCurrent ? (
-          <span className="inline-flex items-center rounded-sm bg-neutral-200 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-600 dark:bg-neutral-700 dark:text-neutral-300">
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
             {item.title}
-          </span>
-        ) : (
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-100">
-              {item.title}
-            </div>
-            {item.subtitle && (
-              <div className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
-                {item.subtitle}
-              </div>
-            )}
           </div>
-        )}
+          {item.subtitle && (
+            <div className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+              {item.subtitle}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Actions — always at far right, unaffected by depth */}
       {(item.actions?.length || overflowOptions.length > 0) && (
-        <div className="flex flex-shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-1.5">
           {item.actions?.map((action, idx) => (
             <Button
               key={idx}
@@ -355,13 +371,14 @@ const TimelinePanel: React.FC<TimelinePanelProps> = ({
   title,
   headerAction,
   items,
-  variant = 'elevated',
+  variant = 'simple',
   tone = 'neutral',
   padding = 'sm',
-  corner = 'rounded-sm',
+  corner = 'none',
   loading = false,
   emptyState,
   className,
+  loaderProps
 }) => {
   const isDark = useIsDark();
   const palette = getPanelToneStyles(tone);
@@ -391,21 +408,21 @@ const TimelinePanel: React.FC<TimelinePanelProps> = ({
       case 'subtle':   return classNames(variantShellStyles.subtle, palette.border, palette.subtleBg);
       case 'tonal':    return classNames(variantShellStyles.tonal, palette.tonalBg);
       case 'glass':    return classNames(variantShellStyles.glass, 'border', palette.glassBorder, palette.glassBg);
-      case 'simple':   return classNames(variantShellStyles.simple, palette.tonalBg);
+      case 'simple':   return classNames(variantShellStyles.simple);
       default:         return variantShellStyles[variant] ?? variantShellStyles.elevated;
     }
   })();
 
   return (
     <section
-      className={classNames('relative flex w-full flex-col overflow-hidden', variantClass, cornerStyles[corner], className)}
+      className={classNames('relative flex w-full flex-col overflow-hidden',paddingStyles[padding as PanelPadding], variantClass, cornerStyles[corner], className)}
       aria-busy={loading}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       {(title || headerAction) && (
-        <div className={classNames('flex items-center justify-between gap-4', paddingStyles[padding as PanelPadding], 'pb-0')}>
+        <div className={classNames('flex items-center justify-between gap-4')}>
           {title && (
-            <h3 className={classNames('text-lg font-semibold leading-6', palette.heading)}>{title}</h3>
+            <h3 className={classNames('text-lg font-semibold leading-2', palette.heading)}>{title}</h3>
           )}
           {headerAction && (
             <Button
@@ -425,11 +442,22 @@ const TimelinePanel: React.FC<TimelinePanelProps> = ({
       )}
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
-      <div className={classNames(paddingStyles[padding as PanelPadding], 'pt-4')}>
+      <div>
         {loading ? (
-          <div className="flex items-center justify-center py-8">
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent text-neutral-400" />
-          </div>
+          <div className='flex items-center justify-center min-h-30 w-full h-full'>
+            <Loader
+              spinnerThickness={loaderProps?.spinnerThickness}
+              color={tone}
+              glass={loaderProps?.glass}
+              glassBlurIntensity={loaderProps?.glassBlurIntensity}
+              label={loaderProps?.label}
+              overlay={loaderProps?.overlay}
+              size={loaderProps?.size}
+              spinnerVariant={loaderProps?.spinnerVariant}
+              title={loaderProps?.title}
+              variant={loaderProps?.variant}
+            />
+            </div>
         ) : items.length === 0 && emptyState ? (
           <div className="py-4">{emptyState}</div>
         ) : (
@@ -443,6 +471,7 @@ const TimelinePanel: React.FC<TimelinePanelProps> = ({
               {items.map((item, i) => (
                 <TimelineItemRow
                   key={item.id}
+                  color={tone}
                   item={item}
                   itemRef={(el) => { itemEls.current[i] = el; }}
                   actionSize="sm"

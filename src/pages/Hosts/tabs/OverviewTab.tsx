@@ -86,7 +86,7 @@ export function OverviewTab({ host }: { host: DevOpsRemoteHost }) {
 
   const isHealthy = host.state === 'healthy';
   const shouldBlur = !isHealthy;
-  const vms = host.vms ?? [];
+  const vms = host.vms?.filter((vm) => vm.State === 'running') ?? [];
 
   const diskTotal = host.detailed_resources?.total?.disk_size ?? host.detailed_resources?.total?.disk_count;
   const diskInUse = host.detailed_resources?.total_in_use?.disk_size ?? host.detailed_resources?.total_in_use?.disk_count;

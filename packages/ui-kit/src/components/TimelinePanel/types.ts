@@ -2,6 +2,7 @@ import type React from 'react';
 import type { ButtonVariant, ButtonSize } from '../Button';
 import type { ThemeColor } from '../../theme/Theme';
 import type { PanelVariant, PanelPadding, PanelCorner } from '../Panel';
+import { LoaderProps } from '../Loader';
 
 export type { PanelVariant as TimelinePanelVariant, PanelPadding as TimelinePanelPadding, PanelCorner as TimelinePanelCorner };
 
@@ -28,6 +29,8 @@ export interface TimelinePanelItem {
   id: string;
   /** Icon shown in a rounded box next to the content */
   icon?: React.ReactNode;
+  /** draws a background for the icon */
+  iconBackground?: boolean;
   /** Primary label */
   title: React.ReactNode;
   /** Secondary line (date, size, etc.) */
@@ -83,4 +86,5 @@ export interface TimelinePanelProps {
   /** Node to show when items is empty */
   emptyState?: React.ReactNode;
   className?: string;
+  loaderProps?: LoaderProps
 }

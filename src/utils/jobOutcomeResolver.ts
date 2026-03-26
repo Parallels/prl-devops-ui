@@ -112,10 +112,12 @@ export function resolveJobOutcome(input: JobOutcomeInput): JobOutcomeResolution 
 
   if (kind === 'vm') {
     const vmId = input.result_record_id ?? parsedIds.vmId;
+    const isOrchestrator = (input.job_type ?? '').toLowerCase() === 'orchestrator';
     return {
       highlight: {
         pageId: 'vms',
         menuItemId: 'vms',
+        itemId: isOrchestrator ? 'orchestrator' : undefined,
         recordId: vmId,
       },
       deepLink: vmId

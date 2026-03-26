@@ -13,8 +13,8 @@ export function LogsTab({ host }: { host: DevOpsRemoteHost }) {
     clearHostLogs(hostId);
   }, [clearHostLogs, hostId]);
 
-  if (!host.enabled || !host.enabled_modules?.includes('logs') || !host.id) {
-    return <EmptyState icon="Warning" title="Logs unavailable" subtitle="This host does not have an ID, so logs cannot be displayed." fullHeight fullWidth disableBorder />;
+  if (!host.enabled || !host.id) {
+    return <EmptyState icon="Warning" title="Logs unavailable" subtitle="The host must be enabled and reachable before logs can be displayed." fullHeight fullWidth disableBorder />;
   }
 
   return <LogViewer logs={logs} configSlug={`logs::${hostId}::config`} onClear={handleClear} loading={false} />;
