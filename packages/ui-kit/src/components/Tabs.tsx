@@ -56,7 +56,7 @@ export interface TabsProps {
   panelClassName?: string;
   /**
    * When true, renders a gradient fade at the top of each panel's scroll area so
-   * content doesn't hard-clip against the tab bar when scrolled.
+   * content doesn't hard-clip against the tab bar when scrolled. Default: true.
    * Pass a Tailwind `from-*` colour to match your panel background (default: white / neutral-900 dark).
    */
   scrollFade?: boolean;
@@ -240,7 +240,7 @@ const Tabs: React.FC<TabsProps> = ({
   hideUnderlineContainer = false,
   containerClassName,
   panelClassName,
-  scrollFade = false,
+  scrollFade = true,
   scrollFadeFrom = "from-white dark:from-neutral-900",
 }) => {
   const renderIcon = useIconRenderer();

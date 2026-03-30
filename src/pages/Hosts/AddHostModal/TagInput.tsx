@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Input, Pill } from '@prl/ui-kit';
+import { Input, Pill, type ThemeColor } from '@prl/ui-kit';
 
 interface TagInputProps {
   value: string[];
   onChange: (tags: string[]) => void;
-  color: string;
+  color: ThemeColor;
 }
 
 export function TagInput({ value, onChange, color }: TagInputProps) {
@@ -28,7 +28,7 @@ export function TagInput({ value, onChange, color }: TagInputProps) {
   return (
     <div className="flex flex-col gap-2">
       <Input
-        tone={color as any}
+        tone={color}
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={handleKeyDown}

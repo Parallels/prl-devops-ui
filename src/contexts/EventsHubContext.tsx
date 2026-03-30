@@ -68,6 +68,7 @@ export interface ReverseProxyRouteBody {
     traffic_type?: undefined;
     reverse_proxy_host_id: string;
     target_vm_id?: string;
+    internal_ip_address?: string;
 }
 
 export type ReverseProxyBody = ReverseProxyHttpBody | ReverseProxyTcpBody | ReverseProxyRouteBody;
@@ -81,6 +82,40 @@ export interface ReverseProxyEventEntry {
     message: string;
     /** The parsed body of the event */
     body: ReverseProxyBody;
+}
+
+// ---------------------------------------------------------------------------
+// Reverse proxy service + host state (current snapshot, not rolling history)
+// ---------------------------------------------------------------------------
+
+export interface ReverseProxyStateChangedBody {
+    enabled: boolean;
+    state: 'started' | 'stopped';
+}
+
+export type ReverseProxyHostStateValue = 'starting' | 'started' | 'stopped' | 'ip_changed' | 'error';
+
+export interface ReverseProxyHostStateChangedBody {
+    reverse_proxy_host_id: string;
+    state: ReverseProxyHostStateValue;
+    old_ip?: string;
+    new_ip?: string;
+    error_message?: string;
+}
+
+export interface ReverseProxyServiceStatus {
+    enabled: boolean;
+    state: 'started' | 'stopped';
+    ts: number;
+}
+
+export interface ReverseProxyHostStatus {
+    id: string;
+    state: ReverseProxyHostStateValue;
+    old_ip?: string;
+    new_ip?: string;
+    error_message?: string;
+    ts: number;
 }
 
 export interface EventsHubMessage {
@@ -152,6 +187,7 @@ function hostLogsReducer(state: HostLogsState, action: HostLogsAction): HostLogs
     switch (action.type) {
         case 'ADD_LOG': {
             const prev = state[action.hostId] ?? [];
+            if (prev.some((e) => e.id === action.entry.id)) return state;
             const next = [...prev, action.entry];
             return {
                 ...state,
@@ -179,6 +215,7 @@ function reverseProxyReducer(state: ReverseProxyState, action: ReverseProxyActio
     switch (action.type) {
         case 'ADD_RP_EVENT': {
             const prev = state[action.hostId] ?? [];
+            if (prev.some((e) => e.id === action.entry.id)) return state;
             const next = [...prev, action.entry];
             return {
                 ...state,
@@ -190,19 +227,9 @@ function reverseProxyReducer(state: ReverseProxyState, action: ReverseProxyActio
     }
 }
 
-function hasMessageId(state: ContainersState, id: string): boolean {
-    for (const container of Object.values(state)) {
-        if (container.messages.some((message) => message.id === id)) return true;
-    }
-    return false;
-}
-
 function containersReducer(state: ContainersState, action: Action): ContainersState {
     switch (action.type) {
         case 'ADD': {
-            // Guard against duplicate deliveries (e.g. reconnect replay or
-            // duplicate raw listeners) so Events view doesn't render duplicates.
-            if (hasMessageId(state, action.msg.id)) return state;
 
             const knownKey = action.key in state ? action.key : '_other';
             const container = state[knownKey];
@@ -257,6 +284,10 @@ interface EventsHubContextType {
     clearHostLogs: (hostId: string) => void;
     /** Per-reverse-proxy-host rolling buffers of the last 100 reverse proxy events (oldest first). */
     reverseProxyEvents: Record<string, ReverseProxyEventEntry[]>;
+    /** Current service-level reverse proxy state (from REVERSE_PROXY_STATE_CHANGED). */
+    rpServiceStatus: ReverseProxyServiceStatus | null;
+    /** Latest known state per reverse proxy host ID (from REVERSE_PROXY_HOST_STATE_CHANGED). */
+    rpHostStatuses: Record<string, ReverseProxyHostStatus>;
 }
 
 const EventsHubContext = createContext<EventsHubContextType | null>(null);
@@ -268,7 +299,12 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const [hostStats, dispatchHostStats] = useReducer(hostStatsReducer, {});
     const [hostLogs, dispatchHostLogs] = useReducer(hostLogsReducer, {});
     const [reverseProxyEvents, dispatchReverseProxy] = useReducer(reverseProxyReducer, {});
+    const [rpServiceStatus, setRpServiceStatus] = useState<ReverseProxyServiceStatus | null>(null);
+    const [rpHostStatuses, setRpHostStatuses] = useState<Record<string, ReverseProxyHostStatus>>({});
     const [connectionState, setConnectionState] = useState<WebSocketState>(WebSocketState.CLOSED);
+
+    // O(1) dedup guard — capped at 5000 entries to avoid its own memory growth.
+    const seenIdsRef = useRef<Set<string>>(new Set());
 
     // Always-current hostname for the subscribeRaw closure (avoids stale closure)
     const hostnameRef = useRef<string>('');
@@ -299,6 +335,9 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             dispatchHostStats({ type: 'CLEAR_ALL' });
             dispatchHostLogs({ type: 'CLEAR_ALL' });
             dispatchReverseProxy({ type: 'CLEAR_ALL' });
+            setRpServiceStatus(null);
+            setRpHostStatuses({});
+            seenIdsRef.current.clear();
         }
         prevHostnameRef.current = newHostname;
     }, [session?.hostname]);
@@ -313,6 +352,9 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             dispatchHostStats({ type: 'CLEAR_ALL' });
             dispatchHostLogs({ type: 'CLEAR_ALL' });
             dispatchReverseProxy({ type: 'CLEAR_ALL' });
+            setRpServiceStatus(null);
+            setRpHostStatuses({});
+            seenIdsRef.current.clear();
             return;
         }
 
@@ -348,6 +390,20 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 hostname: hostnameRef.current,
                 raw: msg,
             };
+
+            // O(1) dedup — skip messages we've already processed.
+            if (seenIdsRef.current.has(entry.id)) return;
+            seenIdsRef.current.add(entry.id);
+            if (seenIdsRef.current.size > 5000) {
+                // Evict the oldest 1000 entries to keep the sliding window intact
+                // instead of wiping all dedup history at once.
+                const iter = seenIdsRef.current.values();
+                for (let i = 0; i < 1000; i++) {
+                    const n = iter.next();
+                    if (n.done) break;
+                    seenIdsRef.current.delete(n.value);
+                }
+            }
 
             // HOST_STATS_UPDATE messages are high-frequency (1/s per host).
             // Route them into the per-host stats store and skip the general
@@ -414,9 +470,31 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 // fall through to general container dispatch
             }
 
-            // Direct reverse_proxy event — also feed the per-host RP buffer,
-            // then fall through so the general container receives it.
+            // Direct reverse_proxy event — track current service/host state,
+            // feed the per-host RP buffer, then fall through to the general container.
             if (msg.event_type === 'reverse_proxy') {
+                if (msg.message === 'REVERSE_PROXY_STATE_CHANGED') {
+                    const body = msg.body as ReverseProxyStateChangedBody | undefined;
+                    if (body) {
+                        setRpServiceStatus({ enabled: body.enabled, state: body.state, ts: entry.receivedAt });
+                    }
+                }
+                if (msg.message === 'REVERSE_PROXY_HOST_STATE_CHANGED') {
+                    const body = msg.body as ReverseProxyHostStateChangedBody | undefined;
+                    if (body?.reverse_proxy_host_id) {
+                        setRpHostStatuses((prev) => ({
+                            ...prev,
+                            [body.reverse_proxy_host_id]: {
+                                id: body.reverse_proxy_host_id,
+                                state: body.state,
+                                old_ip: body.old_ip,
+                                new_ip: body.new_ip,
+                                error_message: body.error_message,
+                                ts: entry.receivedAt,
+                            },
+                        }));
+                    }
+                }
                 const body = msg.body as ReverseProxyBody | undefined;
                 const hostId = body?.reverse_proxy_host_id;
                 if (hostId && body) {
@@ -532,7 +610,9 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         hostLogs,
         clearHostLogs,
         reverseProxyEvents,
-    }), [containerMessages, allMessages, containerLimits, setContainerLimit, clearContainer, clearAllContainers, connectionState, hostStats, hostLogs, clearHostLogs, reverseProxyEvents]);
+        rpServiceStatus,
+        rpHostStatuses,
+    }), [containerMessages, allMessages, containerLimits, setContainerLimit, clearContainer, clearAllContainers, connectionState, hostStats, hostLogs, clearHostLogs, reverseProxyEvents, rpServiceStatus, rpHostStatuses]);
 
     return (
         <EventsHubContext.Provider value={value}>

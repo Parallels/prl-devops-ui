@@ -126,6 +126,7 @@ import { RemoteHost } from './components/RemoteHost';
 import { Login } from './components/Login';
 import { Logout } from './components/Logout';
 import { Snapshot } from './components/Snapshot';
+import { Revert } from './components/Revert'
 
 export type IconName =
   | 'Add'
@@ -254,7 +255,8 @@ export type IconName =
   | 'RemoteHost'
   | 'Login'
   | 'Logout'
-  | 'Snapshot';
+  | 'Snapshot'
+  | 'Revert';
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
   Add: Add,
@@ -384,4 +386,5 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
   Login: Login,
   Logout: Logout,
   Snapshot: Snapshot,
+  Revert: Revert,
 };

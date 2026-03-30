@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, ConfirmModal, CustomIcon, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, type SplitViewItem } from '@prl/ui-kit';
+import { Button, ConfirmModal, CustomIcon, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, Pill, SplitView, SplitViewPanelHeaderProps, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
-import { DevOpsRolesAndClaims } from '@/interfaces/devops';
+import { DevOpsClaim } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { ClaimDetail } from './ClaimDetail';
 import { PageHeaderIcon } from '@/components/PageHeader';
 
 export const Claims: React.FC = () => {
-  const [claims, setClaims] = useState<DevOpsRolesAndClaims[]>([]);
+  const [claims, setClaims] = useState<DevOpsClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>();
   const { session, hasClaim } = useSession();
@@ -17,7 +17,7 @@ export const Claims: React.FC = () => {
 
   const [selectedId, setSelectedId] = useState<string | undefined>();
 
-  const [claimToDelete, setClaimToDelete] = useState<DevOpsRolesAndClaims | null>(null);
+  const [claimToDelete, setClaimToDelete] = useState<DevOpsClaim | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [saveResult, setSaveResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -50,7 +50,7 @@ export const Claims: React.FC = () => {
   }, [fetchClaims]);
 
   const handleDelete = useCallback(
-    async (claim: DevOpsRolesAndClaims) => {
+    async (claim: DevOpsClaim) => {
       if (!claim.id) return;
       setDeleting(true);
       try {
@@ -104,13 +104,13 @@ export const Claims: React.FC = () => {
         subtitle: claim.description ?? `${(claim.users ?? []).length} user(s)`,
         icon: 'Claims' as const,
         panel: <ClaimDetail claim={claim} />,
-        actions: <>{canDelete && <IconButton variant="ghost" size="xs" color="danger" icon="Trash" onClick={() => setClaimToDelete(claim)} />}</>,
+        actions: <>{canDelete && claim.users?.length === 0 && !claim.internal && <IconButton variant="ghost" size="xs" color="danger" icon="Trash" onClick={() => setClaimToDelete(claim)} />}</>,
       })),
     [claims, canDelete],
   );
 
   const panelHeaderProps = useCallback(
-    (activeItem: SplitViewItem) => {
+    (activeItem: SplitViewItem): SplitViewPanelHeaderProps | undefined => {
       const claim = claims.find((c) => c.id === activeItem.id);
       if (!claim) return undefined;
       return {
@@ -119,6 +119,14 @@ export const Claims: React.FC = () => {
             <CustomIcon icon="Claim" className="w-5 h-5" />
           </PageHeaderIcon>
         ),
+        helper: {
+          title: "Claims",
+          content: "Claims",
+          color: themeColor
+        },
+        actions: claim.internal ? (
+        <Pill tone={themeColor}>Internal</Pill>
+        ): undefined,
         title: `Claim: ${claim.name ?? 'Unknown'}`,
         subtitle: claim.description ?? `${(claim.users ?? []).length} user(s) assigned`,
       };

@@ -3,7 +3,7 @@ import { CustomIcon, DeleteConfirmModal, EmptyState, MultiProgressBar, type Mult
 import { devopsService } from '@/services/devops';
 import type { CatalogCacheResponse, CatalogCacheManifestItem, CacheConfig } from '@/interfaces/Cache';
 import { formatCacheSize } from '@/utils/cacheUtils';
-import { MANIFEST_COLORS } from '@/components/Cache/cacheConstants';
+import { getManifestColorPalette } from '@/components/Cache/cacheConstants';
 import { CacheManifestCard } from '@/components/Cache/CacheManifestCard';
 
 export interface CachePanelProps {
@@ -26,13 +26,15 @@ export function CachePanel({ hostname, hostId, isOrchestrator = false, data, loa
   const maxSize = config?.max_size ?? 0;
   const effectiveTotal = maxSize > 0 ? maxSize : totalSize;
 
+  const palette = useMemo(() => getManifestColorPalette(manifests.length), [manifests.length]);
+
   const allSeries = useMemo<MultiProgressBarSeries[]>(() => {
     if (manifests.length === 0) return [];
     const series: MultiProgressBarSeries[] = manifests.map((m, i) => ({
       key: m.id || `manifest-${i}`,
       label: m.description || m.catalog_id,
       value: m.cache_size,
-      color: MANIFEST_COLORS[i % MANIFEST_COLORS.length],
+      color: palette[i],
       displayValue: formatCacheSize(m.cache_size),
     }));
     if (maxSize > 0) {
@@ -48,7 +50,7 @@ export function CachePanel({ hostname, hostId, isOrchestrator = false, data, loa
       }
     }
     return series;
-  }, [manifests, totalSize, maxSize]);
+  }, [manifests, totalSize, maxSize, palette]);
 
   const executeDelete = useCallback(async () => {
     if (!itemToDelete) return;
@@ -117,7 +119,7 @@ export function CachePanel({ hostname, hostId, isOrchestrator = false, data, loa
               index={index}
               totalCacheSize={totalSize}
               maxSize={maxSize > 0 ? maxSize : undefined}
-              seriesColor={MANIFEST_COLORS[index % MANIFEST_COLORS.length]}
+              seriesColor={palette[index]}
             />
           );
         })}

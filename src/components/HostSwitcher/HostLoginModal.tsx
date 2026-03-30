@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Button, Checkbox, FormField, FormLayout, Input, Modal, Panel } from '../../controls';
+import { Alert, Button, FormField, FormLayout, Input, Modal, Panel } from '../../controls';
 import { HostConfig } from '@/interfaces/Host';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { Section, Toggle } from '@prl/ui-kit';

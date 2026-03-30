@@ -16,79 +16,18 @@ import {
   Picker,
   type PickerItem,
   type PickerFilter,
+  TagPicker,
   type ThemeColor,
   Panel,
   CollapsiblePanel,
 } from '@prl/ui-kit';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
-import { CatalogPushRequest } from '@/interfaces/devops';
+import { CatalogPushRequest, DevOpsClaim } from '@/interfaces/devops';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { devopsService } from '@/services/devops';
 import { OsIcon } from '@/utils/virtualMachine';
 import { getStateTone } from '@/utils/vmUtils';
 
-// ─── Chip input ──────────────────────────────────────────────────────────────
-
-interface ChipInputProps {
-  values: string[];
-  onChange: (next: string[]) => void;
-  placeholder?: string;
-}
-
-const ChipInput: React.FC<ChipInputProps> = ({ values, onChange, placeholder }) => {
-  const [draft, setDraft] = useState('');
-  const { themeColor } = useSystemSettings();
-
-  const commit = () => {
-    const v = draft.trim().replace(/,+$/, '');
-    if (v && !values.includes(v)) onChange([...values, v]);
-    setDraft('');
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <Input
-          value={draft}
-          size="sm"
-          tone={themeColor}
-          placeholder={placeholder ?? 'Type and press Enter…'}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ',') {
-              e.preventDefault();
-              commit();
-            }
-            if (e.key === 'Backspace' && !draft && values.length) onChange(values.slice(0, -1));
-          }}
-        />
-        <Button type="button" variant="soft" color="slate" size="sm" onClick={commit}>
-          Add
-        </Button>
-      </div>
-      {values.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {values.map((v) => (
-            <span
-              key={v}
-              className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-            >
-              {v}
-              <button
-                type="button"
-                onClick={() => onChange(values.filter((x) => x !== v))}
-                className="ml-0.5 flex-none leading-none text-neutral-400 transition-colors hover:text-neutral-700 dark:hover:text-neutral-200"
-                aria-label={`Remove ${v}`}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ─── Storage Provider Picker ──────────────────────────────────────────────────
 
@@ -547,6 +486,7 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({ isOpen, 
   const [form, setForm] = useState<UploadFormState>(defaultForm);
   const [vms, setVms] = useState<VirtualMachine[]>([]);
   const [vmsLoading, setVmsLoading] = useState(false);
+  const [internalClaims, setInternalClaims] = useState<DevOpsClaim[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
   const prevOpen = useRef(false);
 
@@ -561,6 +501,10 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({ isOpen, 
         .then(setVms)
         .catch(() => setVms([]))
         .finally(() => setVmsLoading(false));
+      devopsService.claims
+        .getClaims(hostname)
+        .then((all) => setInternalClaims(all.filter((c) => !!c.internal)))
+        .catch(() => setInternalClaims([]));
     }
     prevOpen.current = isOpen;
   }, [isOpen, hostname]);
@@ -578,6 +522,11 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({ isOpen, 
         tags: [{ label: vm.State ?? 'unknown', tone: getStateTone(vm.State) }],
       })),
     [vms],
+  );
+
+  const internalClaimItems = useMemo(
+    () => internalClaims.map((c) => ({ id: c.name, label: c.name, ...(c.description ? { description: c.description } : {}) })),
+    [internalClaims],
   );
 
   const vmPickerFilter = useMemo<PickerFilter>(
@@ -816,14 +765,44 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({ isOpen, 
              
               <div className="space-y-3">
                 <FormField label="Tags" width="full" helpText="Free-form labels to help categorize this image.">
-                  <ChipInput values={form.tags} onChange={(v) => set('tags', v)} placeholder="e.g. production, ubuntu, base" />
+                  <TagPicker
+                    items={[]}
+                    value={form.tags}
+                    normalizeValue={(value) => value ? value.toLocaleUpperCase() : value}
+                    onChange={(v) => set('tags', v)}
+                    allowCreate
+                    placeholder="e.g. production, ubuntu, base"
+                    searchPlaceholder="Add a tag…"
+                    color={themeColor}
+                    escapeBoundary
+                  />
                 </FormField>
                 <FormLayout columns={2} gap="sm">
                   <FormField label="Required Roles" width="full" helpText="Users must hold one of these roles to download.">
-                    <ChipInput values={form.required_roles} onChange={(v) => set('required_roles', v)} placeholder="e.g. developer" />
+                    <TagPicker
+                      items={[]}
+                      value={form.required_roles}
+                      normalizeValue={(value) => value ? value.toLocaleUpperCase() : value}
+                      onChange={(v) => set('required_roles', v)}
+                      allowCreate
+                      placeholder="e.g. developer"
+                      searchPlaceholder="Add a role…"
+                      color={themeColor}
+                      escapeBoundary
+                    />
                   </FormField>
                   <FormField label="Required Claims" width="full" helpText="Users must hold all of these claims to download.">
-                    <ChipInput values={form.required_claims} onChange={(v) => set('required_claims', v)} placeholder="e.g. PULL_CATALOG_MANIFEST" />
+                    <TagPicker
+                      items={internalClaimItems}
+                      normalizeValue={(value) => value ? value.toLocaleUpperCase() : value}
+                      value={form.required_claims}
+                      onChange={(v) => set('required_claims', v)}
+                      allowCreate
+                      placeholder="e.g. PULL_CATALOG_MANIFEST"
+                      searchPlaceholder="Add a claim…"
+                      color={themeColor}
+                      escapeBoundary
+                    />
                   </FormField>
                 </FormLayout>
                 <FormField label="UUID (optional)" width="full" helpText="Override the auto-generated UUID for this manifest entry.">

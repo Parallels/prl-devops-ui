@@ -43,6 +43,8 @@ export const Home: React.FC = () => {
   const [orchResources, setOrchResources] = useState<OrchestratorResource[]>([]);
   const [orchLoading, setOrchLoading] = useState(false);
   const [orchError, setOrchError] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null)
+
 
   // Unified resource pages: local host first (when available), then one per
   // orchestrator CPU architecture. Both share the same OrchestratorResource shape.
@@ -73,6 +75,11 @@ export const Home: React.FC = () => {
   useEffect(() => {
     if (!session?.hostname) return;
 
+    config.get<HostConfig[]>('hosts').then((hosts) => {
+      const currentHost = hosts?.find((h) => h.id === session?.hostId);
+      const displayName = currentHost?.name || currentHost?.hostname || session?.serverUrl || 'No Connection';
+      setDisplayName(displayName)
+    })
     devopsService.config
       .getHardwareInfo(session.hostname)
       .then(async (info) => {
@@ -255,7 +262,7 @@ export const Home: React.FC = () => {
       {/* ── Sticky header ───────────────────────────────────────── */}
       <div className="sticky top-0 z-10 bg-neutral-50 dark:bg-neutral-950 px-6 pt-6 pb-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-2">
         <div className="flex gap-2 flex-col grow">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{session?.hostname ?? 'Dashboard'}</h1>
+          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{displayName ?? 'Dashboard'}</h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Connected {session?.connectedAt ? `since ${new Date(session.connectedAt).toLocaleTimeString()}` : ''}</p>
         </div>
         {isLayoutEditMode ? (

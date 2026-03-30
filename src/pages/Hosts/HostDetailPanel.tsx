@@ -62,7 +62,7 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host }) => {
         listClassName="bg-white dark:bg-neutral-900 px-1"
         panelClassName="pt-2"
         panelIdPrefix="host-detail"
-        scrollFade
+        scrollFade={false}
         items={tabItems}
       />
     </div>

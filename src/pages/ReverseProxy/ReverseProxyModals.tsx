@@ -1121,7 +1121,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
             orientation="horizontal"
             variant="card"
             connector="progress"
-            tone={themeColor as any}
+            tone={themeColor}
             interactive
             onChange={(newIndex) => {
               if (newIndex < step) {

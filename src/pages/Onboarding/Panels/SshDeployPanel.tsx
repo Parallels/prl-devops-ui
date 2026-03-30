@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { useNavigate } from 'react-router-dom';
-import { ButtonSelector, CustomIcon, MultiToggle, type MultiToggleOption } from '@prl/ui-kit';
+import { ButtonSelector, CustomIcon, MultiToggle } from '@prl/ui-kit';
 import { Alert, Button, FormField, Input, Panel, PasswordInput, Toggle } from '../../../controls';
 import { useConfig } from '../../../contexts/ConfigContext';
 import { useSession } from '../../../contexts/SessionContext';

@@ -1,10 +1,10 @@
 import React from 'react';
-import { FormField, FormLayout, Panel, Pill, Section, TagPanel } from '@prl/ui-kit';
-import { DevOpsRolesAndClaims } from '@/interfaces/devops';
+import { FormField, FormLayout, Panel,  Section, TagPanel } from '@prl/ui-kit';
+import { DevOpsClaim } from '@/interfaces/devops';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 export interface ClaimDetailProps {
-  claim: DevOpsRolesAndClaims;
+  claim: DevOpsClaim;
 }
 
 export const ClaimDetail: React.FC<ClaimDetailProps> = ({ claim }) => {

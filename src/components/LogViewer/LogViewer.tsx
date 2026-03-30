@@ -1,10 +1,20 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { formatLogTime } from '@prl/ui-kit';
+import { formatLogTime, Input, Picker } from '@prl/ui-kit';
+import type { PickerItem } from '@prl/ui-kit';
 import { CustomIcon } from '@/controls';
-import { LEVEL_META, levelMeta, normalizeLevel } from '@/utils/logUtils';
+import { levelMeta, normalizeLevel } from '@/utils/logUtils';
+
+const LEVEL_PICKER_ITEMS: PickerItem[] = [
+    { id: 'debug', title: 'Debug' },
+    { id: 'info',  title: 'Info' },
+    { id: 'warn',  title: 'Warn' },
+    { id: 'error', title: 'Error' },
+    { id: 'fatal', title: 'Fatal' },
+];
 import { useUserConfig } from '@/contexts/UserConfigContext';
 import type { HostLogEntry } from '@/contexts/EventsHubContext';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,7 +67,8 @@ const LogRow = memo(function LogRow({ entry, wrapLines }: LogRowProps) {
 // Main component
 // ---------------------------------------------------------------------------
 export function LogViewer({ logs, configSlug, onClear, loading: externalLoading }: LogViewerProps) {
-    const { getConfig, setConfig } = useUserConfig();
+  const { getConfig, setConfig } = useUserConfig();
+    const { themeColor } = useSystemSettings();
 
     // Load persisted settings (or defaults) once on mount.
     const savedConfig = configSlug ? getConfig<LogViewerConfig>(configSlug, DEFAULT_CONFIG) : DEFAULT_CONFIG;
@@ -66,7 +77,7 @@ export function LogViewer({ logs, configSlug, onClear, loading: externalLoading 
     const [showSettings, setShowSettings] = useState(false);
     const [search, setSearch] = useState('');
     const [searchError, setSearchError] = useState(false);
-    const [levelFilter, setLevelFilter] = useState<string>('');
+    const [levelFilter, setLevelFilter] = useState<string[]>(() => LEVEL_PICKER_ITEMS.map((i) => i.id));
     const [autoScroll, setAutoScroll] = useState(true);
 
     // Deferred-ready flag: when logs already exist on mount we briefly show "initializing"
@@ -87,8 +98,8 @@ export function LogViewer({ logs, configSlug, onClear, loading: externalLoading 
     const filtered = useMemo(() => {
         let result = limitedLogs;
 
-        if (levelFilter) {
-            result = result.filter((e) => normalizeLevel(e.level) === levelFilter);
+        if (levelFilter.length > 0 && levelFilter.length < LEVEL_PICKER_ITEMS.length) {
+            result = result.filter((e) => levelFilter.includes(normalizeLevel(e.level)));
         }
 
         const q = search.trim();
@@ -110,7 +121,7 @@ export function LogViewer({ logs, configSlug, onClear, loading: externalLoading 
     // ── Reset scroll to top on filter change ───────────────────────────────
     useLayoutEffect(() => {
         if (listRef.current) listRef.current.scrollTop = 0;
-    }, [search, levelFilter, limit]);
+    }, [search, levelFilter.join(','), limit]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // ── Auto-scroll to bottom ──────────────────────────────────────────────
     useEffect(() => {
@@ -139,7 +150,7 @@ export function LogViewer({ logs, configSlug, onClear, loading: externalLoading 
     }, [configSlug, setConfig, limit]);
 
     // ── Content key forces remount when filters change ─────────────────────
-    const contentKey = `${levelFilter}:${search}:${filtered.length === 0 ? 'empty' : 'has'}`;
+    const contentKey = `${levelFilter.join(',')}:${search}:${filtered.length === 0 ? 'empty' : 'has'}`;
 
     const isLoading = externalLoading || !ready;
 
@@ -147,7 +158,7 @@ export function LogViewer({ logs, configSlug, onClear, loading: externalLoading 
         <div className="flex flex-col h-full min-h-0 bg-white dark:bg-neutral-950">
 
             {/* ── Toolbar ─────────────────────────────────────────────── */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 flex-shrink-0">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 shrink-0">
 
                 {/* Search */}
                 <div className="relative flex-1">
@@ -158,9 +169,12 @@ export function LogViewer({ logs, configSlug, onClear, loading: externalLoading 
                             searchError ? 'text-amber-500' : 'text-neutral-400 dark:text-neutral-500'
                         )}
                     />
-                    <input
+                    <Input
                         type="text"
+                        leadingIcon="Search"
                         value={search}
+                        size='sm'
+                        tone={themeColor}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search / regexp…"
                         className={classNames(
@@ -182,16 +196,20 @@ export function LogViewer({ logs, configSlug, onClear, loading: externalLoading 
                 </div>
 
                 {/* Level filter */}
-                <select
-                    value={levelFilter}
-                    onChange={(e) => setLevelFilter(e.target.value)}
-                    className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded px-2 py-1 text-xs font-mono text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50"
-                >
-                    <option value="">All</option>
-                    {(['debug', 'info', 'warn', 'error', 'fatal'] as const).map((l) => (
-                        <option key={l} value={l}>{LEVEL_META[l].label}</option>
-                    ))}
-                </select>
+                <div className="w-50shrink-0 h-full">
+                    <Picker
+                        items={LEVEL_PICKER_ITEMS}
+                        multi
+                        selectedIds={levelFilter}
+                        onMultiChange={setLevelFilter}
+                        placeholder="All levels"
+                        size="sm"
+                        color={themeColor}
+                        fullWidth
+                        fullHeight
+                        escapeBoundary
+                    />
+                </div>
 
                 {/* Auto-scroll toggle */}
                 <button
@@ -235,7 +253,7 @@ export function LogViewer({ logs, configSlug, onClear, loading: externalLoading 
 
             {/* ── Settings panel ──────────────────────────────────────── */}
             {showSettings && (
-                <div className="flex items-center gap-4 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 flex-shrink-0">
+                <div className="flex items-center gap-4 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 shrink-0">
                     <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400 uppercase tracking-wider shrink-0">Settings</span>
 
                     <label className="flex items-center gap-1.5 text-xs font-mono text-neutral-600 dark:text-neutral-400 cursor-pointer select-none">
@@ -288,7 +306,7 @@ export function LogViewer({ logs, configSlug, onClear, loading: externalLoading 
             </div>
 
             {/* ── Footer ──────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 flex-shrink-0">
+            <div className="flex items-center justify-between px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 shrink-0">
                 <span>{filtered.length} / {limitedLogs.length} lines</span>
                 <span>
                     {logs.length >= limit ? `last ${limit} buffered` : `${logs.length} buffered`}

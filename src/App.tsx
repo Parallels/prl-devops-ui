@@ -1,5 +1,6 @@
 import './App.scss';
 import { AppRouter } from './router/AppRouter';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ConfigProvider } from './contexts/ConfigContext';
 import { SessionProvider } from './contexts/SessionContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
@@ -12,6 +13,7 @@ import { renderIcon } from '@prl/ui-kit';
 
 function App() {
   return (
+    <ErrorBoundary>
     <ThemeProvider>
       <ConfigProvider>
         <LockedHostProvider>
@@ -31,6 +33,7 @@ function App() {
         </LockedHostProvider>
       </ConfigProvider>
     </ThemeProvider>
+    </ErrorBoundary>
   );
 }
 

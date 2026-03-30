@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, ConfirmModal, CustomIcon, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, TagPicker, type SplitViewItem } from '@prl/ui-kit';
+import { Button, ConfirmModal, CustomIcon, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, Pill, SplitView, SplitViewPanelHeaderProps, TagPicker, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
-import { ClaimResponse, RoleResponse } from '@/interfaces/devops';
+import { DevOpsClaim, DevOpsRole } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { RoleDetail } from './RoleDetail';
 import { PageHeaderIcon } from '@/components/PageHeader';
 
 export const Roles: React.FC = () => {
-  const [roles, setRoles] = useState<RoleResponse[]>([]);
-  const [availableClaims, setAvailableClaims] = useState<ClaimResponse[]>([]);
+  const [roles, setRoles] = useState<DevOpsRole[]>([]);
+  const [availableClaims, setAvailableClaims] = useState<DevOpsClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>();
   const { session, hasClaim } = useSession();
@@ -18,7 +18,7 @@ export const Roles: React.FC = () => {
 
   const [selectedId, setSelectedId] = useState<string | undefined>();
 
-  const [roleToDelete, setRoleToDelete] = useState<RoleResponse | null>(null);
+  const [roleToDelete, setRoleToDelete] = useState<DevOpsRole | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [saveResult, setSaveResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -47,7 +47,7 @@ export const Roles: React.FC = () => {
           id: c.id ?? '',
           name: c.name ?? '',
           description: c.description,
-        } as ClaimResponse))
+        } as DevOpsClaim))
       );
     } catch (err: any) {
       setError(err?.message ?? 'Failed to load roles');
@@ -61,12 +61,12 @@ export const Roles: React.FC = () => {
     void fetchRoles();
   }, [fetchRoles]);
 
-  const handleClaimsChange = useCallback((updated: RoleResponse) => {
+  const handleClaimsChange = useCallback((updated: DevOpsRole) => {
     setRoles((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
   }, []);
 
   const handleDelete = useCallback(
-    async (role: RoleResponse) => {
+    async (role: DevOpsRole) => {
       if (!role.id) return;
       setDeleting(true);
       try {
@@ -106,7 +106,7 @@ export const Roles: React.FC = () => {
       // Merge selected claims into the local role so the detail panel reflects them immediately
       const claimObjects = modalClaims
         .map((id) => availableClaims.find((c) => c.id === id || c.name === id))
-        .filter((c): c is ClaimResponse => c !== undefined);
+        .filter((c): c is DevOpsClaim => c !== undefined);
       setRoles((prev) => [...prev, { ...created, claims: claimObjects }]);
       setSelectedId(created.id);
       handleModalClose();
@@ -133,13 +133,13 @@ export const Roles: React.FC = () => {
             onClaimsChange={handleClaimsChange}
           />
         ),
-        actions: <>{canDelete && <IconButton variant="ghost" size="xs" color="danger" icon="Trash" onClick={() => setRoleToDelete(role)} />}</>,
+        actions: <>{canDelete && role.users?.length ===0 && !role.internal  && <IconButton variant="ghost" size="xs" color="danger" icon="Trash" onClick={() => setRoleToDelete(role)} />}</>,
       })),
     [roles, canDelete, hostname, availableClaims, handleClaimsChange],
   );
 
   const panelHeaderProps = useCallback(
-    (activeItem: SplitViewItem) => {
+    (activeItem: SplitViewItem): SplitViewPanelHeaderProps | undefined => {
       const role = roles.find((r) => r.id === activeItem.id);
       if (!role) return undefined;
       return {
@@ -148,6 +148,14 @@ export const Roles: React.FC = () => {
             <CustomIcon icon="Role" className="w-5 h-5" />
           </PageHeaderIcon>
         ),
+        helper: {
+          title: "Claims",
+          content: "Claims",
+          color: themeColor
+        },
+        actions: role.internal ? (
+        <Pill tone={themeColor}>Internal</Pill>
+        ): undefined,
         title: `Role: ${role.name ?? 'Unknown'}`,
         subtitle: role.description ?? `${(role.users ?? []).length} user${(role.users ?? []).length === 1 ? '' : 's'} assigned`,
       };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Alert, Button, Checkbox, FormField, FormLayout, Input, Modal, Panel, Toggle, UIModalConfirm } from '../../controls';
+import { Alert, Button, FormField, FormLayout, Input, Modal, Panel, Toggle, UIModalConfirm } from '../../controls';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSession } from '@/contexts/SessionContext';
 import { authService } from '@/services/authService';
@@ -92,11 +92,18 @@ export const EditHostModal: React.FC<EditHostModalProps> = ({ isOpen, onClose, h
         e.serverUrl = 'Please enter a valid URL';
       }
     }
+    // Credential fields are changing if URL, authType, or username differ from saved values
+    const credentialFieldsChanging =
+      serverUrl.replace(/\/+$/, '') !== (host.baseUrl ?? '').replace(/\/+$/, '') ||
+      authType !== (host.authType ?? 'credentials') ||
+      username !== (host.username ?? '');
+    // Password/key is required only when we'll need it: either to store (keepLoggedIn) or to reauth (credentialFieldsChanging)
+    const secretRequired = keepLoggedIn || credentialFieldsChanging;
     if (authType === 'credentials') {
       if (!username.trim()) e.username = 'Username is required';
-      if (!password && !hasStoredSecret) e.password = 'Password is required';
+      if (!password && !hasStoredSecret && secretRequired) e.password = 'Password is required';
     } else {
-      if (!apiKey && !hasStoredSecret) e.apiKey = 'API Key is required';
+      if (!apiKey && !hasStoredSecret && secretRequired) e.apiKey = 'API Key is required';
     }
     return e;
   };
@@ -134,16 +141,25 @@ export const EditHostModal: React.FC<EditHostModalProps> = ({ isOpen, onClose, h
       const oldHostname = host.hostname;
       const hostnameChanged = newHostname !== oldHostname;
 
-      // Test credentials before persisting
-      authService.setCredentials(newHostname, {
-        url: normalizedUrl,
-        username: authType === 'credentials' ? username : '',
-        password: authType === 'credentials' ? password : '',
-        email: authType === 'credentials' ? username : '',
-        api_key: authType === 'api_key' ? apiKey : '',
-      });
+      const credentialsChanged =
+        hostnameChanged ||
+        authType !== (host.authType ?? 'credentials') ||
+        username !== (host.username ?? '') ||
+        password !== '' ||
+        apiKey !== '';
 
-      await authService.forceReauth(newHostname);
+      if (credentialsChanged) {
+        // Test credentials before persisting
+        authService.setCredentials(newHostname, {
+          url: normalizedUrl,
+          username: authType === 'credentials' ? username : '',
+          password: authType === 'credentials' ? password : '',
+          email: authType === 'credentials' ? username : '',
+          api_key: authType === 'api_key' ? apiKey : '',
+        });
+
+        await authService.forceReauth(newHostname);
+      }
 
       // If URL/hostname changed, remove old secrets
       if (hostnameChanged) {
@@ -151,20 +167,23 @@ export const EditHostModal: React.FC<EditHostModalProps> = ({ isOpen, onClose, h
         await config.removeSecret(getApiKeyKey(oldHostname));
       }
 
-      // Persist secrets
-      if (keepLoggedIn) {
-        if (authType === 'credentials' && password) {
-          await config.setSecret(getPasswordKey(newHostname), password);
-          await config.removeSecret(getApiKeyKey(newHostname));
-        } else if (authType === 'api_key' && apiKey) {
-          await config.setSecret(getApiKeyKey(newHostname), apiKey);
+      // Persist secrets (only when credentials or keepLoggedIn changed)
+      const keepLoggedInChanged = keepLoggedIn !== (host.keepLoggedIn ?? true);
+      if (credentialsChanged || keepLoggedInChanged) {
+        if (keepLoggedIn) {
+          if (authType === 'credentials' && password) {
+            await config.setSecret(getPasswordKey(newHostname), password);
+            await config.removeSecret(getApiKeyKey(newHostname));
+          } else if (authType === 'api_key' && apiKey) {
+            await config.setSecret(getApiKeyKey(newHostname), apiKey);
+            await config.removeSecret(getPasswordKey(newHostname));
+          }
+        } else {
           await config.removeSecret(getPasswordKey(newHostname));
+          await config.removeSecret(getApiKeyKey(newHostname));
         }
-      } else {
-        await config.removeSecret(getPasswordKey(newHostname));
-        await config.removeSecret(getApiKeyKey(newHostname));
+        await config.flushSecrets();
       }
-      await config.flushSecrets();
 
       // Fetch hardware info (non-fatal)
       let hardwareInfo = host.hardwareInfo;

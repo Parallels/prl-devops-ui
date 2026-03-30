@@ -15,6 +15,18 @@ function titleCase(s: string): string {
   return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/**
+ * Returns true when the job belongs to the current session user.
+ * Falls back to true when the job carries no owner information (old server versions)
+ * so those notifications are never silently dropped.
+ */
+function isJobOwner(job: Job, sessionEmail: string | undefined, sessionUsername: string | undefined): boolean {
+  if (!job.owner_email && !job.owner_name) return true; // no ownership info — show to all
+  if (sessionEmail && job.owner_email) return job.owner_email.toLowerCase() === sessionEmail.toLowerCase();
+  if (sessionUsername && job.owner_name) return job.owner_name.toLowerCase() === sessionUsername.toLowerCase();
+  return false;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface JobsContextType {
@@ -68,6 +80,8 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const notifications = useOptionalNotifications();
   const navigate = useNavigate();
   const hostname = session?.hostname ?? '';
+  const currentEmail = session?.tokenPayload?.email;
+  const currentUsername = session?.username;
 
   const [jobsMap, dispatch] = useReducer(jobsReducer, {});
   const [loading, setLoading] = useState(false);
@@ -169,6 +183,8 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
         : null;
 
       const baseActions = recordAction ? [viewAction, recordAction] : [viewAction];
+
+      if (!isJobOwner(job, currentEmail, currentUsername)) continue;
 
       if (msg === 'JOB_CREATED') {
         notifications?.addNotification({

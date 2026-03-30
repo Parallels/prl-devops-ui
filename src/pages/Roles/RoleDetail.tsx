@@ -1,15 +1,15 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { FormField, FormLayout, Panel, Pill, Section, TagPanel, TagPicker } from '@prl/ui-kit';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button, FormField, FormLayout, Panel, Section, TagPanel, TagPicker } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
-import { ClaimResponse, RoleResponse } from '@/interfaces/devops';
+import { DevOpsClaim, DevOpsRole } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
 export interface RoleDetailProps {
-  role: RoleResponse;
+  role: DevOpsRole;
   hostname: string;
-  availableClaims?: ClaimResponse[];
-  onClaimsChange?: (updated: RoleResponse) => void;
+  availableClaims?: DevOpsClaim[];
+  onClaimsChange?: (updated: DevOpsRole) => void;
 }
 
 export const RoleDetail: React.FC<RoleDetailProps> = ({ role, hostname, availableClaims = [], onClaimsChange }) => {
@@ -21,43 +21,61 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({ role, hostname, availabl
   const assignedClaims = role.claims ?? [];
 
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const claimItems = useMemo(() => availableClaims.map((c) => ({ id: c.id || c.name, label: c.name })), [availableClaims]);
 
   const assignedClaimIds = useMemo(() => assignedClaims.map((c) => c.id || c.name), [assignedClaims]);
 
-  // TagPicker onChange fires with the full new set — diff to find what changed
-  const handleClaimsChange = useCallback(
-    async (newIds: string[]) => {
-      const added = newIds.filter((id) => !assignedClaimIds.includes(id));
-      const removed = assignedClaimIds.filter((id) => !newIds.includes(id));
+  // Local pending state — tracks unsaved changes
+  const [pendingClaimIds, setPendingClaimIds] = useState<string[]>(assignedClaimIds);
 
-      if (added.length === 0 && removed.length === 0) return;
-      setBusy(true);
-      try {
-        let updatedClaims = [...assignedClaims];
+  // Keep pending in sync when the role prop changes (e.g. parent refresh)
+  useEffect(() => {
+    setPendingClaimIds(assignedClaimIds);
+  }, [role.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-        for (const id of added) {
-          const found = availableClaims.find((c) => c.id === id || c.name === id);
-          if (!found) continue;
-          const result = await devopsService.roles.addRoleClaim(hostname, role.id, { name: found.name });
-          updatedClaims = [...updatedClaims, result];
-        }
+  const isDirty = useMemo(() => {
+    if (pendingClaimIds.length !== assignedClaimIds.length) return true;
+    const base = new Set(assignedClaimIds);
+    return pendingClaimIds.some((id) => !base.has(id));
+  }, [pendingClaimIds, assignedClaimIds]);
 
-        for (const id of removed) {
-          await devopsService.roles.removeRoleClaim(hostname, role.id, id);
-          updatedClaims = updatedClaims.filter((c) => c.id !== id && c.name !== id);
-        }
+  const handleDiscard = useCallback(() => {
+    setPendingClaimIds(assignedClaimIds);
+    setSaveError(null);
+  }, [assignedClaimIds]);
 
-        onClaimsChange?.({ ...role, claims: updatedClaims });
-      } catch (err) {
-        console.error('Failed to update role claims:', err);
-      } finally {
-        setBusy(false);
+  const handleSave = useCallback(async () => {
+    const added = pendingClaimIds.filter((id) => !assignedClaimIds.includes(id));
+    const removed = assignedClaimIds.filter((id) => !pendingClaimIds.includes(id));
+    if (added.length === 0 && removed.length === 0) return;
+
+    setBusy(true);
+    setSaveError(null);
+    try {
+      let updatedClaims = [...assignedClaims];
+
+      for (const id of added) {
+        const found = availableClaims.find((c) => c.id === id || c.name === id);
+        if (!found) continue;
+        const result = await devopsService.roles.addRoleClaim(hostname, role.id, { name: found.name });
+        updatedClaims = [...updatedClaims, result];
       }
-    },
-    [assignedClaims, assignedClaimIds, availableClaims, hostname, role, onClaimsChange],
-  );
+
+      for (const id of removed) {
+        await devopsService.roles.removeRoleClaim(hostname, role.id, id);
+        updatedClaims = updatedClaims.filter((c) => c.id !== id && c.name !== id);
+      }
+
+      onClaimsChange?.({ ...role, claims: updatedClaims });
+    } catch (err) {
+      console.error('Failed to update role claims:', err);
+      setSaveError(err instanceof Error ? err.message : 'Failed to save changes');
+    } finally {
+      setBusy(false);
+    }
+  }, [pendingClaimIds, assignedClaimIds, assignedClaims, availableClaims, hostname, role, onClaimsChange]);
 
   return (
     <div className="p-6 space-y-6">
@@ -86,13 +104,30 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({ role, hostname, availabl
             key={`claims-${role.id}`}
             color={themeColor}
             items={claimItems}
-            value={assignedClaimIds}
-            onChange={(newIds) => void handleClaimsChange(newIds)}
+            value={pendingClaimIds}
+            readOnly={role.internal}
+            onChange={setPendingClaimIds}
             disabled={!canUpdate || busy}
             placeholder="Search and add claims…"
             emptyMessage="No claims available"
             highlightNew
           />
+          {isDirty && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-800/50">
+              <span className="text-xs text-neutral-500 dark:text-neutral-400">You have unsaved claim changes.</span>
+              {saveError && (
+                <span className="text-xs text-rose-600 dark:text-rose-400">{saveError}</span>
+              )}
+              <div className="flex shrink-0 items-center gap-2">
+                <Button variant="ghost" color="slate" size="sm" disabled={busy} onClick={handleDiscard}>
+                  Discard
+                </Button>
+                <Button variant="solid" color={themeColor} size="sm" loading={busy} onClick={() => void handleSave()}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </Panel>
 

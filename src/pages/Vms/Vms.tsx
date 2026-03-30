@@ -744,7 +744,9 @@ export const Vms: React.FC = () => {
         onClose={() => setSelectedVm(null)}
         title={selectedVm?.vm.Name ?? 'VM Details'}
         subtitle={selectedVm?.vm.ID}
-        width={460}
+        width={500}
+        resizable
+        color="blue"
         headerActions={
           <>
             {selectedVm?.vm.State === 'stopped' && (

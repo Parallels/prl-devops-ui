@@ -1,0 +1,17 @@
+import { forwardRef, type SVGProps } from 'react';
+
+export const Revert = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
+<svg
+  viewBox="0 0 25 25"
+  fill="none"
+  version="1.1"
+  id="svg2"
+      xmlns="http://www.w3.org/2000/svg"
+    {...props} ref={ref}>
+  <path
+    fill="currentColor"
+    d="M 8.5761719 4.5761719 L 4.1523438 9 L 8.5761719 13.423828 L 9.4238281 12.576172 L 6.4472656 9.5996094 L 14.5 9.5996094 C 16.661041 9.5996094 18.400391 11.338959 18.400391 13.5 C 18.400391 15.661041 16.661041 17.400391 14.5 17.400391 L 5 17.400391 L 5 18.599609 L 14.5 18.599609 C 17.309559 18.599609 19.599609 16.309559 19.599609 13.5 C 19.599609 10.690441 17.309559 8.4003906 14.5 8.4003906 L 6.4472656 8.4003906 L 9.4238281 5.4238281 L 8.5761719 4.5761719 z " />
+</svg>
+));
+
+Revert.displayName = 'Revert';

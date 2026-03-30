@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Table, Pill } from '@prl/ui-kit';
 import type { TableColumn } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';

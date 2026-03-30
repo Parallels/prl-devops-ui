@@ -1,5 +1,5 @@
 import { apiService } from '../api';
-import { ClaimResponse, RoleClaimRequest, RoleRequest, RoleResponse } from '../../interfaces/devops';
+import { DevOpsClaim, RoleClaimRequest, RoleRequest, DevOpsRole } from '../../interfaces/devops';
 
 /**
  * Roles Service - Handles role management operations for Parallels DevOps API
@@ -13,9 +13,9 @@ class RolesService {
    * @returns Array of roles with their claims and users
    * @throws ApiError
    */
-  async getRoles(hostname: string): Promise<RoleResponse[]> {
+  async getRoles(hostname: string): Promise<DevOpsRole[]> {
     try {
-      const roles = await apiService.get<RoleResponse[]>(
+      const roles = await apiService.get<DevOpsRole[]>(
         hostname,
         '/api/v1/auth/roles',
         { errorPrefix: 'Failed to get roles' }
@@ -36,9 +36,9 @@ class RolesService {
    * @returns Created role
    * @throws ApiError
    */
-  async createRole(hostname: string, request: RoleRequest): Promise<RoleResponse> {
+  async createRole(hostname: string, request: RoleRequest): Promise<DevOpsRole> {
     try {
-      const role = await apiService.post<RoleResponse>(
+      const role = await apiService.post<DevOpsRole>(
         hostname,
         '/api/v1/auth/roles',
         request,
@@ -83,9 +83,9 @@ class RolesService {
    * @returns Array of claims assigned to the role
    * @throws ApiError
    */
-  async getRoleClaims(hostname: string, roleId: string): Promise<ClaimResponse[]> {
+  async getRoleClaims(hostname: string, roleId: string): Promise<DevOpsClaim[]> {
     try {
-      const claims = await apiService.get<ClaimResponse[]>(
+      const claims = await apiService.get<DevOpsClaim[]>(
         hostname,
         `/api/v1/auth/roles/${roleId}/claims`,
         { errorPrefix: `Failed to get claims for role ${roleId}` }
@@ -107,9 +107,9 @@ class RolesService {
    * @returns The added ClaimResponse
    * @throws ApiError
    */
-  async addRoleClaim(hostname: string, roleId: string, request: RoleClaimRequest): Promise<ClaimResponse> {
+  async addRoleClaim(hostname: string, roleId: string, request: RoleClaimRequest): Promise<DevOpsClaim> {
     try {
-      const claim = await apiService.post<ClaimResponse>(
+      const claim = await apiService.post<DevOpsClaim>(
         hostname,
         `/api/v1/auth/roles/${roleId}/claims`,
         request,

@@ -137,18 +137,33 @@ export const AddHostModal: React.FC<AddHostModalProps> = ({ isOpen, onClose, onS
 
   if (step === 'connect') {
     actions = (
-      <Button variant="solid" color={themeColor} disabled={connectState.isSubmitting || !connectState.canSubmit} onClick={() => connectFormRef.current?.submit()}>
-        {connectState.isSubmitting ? `Connecting… (${connectState.elapsedSeconds}s)` : 'Save and Continue'}
-      </Button>
+      <>
+        {!connectState.isSubmitting && (
+          <Button variant="outline" color="rose" onClick={() => onClose()}>
+            Close
+          </Button>          
+        )}
+
+      <Button variant="solid" color="emerald" disabled={connectState.isSubmitting || !connectState.canSubmit} onClick={() => connectFormRef.current?.submit()}>
+        {connectState.isSubmitting ? `Connecting… (${connectState.elapsedSeconds}s)` : 'Save and Connect'}
+        </Button>
+        </>
     );
   } else if (step === 'ssh') {
     const { phase, canDeploy } = sshState;
 
     if (phase === 'configure') {
       actions = (
-        <Button variant="solid" color={themeColor} disabled={!canDeploy} onClick={() => sshFormRef.current?.deploy()} trailingIcon="ArrowRight">
-          {isTauri() ? 'Deploy' : "I've Run the Script — Start Waiting"}
-        </Button>
+        <>
+          {!connectState.isSubmitting && (
+            <Button variant="outline" color="rose" onClick={() => onClose()}>
+              Close
+            </Button>          
+          )}
+          <Button variant="solid" color="emerald" disabled={!canDeploy} onClick={() => sshFormRef.current?.deploy()} trailingIcon="ArrowRight">
+          {isTauri() ? 'Deploy' : "I've Run the Script, Start pooling"}
+          </Button>
+        </>
       );
     } else if (phase === 'waiting') {
       actions = (

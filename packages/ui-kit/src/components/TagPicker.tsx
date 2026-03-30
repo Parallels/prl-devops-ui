@@ -400,6 +400,15 @@ export interface TagPickerProps {
   highlightNew?: boolean;
   className?: string;
   disabled?: boolean;
+  /** When true, hides the remove (×) button on tag pills and prevents adding/removing items via the dropdown. @default false */
+  readOnly?: boolean;
+  /**
+   * Optional function to normalize a value before it is added.
+   * Applied to both free-text creations and known-item selections.
+   * The return value is what gets stored in `value[]`.
+   * Example: `(v) => v.toUpperCase()`
+   */
+  normalizeValue?: (value: string) => string;
 }
 
 // ── TagPicker ─────────────────────────────────────────────────────────────────
@@ -423,6 +432,8 @@ const TagPicker: React.FC<TagPickerProps> = ({
   highlightNew = true,
   className,
   disabled = false,
+  readOnly = false,
+  normalizeValue,
 }) => {
   const uid = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -580,10 +591,13 @@ const TagPicker: React.FC<TagPickerProps> = ({
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
+  const normalize = useCallback((v: string) => (normalizeValue ? normalizeValue(v) : v), [normalizeValue]);
+
   const handleToggle = useCallback(
     (item: TagPickerItem) => {
+      const id = normalize(item.id);
       if (!multi) {
-        onChange([item.id]);
+        onChange([id]);
         setOpen(false);
         setQuery('');
         return;
@@ -591,16 +605,16 @@ const TagPicker: React.FC<TagPickerProps> = ({
       if (selectedSet.has(item.id)) {
         onChange(value.filter((v) => v !== item.id));
       } else {
-        onChange([...value, item.id]);
+        onChange([...value, id]);
       }
     },
-    [multi, onChange, selectedSet, value],
+    [multi, normalize, onChange, selectedSet, value],
   );
 
   const handleRemove = useCallback((v: string) => onChange(value.filter((x) => x !== v)), [onChange, value]);
 
   const handleCreate = useCallback(() => {
-    const label = query.trim();
+    const label = normalize(query.trim());
     if (!label) return;
     if (onCreateItem) {
       onCreateItem(label);
@@ -611,7 +625,7 @@ const TagPicker: React.FC<TagPickerProps> = ({
       onChange([...value, label]);
     }
     setQuery('');
-  }, [query, onCreateItem, multi, onChange, value]);
+  }, [query, normalize, onCreateItem, multi, onChange, value]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
@@ -707,7 +721,7 @@ const TagPicker: React.FC<TagPickerProps> = ({
                       aria-selected={isSelected}
                       onMouseDown={(e) => e.preventDefault()}
                       onMouseEnter={() => setFocusedIndex(index)}
-                      onClick={() => handleToggle(item)}
+                      onClick={() => { if (!readOnly) handleToggle(item); }}
                       className={classNames(
                         'flex cursor-pointer select-none items-center gap-3 px-4 py-2.5 transition-colors',
                         isSelected ? (isNew ? 'bg-emerald-50 dark:bg-emerald-900/20' : colorTokens.optionSelectedBg) : isFocused ? colorTokens.focusedBg : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/60',
@@ -794,13 +808,14 @@ const TagPicker: React.FC<TagPickerProps> = ({
         aria-expanded={open}
         aria-controls={open ? `${uid}-listbox` : undefined}
         onClick={() => {
-          if (!disabled) setOpen((prev) => !prev);
+          if (!disabled && !readOnly) setOpen((prev) => !prev);
         }}
         className={classNames(
           'flex w-full min-h-10.5 flex-wrap items-start gap-1.5 rounded-lg border px-3 py-2 text-left transition-colors',
           'bg-white dark:bg-neutral-900',
           open ? colorTokens.triggerOpen : 'border-neutral-300 hover:border-neutral-400 dark:border-neutral-600 dark:hover:border-neutral-500',
           disabled && 'cursor-not-allowed opacity-50',
+          readOnly && 'cursor-default border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50',
           className,
         )}
       >
@@ -819,7 +834,7 @@ const TagPicker: React.FC<TagPickerProps> = ({
                 <Pill size="sm" tone={sessionAddedSet.has(v) ? 'emerald' : (itemColor ?? color)} variant="soft">
                   {labelFor(v)}
                 </Pill>
-                {multi && (
+                {multi && !readOnly && (
                   <button
                     type="button"
                     aria-label={`Remove ${labelFor(v)}`}

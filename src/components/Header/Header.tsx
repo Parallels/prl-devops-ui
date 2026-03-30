@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GLOBAL_NOTIFICATION_CHANNEL } from '@/constants/constants';
 import { HeaderGroup, Logout, UserAvatar, getGravatarUrl, useSideMenuActions } from '@prl/ui-kit';
@@ -16,6 +16,7 @@ import { ModuleViewSwitcher } from '../HostSwitcher/ModuleViewSwitcher';
 import { useLockedHost } from '@/contexts/LockedHostContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { useEventsHub } from '@/contexts/EventsHubContext';
+import { useClickOutside } from '@/hooks/useClickOutside';
 
 // ─── Menu icons ───────────────────────────────────────────────────────────────
 
@@ -60,17 +61,7 @@ export const Header: React.FC<HeaderProps> = () => {
   const isFeedbackOpen = isModalOpen('feedback');
 
   // Close on outside click
-  useEffect(() => {
-    if (!isUserMenuOpen) return;
-    const handle = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setIsUserMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handle);
-
-    return () => document.removeEventListener('mousedown', handle);
-  }, [isUserMenuOpen]);
+  useClickOutside(userMenuRef, () => setIsUserMenuOpen(false), isUserMenuOpen);
 
   const handleLogout = async () => {
     setIsUserMenuOpen(false);
@@ -139,16 +130,21 @@ export const Header: React.FC<HeaderProps> = () => {
 
         navigate('/', { replace: true });
       } else {
-        // No auto-connectable host — send to the login page with the current
-        // host pre-filled so the user doesn't have to re-type the server URL.
-        const prefill: LoginPrefill | undefined = currentHost ? { hostId: currentHost.id } : undefined;
-
-        navigate('/login', { replace: true, state: prefill ? { prefill } : undefined });
+        // If there are other hosts configured (even without stored credentials),
+        // send to login so the user can pick one. Otherwise go to onboarding.
+        if (otherHosts.length > 0) {
+          const prefill: LoginPrefill | undefined = currentHost ? { hostId: currentHost.id } : undefined;
+          navigate('/login', { replace: true, state: prefill ? { prefill } : undefined });
+        } else {
+          navigate('/onboarding', { replace: true });
+        }
       }
     } catch (error) {
       console.error('Logout failed:', error);
       clearSession();
-      navigate('/login', { replace: true });
+      // Fall back based on whether any hosts remain in config
+      const remainingHosts = await config.get<HostConfig[]>('hosts').catch(() => []) ?? [];
+      navigate(remainingHosts.length > 0 ? '/login' : '/onboarding', { replace: true });
     }
   };
 

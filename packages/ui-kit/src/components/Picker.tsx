@@ -290,8 +290,10 @@ export interface PickerFilter {
 export interface PickerProps {
   items: PickerItem[];
   loading?: boolean;
+  /** Single-select: the currently selected item id */
   selectedId?: string;
-  onSelect: (item: PickerItem) => void;
+  /** Called when an item is clicked (single mode: closes dropdown; multi mode: toggles) */
+  onSelect?: (item: PickerItem) => void;
   /** Placeholder shown on the trigger button when nothing is selected */
   placeholder?: string;
   /** Placeholder text inside the search input */
@@ -312,6 +314,25 @@ export interface PickerProps {
   escapeBoundary?: boolean;
   className?: string;
   color?: ThemeColor;
+
+  // ── Multi-select ────────────────────────────────────────────────────────
+  /** Enable multi-select mode. Use selectedIds + onMultiChange instead of selectedId + onSelect. */
+  multi?: boolean;
+  /** Multi-select: the currently selected item ids */
+  selectedIds?: string[];
+  /** Called with the new selection array whenever the user toggles an item */
+  onMultiChange?: (ids: string[]) => void;
+  /** Max individual pills shown in the trigger before collapsing to "N selected". Default: 3 */
+  maxPillsShown?: number;
+
+  // ── Size ────────────────────────────────────────────────────────────────
+  /** 'sm' renders a compact trigger suitable for toolbars. Default: 'md' */
+  size?: 'sm' | 'md';
+
+  /** When true, the picker fills all available horizontal space. Default: true */
+  fullWidth?: boolean;
+  /** When true, the picker fills all available vertical space. Default: false */
+  fullHeight?: boolean;
 }
 
 // ── Picker ────────────────────────────────────────────────────────────────────
@@ -329,6 +350,13 @@ const Picker: React.FC<PickerProps> = ({
   escapeBoundary = false,
   className,
   color = 'blue',
+  multi = false,
+  selectedIds: selectedIdsProp,
+  onMultiChange,
+  maxPillsShown = 3,
+  size = 'md',
+  fullWidth = true,
+  fullHeight = false,
 }) => {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -340,6 +368,12 @@ const Picker: React.FC<PickerProps> = ({
   const [style, setStyle] = useState<React.CSSProperties>();
   const [computedMaxHeight, setComputedMaxHeight] = useState(MAX_DROPDOWN_HEIGHT);
   const colorTokens = toneTokens[color] ?? toneTokens.theme;
+
+  // Normalised selection for both modes
+  const effectiveSelectedIds = useMemo<string[]>(
+    () => (multi ? (selectedIdsProp ?? []) : selectedId ? [selectedId] : []),
+    [multi, selectedIdsProp, selectedId],
+  );
 
   const selectedItem = useMemo(() => items.find((o) => o.id === selectedId), [items, selectedId]);
 
@@ -456,9 +490,21 @@ const Picker: React.FC<PickerProps> = ({
   }, [open]);
 
   const handleSelect = (item: PickerItem) => {
-    onSelect(item);
-    setOpen(false);
-    setQuery('');
+    if (multi) {
+      const next = effectiveSelectedIds.includes(item.id)
+        ? effectiveSelectedIds.filter((id) => id !== item.id)
+        : [...effectiveSelectedIds, item.id];
+      onMultiChange?.(next);
+      // Keep dropdown open in multi mode
+    } else {
+      onSelect?.(item);
+      setOpen(false);
+      setQuery('');
+    }
+  };
+
+  const handleClearMulti = () => {
+    onMultiChange?.([]);
   };
 
   // ── Derived search placeholder ────────────────────────────────────────────
@@ -517,11 +563,22 @@ const Picker: React.FC<PickerProps> = ({
 
             {/* Option list */}
             <ul className="divide-y divide-neutral-50 overflow-y-auto dark:divide-neutral-800/60" style={{ maxHeight: computedMaxHeight }}>
+              {/* Multi-select clear row */}
+              {multi && effectiveSelectedIds.length > 0 && (
+                <li
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={handleClearMulti}
+                  className="flex cursor-pointer select-none items-center justify-between px-4 py-1.5 text-xs text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-800/60 dark:text-neutral-500 border-b border-neutral-100 dark:border-neutral-800"
+                >
+                  <span>{effectiveSelectedIds.length} selected</span>
+                  <span className="text-rose-500 dark:text-rose-400 hover:underline">Clear</span>
+                </li>
+              )}
               {filtered.length === 0 ? (
                 <li className="px-4 py-5 text-center text-sm text-neutral-400 dark:text-neutral-500">{baseItems.length === 0 ? emptyMessage : 'No items match your search.'}</li>
               ) : (
                 filtered.map((item) => {
-                  const isSelected = item.id === selectedId;
+                  const isSelected = effectiveSelectedIds.includes(item.id);
                   return (
                     <li
                       key={item.id}
@@ -532,14 +589,27 @@ const Picker: React.FC<PickerProps> = ({
                         isSelected ? colorTokens.optionSelectedBg : 'hover:bg-neutral-50 dark:hover:bg-neutral-800/60',
                       )}
                     >
-                      {/* Checkmark */}
-                      <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                        {isSelected && (
+                      {/* Multi: always show checkbox. Single: only show checkmark for selected item. */}
+                      {multi ? (
+                        <span className={classNames(
+                          'flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors',
+                          isSelected
+                            ? classNames(colorTokens.optionSelectedBg, 'border-current', colorTokens.optionSelectedIcon)
+                            : 'border-neutral-300 dark:border-neutral-600',
+                        )}>
+                          {isSelected && (
+                            <svg className={classNames('h-3.5 w-3.5', colorTokens.optionSelectedIcon)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m5 13 4 4L19 7" />
+                            </svg>
+                          )}
+                        </span>
+                      ) : isSelected ? (
+                        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
                           <svg className={classNames('h-3.5 w-3.5', colorTokens.optionSelectedIcon)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="m5 13 4 4L19 7" />
                           </svg>
-                        )}
-                      </span>
+                        </span>
+                      ) : null}
 
                       {/* Icon */}
                       {item.icon && <span className={classNames('shrink-0', isSelected ? colorTokens.optionSelectedIcon : 'text-neutral-400 dark:text-neutral-500')}>{item.icon}</span>}
@@ -571,17 +641,66 @@ const Picker: React.FC<PickerProps> = ({
         )
       : null;
 
+  // ── Size tokens ───────────────────────────────────────────────────────────
+
+  const sm = size === 'sm';
+  const triggerPadding = sm ? 'px-2 py-1' : 'px-3 py-2.5';
+  const triggerText = sm ? 'text-xs' : 'text-sm';
+  const triggerGap = sm ? 'gap-1.5' : 'gap-3';
+  const triggerRadius = 'rounded-lg';
+  const chevronSize = sm ? 'h-3 w-3' : 'h-4 w-4';
+
+  // ── Multi trigger content ─────────────────────────────────────────────────
+
+  const multiTriggerContent = multi ? (() => {
+    if (effectiveSelectedIds.length === 0) {
+      return <span className={classNames('flex-1', triggerText, 'text-neutral-400 dark:text-neutral-500')}>{placeholder}</span>;
+    }
+    const visibleIds = effectiveSelectedIds.slice(0, maxPillsShown);
+    const overflow = effectiveSelectedIds.length - visibleIds.length;
+    return (
+      <div className="flex flex-1 min-w-0 flex-wrap gap-1">
+        {visibleIds.map((id) => {
+          const it = items.find((o) => o.id === id);
+          if (!it) return null;
+          return (
+            <span
+              key={id}
+              className={classNames(
+                'inline-flex items-center rounded px-1.5 py-0.5 font-medium leading-none',
+                sm ? 'text-[10px]' : 'text-xs',
+                colorTokens.filterActive,
+              )}
+            >
+              {it.title}
+            </span>
+          );
+        })}
+        {overflow > 0 && (
+          <span className={classNames(
+            'inline-flex items-center rounded px-1.5 py-0.5 font-medium leading-none',
+            sm ? 'text-[10px]' : 'text-xs',
+            'bg-neutral-100 text-neutral-500 dark:bg-neutral-700/50 dark:text-neutral-400',
+          )}>
+            +{overflow}
+          </span>
+        )}
+      </div>
+    );
+  })() : null;
+
   // ── Trigger button ────────────────────────────────────────────────────────
 
   return (
-    <>
+    <div className={classNames(fullWidth ? 'w-full' : 'w-fit', fullHeight && 'h-full')}>
       <button
         ref={triggerRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={classNames(
-          'flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
-          'bg-white dark:bg-neutral-900',
+          'flex w-full items-center border text-left transition-colors bg-white dark:bg-neutral-900',
+          fullHeight && 'h-full',
+          triggerPadding, triggerText, triggerGap, triggerRadius,
           open ? colorTokens.triggerOpen : 'border-neutral-300 hover:border-neutral-400 dark:border-neutral-600 dark:hover:border-neutral-500',
           className,
         )}
@@ -592,13 +711,15 @@ const Picker: React.FC<PickerProps> = ({
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
             </svg>
-            <span className="text-sm text-neutral-400">{loadingMessage}</span>
+            <span className={classNames(triggerText, 'text-neutral-400')}>{loadingMessage}</span>
           </>
+        ) : multi ? (
+          multiTriggerContent
         ) : selectedItem ? (
           <>
             {selectedItem.icon && <span className="shrink-0 text-neutral-500 dark:text-neutral-400">{selectedItem.icon}</span>}
             <div className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">{selectedItem.title}</span>
+              <span className={classNames('block truncate font-medium text-neutral-800 dark:text-neutral-100', triggerText)}>{selectedItem.title}</span>
               {selectedItem.subtitle && <span className="block truncate text-xs text-neutral-400 dark:text-neutral-500">{selectedItem.subtitle}</span>}
             </div>
             {selectedItem.tags && selectedItem.tags.length > 0 && (
@@ -612,17 +733,17 @@ const Picker: React.FC<PickerProps> = ({
             )}
           </>
         ) : (
-          <span className="flex-1 text-sm text-neutral-400 dark:text-neutral-500">{placeholder}</span>
+          <span className={classNames('flex-1', triggerText, 'text-neutral-400 dark:text-neutral-500')}>{placeholder}</span>
         )}
 
         {/* Chevron */}
-        <svg className={classNames('h-4 w-4 shrink-0 text-neutral-400 transition-transform', open && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+        <svg className={classNames(chevronSize, 'shrink-0 text-neutral-400 transition-transform', open && 'rotate-180')} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
         </svg>
       </button>
 
       {dropdown}
-    </>
+    </div>
   );
 };
 

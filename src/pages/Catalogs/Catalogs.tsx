@@ -520,7 +520,7 @@ export const Catalogs: React.FC = () => {
               content:
                 'Catalogs are used to store and manage catalog metadata for download of virtual machines golden images for each user. [See documentation](https://parallels.github.io/prl-devops-service/docs/devops/catalog/overview/)',
             },
-            actions: hasPushCatalogClaim ? (
+            actions: hasPushCatalogClaim && hasModule('host') ? (
               <Button
                 variant="soft"
                 color={themeColor}

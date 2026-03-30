@@ -261,7 +261,7 @@ export const InfoRow: React.FC<InfoRowProps> = ({
             {/* Label — fixed-width column */}
             <span className={classNames(
                 labelTokens.text,
-                'shrink-0 text-neutral-500 dark:text-neutral-400',
+                'grow shrink-0 text-neutral-500 dark:text-neutral-400',
                 resolvedLabelWidth,
                 labelClassName,
             )}>

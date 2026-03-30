@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import classNames from 'classnames';
 import IconButton from './IconButton';
 import { IconSize } from '../types';
+import { ThemeColor } from '../theme/Theme';
 
 export interface SidePanelProps {
     /** Whether the panel is open */
@@ -21,6 +22,14 @@ export interface SidePanelProps {
     children?: React.ReactNode;
     className?: string;
     closeIconSize?: IconSize;
+    /** Allow the user to drag the left edge to resize the panel. @default false */
+    resizable?: boolean;
+    /** Minimum width in px when resizable. @default 280 */
+    minWidth?: number;
+    /** Maximum width in px when resizable. @default 900 */
+    maxWidth?: number;
+    /** color for the resizer */
+    color?: ThemeColor
 }
 
 /**
@@ -46,6 +55,10 @@ export const SidePanel: React.FC<SidePanelProps> = ({
     children,
     className,
     closeIconSize = 'sm',
+    resizable = false,
+    minWidth = 280,
+    maxWidth = 900,
+    color = 'neutral'
 }) => {
     // Mount immediately on open so the opening animation can play.
     // Unmount only after the closing animation finishes (onTransitionEnd).
@@ -63,26 +76,77 @@ export const SidePanel: React.FC<SidePanelProps> = ({
         if (!isOpen) setMounted(false);
     };
 
+    // ── Resizing ──────────────────────────────────────────────────────────────
+    const [currentWidth, setCurrentWidth] = useState(width);
+    const isDraggingRef = useRef(false);
+    const startXRef = useRef(0);
+    const startWidthRef = useRef(0);
+
+    // Keep currentWidth in sync if the width prop changes while not dragging
+    useEffect(() => {
+        if (!isDraggingRef.current) setCurrentWidth(width);
+    }, [width]);
+
+    const onMouseDown = useCallback((e: React.MouseEvent) => {
+        if (!resizable) return;
+        e.preventDefault();
+        isDraggingRef.current = true;
+        startXRef.current = e.clientX;
+        startWidthRef.current = currentWidth;
+
+        const onMouseMove = (ev: MouseEvent) => {
+            const delta = startXRef.current - ev.clientX;
+            const next = Math.min(maxWidth, Math.max(minWidth, startWidthRef.current + delta));
+            setCurrentWidth(next);
+        };
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'col-resize';
+        const onMouseUp = () => {
+            isDraggingRef.current = false;
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+        };
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    }, [resizable, currentWidth, minWidth, maxWidth]);
+
+    const resolvedWidth = resizable ? currentWidth : width;
+
     if (!mounted) return null;
 
     return (
         <div
             className={classNames(
                 'absolute top-0 right-0 h-full z-40',
-                'overflow-hidden transition-[width] duration-300 ease-in-out',
+                'overflow-hidden',
+                // Only animate width when not actively resizing
+                !isDraggingRef.current && 'transition-[width] duration-300 ease-in-out',
                 'border-l border-neutral-200 dark:border-neutral-700',
                 'shadow-xl dark:shadow-neutral-900/50',
             )}
-            style={{ width: isOpen ? width : 0 }}
+            style={{ width: isOpen ? resolvedWidth : 0 }}
             onTransitionEnd={handleTransitionEnd}
         >
+            {/* Drag handle — left edge, only rendered when resizable */}
+            {resizable && (
+                <div
+                    onMouseDown={onMouseDown}
+                    className="absolute left-0 top-0 h-full z-40 w-1 cursor-col-resize group"
+                >
+                    {/* Visible highlight on hover/drag */}
+            <div className={`h-full w-full bg-transparent transition-colors group-hover:bg-${color}-300/60 dark:group-hover:bg-${color}-600/60 active:bg-${color}-400/60 dark:active:bg-${color}-500/40`} />
+                </div>
+            )}
+
             {/* Inner container — fixed at target width so content never squishes during animation */}
             <div
                 className={classNames(
                     'flex h-full flex-col bg-white dark:bg-neutral-900',
                     className,
                 )}
-                style={{ width }}
+                style={{ width: resolvedWidth }}
             >
                 {/* ── Header ─────────────────────────────────────────────── */}
                 <div className="flex-none flex items-start justify-between gap-3 border-b border-neutral-200 dark:border-neutral-700 px-4 py-3">
@@ -98,7 +162,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
                             </p>
                         )}
                     </div>
-                    <div className="flex flex-shrink-0 items-center gap-1 pt-0.5">
+                    <div className="flex shrink-0 items-center gap-1 pt-0.5">
                         {headerActions}
                         {onClose && (
                             <IconButton

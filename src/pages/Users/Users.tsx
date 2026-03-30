@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, ConfirmModal, EmptyState, FormField, FormLayout, getGravatarUrl, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, TagPicker, UserAvatar, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
-import { ClaimResponse, DevOpsUser, RoleResponse } from '@/interfaces/devops';
+import { DevOpsClaim, DevOpsUser, DevOpsRole } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { UserDetail, type UserDetailRef } from './UserDetail';
@@ -10,8 +10,8 @@ export const Users: React.FC = () => {
   const [users, setUsers] = useState<DevOpsUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>();
-  const [availableRoles, setAvailableRoles] = useState<RoleResponse[]>([]);
-  const [availableClaims, setAvailableClaims] = useState<ClaimResponse[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<DevOpsRole[]>([]);
+  const [availableClaims, setAvailableClaims] = useState<DevOpsClaim[]>([]);
   const { session } = useSession();
   const { themeColor } = useSystemSettings();
   const hostname = session?.hostname ?? '';
@@ -56,7 +56,7 @@ export const Users: React.FC = () => {
     try {
       const [usersResult, rolesResult, claimsResult] = await Promise.all([
         devopsService.users.getUsers(hostname),
-        devopsService.roles.getRoles(hostname).catch(() => [] as RoleResponse[]),
+        devopsService.roles.getRoles(hostname).catch(() => [] as DevOpsRole[]),
         devopsService.claims.getClaims(hostname).catch(() => []),
       ]);
       setUsers(usersResult);
@@ -66,7 +66,7 @@ export const Users: React.FC = () => {
           id: c.id ?? '',
           name: c.name ?? '',
           description: c.description,
-        } as ClaimResponse))
+        } as DevOpsClaim))
       );
     } catch (err: any) {
       const message = err?.message ?? 'Failed to load users';

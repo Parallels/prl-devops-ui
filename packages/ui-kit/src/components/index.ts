@@ -65,6 +65,7 @@ export { default as Accordion, type AccordionProps, type AccordionItem } from '.
 export { default as Tabs, type TabsProps, type TabItem, type TabItemAction } from './Tabs';
 export { default as MarkdownEditor } from './MarkdownEditor';
 export { default as Modal, type ModalProps, ModalActions, ConfirmModal, DeleteConfirmModal, type DeleteConfirmModalProps, ApplyConfirmModal, type ApplyConfirmModalProps } from './Modal';
+export { default as InlinePanel, ConfirmInlinePanel, DeleteConfirmInlinePanel, type InlinePanelProps, type InlinePanelAnchor, type ConfirmInlinePanelProps, type DeleteConfirmInlinePanelProps } from './InlinePanel';
 export {
   default as SideMenu,
   type SideMenuProps,
@@ -96,7 +97,7 @@ export { default as SmartValue, type SmartValueProps } from './SmartValue';
 export { default as StartupStageStepper, type StartupStageStepperProps } from './StartupStageStepper';
 export { default as StatChartTile, type StatChartTileProps, type StatChartDataset, type StatChartItem } from './StatChartTile';
 export { default as StatCountTile, type StatCountTileProps, type StatCountTileBreakdown } from './StatCountTile';
-export { default as StatGoalTile, type StatGoalTileProps } from './StatGoalTile';
+export { default as StatGoalTile, type StatGoalTileProps, type StatGoalItem } from './StatGoalTile';
 export { default as StatGraphTile, type StatGraphTileProps, type StatGraphSeries } from './StatGraphTile';
 export { default as StatTile, type StatTileProps } from './StatTile';
 export { default as Stepper, type StepperProps, type Step } from './Stepper';

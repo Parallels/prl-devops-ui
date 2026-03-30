@@ -1,5 +1,5 @@
 import { apiService } from '../api';
-import { ClaimGroupResponse, DevOpsRolesAndClaims, DevOpsRolesAndClaimsCreateRequest } from '../../interfaces/devops';
+import { ClaimGroupResponse, DevOpsClaim,  DevOpsRolesAndClaimsCreateRequest } from '../../interfaces/devops';
 
 /**
  * Claims Service - Handles claim management operations for Parallels DevOps API
@@ -13,9 +13,9 @@ class ClaimsService {
    * @returns Array of claims
    * @throws ApiError
    */
-  async getClaims(hostname: string): Promise<DevOpsRolesAndClaims[]> {
+  async getClaims(hostname: string): Promise<DevOpsClaim[]> {
     try {
-      const claims = await apiService.get<DevOpsRolesAndClaims[]>(
+      const claims = await apiService.get<DevOpsClaim[]>(
         hostname,
         '/api/v1/auth/claims',
         { errorPrefix: 'Failed to get claims' }
@@ -39,9 +39,9 @@ class ClaimsService {
   async createClaim(
     hostname: string,
     request: DevOpsRolesAndClaimsCreateRequest
-  ): Promise<DevOpsRolesAndClaims> {
+  ): Promise<DevOpsClaim> {
     try {
-      const claim = await apiService.post<DevOpsRolesAndClaims>(
+      const claim = await apiService.post<DevOpsClaim>(
         hostname,
         '/api/v1/auth/claims',
         request,

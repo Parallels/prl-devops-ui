@@ -375,6 +375,7 @@ export function VmDetailContent({ vm, hostname, isOrchestrator }: VmDetailConten
         variant="underline"
         color={themeColor}
         size="sm"
+        scrollFade={false}
         className="flex-1 min-h-0"
         listClassName="bg-white dark:bg-neutral-900 border-b border-neutral-100 dark:border-neutral-800"
         panelClassName="pb-6"
@@ -383,7 +384,7 @@ export function VmDetailContent({ vm, hostname, isOrchestrator }: VmDetailConten
           { id: 'overview',   label: 'Overview',   panel: <OverviewTab vm={vm} /> },
           { id: 'hardware',   label: 'Hardware',   panel: <HardwareTab vm={vm} /> },
           { id: 'settings',   label: 'Settings',   panel: <SettingsTab vm={vm} /> },
-          { id: 'snapshots',  label: 'Snapshots',  panel: <SnapshotsTab vm={vm} hostname={hostname} /> },
+          { id: 'snapshots',  label: 'Snapshots',  panel: <SnapshotsTab vm={vm} hostname={hostname} isOrchestrator={isOrchestrator} /> },
         ]}
       />
     </div>

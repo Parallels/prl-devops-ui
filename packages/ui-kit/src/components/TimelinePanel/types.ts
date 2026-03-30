@@ -45,8 +45,8 @@ export interface TimelinePanelItem {
    * first items to visually anchor the timeline.
    */
   isRoot?: boolean;
-  /** Inline action buttons rendered on the right side */
-  actions?: TimelinePanelAction[];
+  /** Inline action buttons rendered on the right side. Pass a `React.ReactNode` for fully custom content, or a `TimelinePanelAction[]` for the built-in button layout. */
+  actions?: TimelinePanelAction[] | React.ReactNode;
   /** Items for the overflow (⋮) dropdown menu */
   overflowActions?: TimelinePanelOverflowItem[];
   /**
@@ -70,8 +70,8 @@ export interface TimelinePanelHeaderAction {
 export interface TimelinePanelProps {
   /** Panel title rendered in the header */
   title?: React.ReactNode;
-  /** Optional button rendered at the right of the header */
-  headerAction?: TimelinePanelHeaderAction;
+  /** Optional content rendered at the right of the header. Pass a `React.ReactNode` for fully custom content, or a `TimelinePanelHeaderAction` for the built-in button layout. */
+  headerAction?: TimelinePanelHeaderAction | React.ReactNode;
   /** Timeline items */
   items: TimelinePanelItem[];
   // ── Appearance ────────────────────────────────────────────────────────────
@@ -81,6 +81,8 @@ export interface TimelinePanelProps {
   corner?: PanelCorner;
   /** Color of the connecting vertical line */
   lineColor?: string;
+  /** Render a small dot on the trunk line at every item's midpoint (solid segment only). @default false */
+  showTrunkDots?: boolean;
   // ── State ─────────────────────────────────────────────────────────────────
   loading?: boolean;
   /** Node to show when items is empty */

@@ -10,11 +10,13 @@ import Button from '../Button';
 import DropdownMenu from '../DropdownMenu';
 import type { DropdownMenuOption } from '../DropdownMenu';
 import { getPanelToneStyles, ThemeColor } from '../../theme/Theme';
+import { getTreeColorTokens } from '../TreeView/toneColors';
 import { paddingStyles } from '../Panel';
 import type {
   TimelinePanelProps,
   TimelinePanelItem,
   TimelinePanelAction,
+  TimelinePanelHeaderAction,
 } from './types';
 import type { PanelVariant, PanelCorner, PanelPadding } from '../Panel';
 import Loader from '../Loader';
@@ -70,18 +72,6 @@ const ROOT_RING_R = 6.5;
 /** Stroke width. */
 const BW = 1.5;
 
-// Colour tokens [light, dark] — mirrors NEUTRAL_TOKENS from toneColors.ts
-const TC = {
-  trunk:      ['#d4d4d4', '#525252'] as const,
-  branch:     ['#d4d4d4', '#525252'] as const,
-  // Root anchor — visually darker / filled
-  rootFill:   ['#404040', '#a3a3a3'] as const,
-  rootBorder: ['#262626', '#737373'] as const,
-  rootDot:    ['#f5f5f5', '#171717'] as const,
-  // Current-state anchor — light neutral
-  curFill:    ['#e5e5e5', '#3f3f46'] as const,
-  curBorder:  ['#a3a3a3', '#71717a'] as const,
-};
 
 // ── TimelineSvg ───────────────────────────────────────────────────────────────
 // Absolute overlay drawn on top of the item rows.
@@ -99,10 +89,21 @@ interface TimelineSvgProps {
   /** Measured offsetHeight of each item row div */
   itemHeights: number[];
   isDark: boolean;
+  tone: ThemeColor;
+  showTrunkDots: boolean;
 }
 
-const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark }) => {
+const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark, tone, showTrunkDots }) => {
   const ci = isDark ? 1 : 0;
+  const tok = getTreeColorTokens(tone);
+  // Derived color shorthands — [light, dark] resolved to current mode
+  const trunkColor  = tok.trunk[ci];
+  const branchColor = tok.trunk[ci];
+  const rootFill    = tok.connDot[ci];     // tone accent fill for root circle
+  const rootBorder  = tok.trunk[ci];       // matches line color
+  const rootDot     = tok.connFill[ci];    // inner dot contrasts against filled circle
+  const curFill     = tok.connFill[ci];    // very light tinted bg for current circle
+  const curBorder   = tok.trunk[ci];       // matches line color
 
   // Compute midY for each item. No stub — cumY starts at 0.
   const midYs: number[] = [];
@@ -123,9 +124,6 @@ const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark })
   const d0Indices = items
     .map((it, idx) => ((it.depth ?? 0) === 0 || it.isRoot || it.isCurrent ? idx : -1))
     .filter((idx) => idx >= 0);
-  const trunkColor = TC.trunk[ci];
-  const branchColor = TC.branch[ci];
-
   // Trunk segments: one segment between each consecutive pair of depth-0 items,
   // leaving a gap of (ROOT_RING_R + L_GAP) around each anchor circle.
   // Segments up to/including current are solid; segments after current are dashed.
@@ -163,38 +161,79 @@ const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark })
         />
       ))}
 
+      {/* ── Trunk dots — one per item on the solid segment ──────────────────── */}
+      {showTrunkDots && midYs.map((my, i) => {
+        const item = items[i];
+        if (!item || item.isRoot || item.isCurrent) return null;
+        const onSolid = currentIdx < 0 || i < currentIdx;
+        if (!onSolid) return null;
+        return <circle key={`td-${item.id}`} cx={TRUNK_X} cy={my} r={3} fill={trunkColor} />;
+      })}
+
       {/* ── Per-item connectors ──────────────────────────────────────────────── */}
       {midYs.map((my, i) => {
         const item = items[i];
         if (!item) return null;
 
         if (item.isRoot) {
+          // When the root is also the current snapshot, draw the dashed
+          // extension downward — otherwise the isCurrent branch is never reached.
+          const dashY2 = i < items.length - 1 ? totalSvgH : my + ROOT_RING_R + 20;
           return (
             <g key={item.id}>
-              <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} fill={TC.rootFill[ci]} />
-              <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} stroke={TC.rootBorder[ci]} strokeWidth={BW} fill="none" />
-              <circle cx={TRUNK_X} cy={my} r="2.5" fill={TC.rootDot[ci]} />
-            </g>
-          );
-        }
-
-        if (item.isCurrent) {
-          const hasMoreAfter = d0Indices.some((idx) => idx > i);
-          return (
-            <g key={item.id}>
-              <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} fill={TC.curFill[ci]} />
-              <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} stroke={TC.curBorder[ci]} strokeWidth={BW} fill="none" />
-              {/* Trailing dashed stub only when no more depth-0 items follow */}
-              {!hasMoreAfter && (
+              <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} fill={rootFill} />
+              <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} stroke={rootBorder} strokeWidth={BW} fill="none" />
+              <circle cx={TRUNK_X} cy={my} r="2.5" fill={rootDot} />
+              {item.isCurrent && (
                 <line
                   x1={TRUNK_X} y1={my + ROOT_RING_R + 4}
-                  x2={TRUNK_X} y2={my + ROOT_RING_R + 20}
-                  stroke={TC.trunk[ci]}
+                  x2={TRUNK_X} y2={dashY2}
+                  stroke={trunkColor}
                   strokeWidth={1.5}
                   strokeLinecap="round"
                   strokeDasharray="2 3"
                 />
               )}
+            </g>
+          );
+        }
+
+        if (item.isCurrent) {
+          const hasItemsAfter = i < items.length - 1;
+          const dashY2 = hasItemsAfter ? totalSvgH : my + ROOT_RING_R + 20;
+          const curDepth = Math.min(item.depth ?? 0, 3);
+          let lPath: string | null = null;
+          if (curDepth > 0) {
+            const lx = SVG_W + (curDepth - 1) * ITEM_DEPTH_PX + ICON_W / 2;
+            let prevRefIdxC = i - 1;
+            while (prevRefIdxC > 0 && (items[prevRefIdxC]?.depth ?? 0) > curDepth) prevRefIdxC--;
+            const prevDepth = items[prevRefIdxC] ? (items[prevRefIdxC].depth ?? 0) : 0;
+            const topGap = prevDepth < curDepth ? ICON_W / 2 + L_GAP : -L_CORNER_R;
+            const topY = (midYs[prevRefIdxC] ?? my) + topGap;
+            const rightX = SVG_W + curDepth * ITEM_DEPTH_PX - L_GAP;
+            const cornerY = Math.max(topY, my - L_CORNER_R);
+            lPath = [
+              `M ${lx} ${topY}`,
+              `L ${lx} ${cornerY}`,
+              `A ${L_CORNER_R} ${L_CORNER_R} 0 0 0 ${lx + L_CORNER_R} ${my}`,
+              `L ${rightX} ${my}`,
+            ].join(' ');
+          }
+          return (
+            <g key={item.id}>
+              <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} fill={curFill} />
+              <circle cx={TRUNK_X} cy={my} r={ROOT_RING_R} stroke={curBorder} strokeWidth={BW} fill="none" />
+              {lPath && (
+                <path d={lPath} stroke={branchColor} strokeWidth={1.5} strokeLinecap="round" fill="none" />
+              )}
+              <line
+                x1={TRUNK_X} y1={my + ROOT_RING_R + 4}
+                x2={TRUNK_X} y2={dashY2}
+                stroke={trunkColor}
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeDasharray="2 3"
+              />
             </g>
           );
         }
@@ -207,9 +246,13 @@ const TimelineSvg: React.FC<TimelineSvgProps> = ({ items, itemHeights, isDark })
 
         // X = center of the parent icon (depth - 1 level)
         const lx = SVG_W + (depth - 1) * ITEM_DEPTH_PX + ICON_W / 2;
-        const prevDepth = items[i - 1] ? (items[i - 1].depth ?? 0) : 0;
+        // Walk back to find the last item whose depth <= current depth so the
+        // vertical segment spans across any deeper children in between.
+        let prevRefIdx = i - 1;
+        while (prevRefIdx > 0 && (items[prevRefIdx]?.depth ?? 0) > depth) prevRefIdx--;
+        const prevDepth = items[prevRefIdx] ? (items[prevRefIdx].depth ?? 0) : 0;
         const topGap = prevDepth < depth ? ICON_W / 2 + L_GAP : -L_CORNER_R;
-        const topY = (midYs[i - 1] ?? my) + topGap;
+        const topY = (midYs[prevRefIdx] ?? my) + topGap;
         const rightX = SVG_W + depth * ITEM_DEPTH_PX - L_GAP;
         const cornerY = Math.max(topY, my - L_CORNER_R);
 
@@ -343,27 +386,33 @@ const TimelineItemRow: React.FC<TimelineItemRowProps> = ({ item, color, itemRef,
       </div>
 
       {/* Actions — always at far right, unaffected by depth */}
-      {(item.actions?.length || overflowOptions.length > 0) && (
+      {(item.actions !== undefined && item.actions !== null && (!Array.isArray(item.actions) || (item.actions as TimelinePanelAction[]).length > 0) || overflowOptions.length > 0) && (
         <div className="flex shrink-0 items-center gap-1.5">
-          {item.actions?.map((action, idx) => (
-            <Button
-              key={idx}
-              variant={action.variant ?? 'outline'}
-              color={action.color ?? 'neutral'}
-              size={action.size ?? actionSize ?? 'sm'}
-              onClick={action.onClick}
-              disabled={action.disabled}
-              loading={action.loading}
-            >
-              {action.label}
-            </Button>
-          ))}
+          {Array.isArray(item.actions)
+            ? (item.actions as TimelinePanelAction[]).map((action, idx) => (
+                <Button
+                  key={idx}
+                  variant={action.variant ?? 'outline'}
+                  color={action.color ?? color}
+                  size={action.size ?? actionSize ?? 'sm'}
+                  onClick={action.onClick}
+                  disabled={action.disabled}
+                  loading={action.loading}
+                >
+                  {action.label}
+                </Button>
+              ))
+            : item.actions as React.ReactNode}
           <OverflowButton options={overflowOptions} onSelect={handleOverflowSelect} />
         </div>
       )}
     </div>
   );
 };
+
+function isHeaderActionObject(v: unknown): v is TimelinePanelHeaderAction {
+  return typeof v === 'object' && v !== null && !React.isValidElement(v) && 'label' in v;
+}
 
 // ── TimelinePanel ─────────────────────────────────────────────────────────────
 
@@ -378,7 +427,8 @@ const TimelinePanel: React.FC<TimelinePanelProps> = ({
   loading = false,
   emptyState,
   className,
-  loaderProps
+  loaderProps,
+  showTrunkDots = false,
 }) => {
   const isDark = useIsDark();
   const palette = getPanelToneStyles(tone);
@@ -395,6 +445,9 @@ const TimelinePanel: React.FC<TimelinePanelProps> = ({
   }, []);
 
   useLayoutEffect(() => {
+    // Trim stale refs when items shrink (e.g. after a delete) so heights array
+    // stays in sync with items.length and the SVG guard doesn't suppress render.
+    itemEls.current = itemEls.current.slice(0, items.length);
     measureHeights();
     const ro = new ResizeObserver(measureHeights);
     itemEls.current.forEach((el) => el && ro.observe(el));
@@ -424,50 +477,60 @@ const TimelinePanel: React.FC<TimelinePanelProps> = ({
           {title && (
             <h3 className={classNames('text-lg font-semibold leading-2', palette.heading)}>{title}</h3>
           )}
-          {headerAction && (
-            <Button
-              variant={headerAction.variant ?? 'solid'}
-              color={headerAction.color ?? 'danger'}
-              size={headerAction.size ?? 'sm'}
-              onClick={headerAction.onClick}
-              disabled={headerAction.disabled}
-              loading={headerAction.loading}
-              leadingIcon={headerAction.leadingIcon}
-              weight="semibold"
-            >
-              {headerAction.label}
-            </Button>
-          )}
+          {headerAction && (() => {
+            if (isHeaderActionObject(headerAction)) {
+              return (
+                <Button
+                  variant={headerAction.variant ?? 'solid'}
+                  color={headerAction.color ?? tone}
+                  size={headerAction.size ?? 'sm'}
+                  onClick={headerAction.onClick}
+                  disabled={headerAction.disabled}
+                  loading={headerAction.loading}
+                  leadingIcon={headerAction.leadingIcon}
+                  weight="semibold"
+                >
+                  {headerAction.label}
+                </Button>
+              );
+            }
+            return (
+              <div className='flex shrink-0 gap-2'>
+                {headerAction as React.ReactNode}
+              </div>
+            )
+              
+          })()}
         </div>
       )}
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
-      <div>
-        {loading ? (
-          <div className='flex items-center justify-center min-h-30 w-full h-full'>
+      <div className="relative">
+        {loading && items.length === 0 ? (
+          /* No items yet — centred spinner */
+          <div className="flex items-center justify-center min-h-30 w-full h-full">
             <Loader
               spinnerThickness={loaderProps?.spinnerThickness}
               color={tone}
               glass={loaderProps?.glass}
               glassBlurIntensity={loaderProps?.glassBlurIntensity}
               label={loaderProps?.label}
-              overlay={loaderProps?.overlay}
               size={loaderProps?.size}
               spinnerVariant={loaderProps?.spinnerVariant}
               title={loaderProps?.title}
               variant={loaderProps?.variant}
             />
-            </div>
+          </div>
         ) : items.length === 0 && emptyState ? (
           <div className="py-4">{emptyState}</div>
         ) : (
           <div className="relative">
             {/* SVG overlay — drawn once heights are known */}
             {itemHeights.length === items.length && items.length > 0 && (
-              <TimelineSvg items={items} itemHeights={itemHeights} isDark={isDark} />
+              <TimelineSvg items={items} itemHeights={itemHeights} isDark={isDark} tone={tone} showTrunkDots={showTrunkDots} />
             )}
 
-            <div>
+            <div className={classNames(loading && 'pointer-events-none')}>
               {items.map((item, i) => (
                 <TimelineItemRow
                   key={item.id}
@@ -478,6 +541,23 @@ const TimelinePanel: React.FC<TimelinePanelProps> = ({
                 />
               ))}
             </div>
+
+            {/* Glass overlay loader when refreshing over existing items */}
+            {loading && (
+              <Loader
+                overlay
+                glass
+                color={tone}
+                spinnerThickness={loaderProps?.spinnerThickness}
+                glassBlurIntensity={loaderProps?.glassBlurIntensity ?? 'low'}
+                label={loaderProps?.label}
+                size={loaderProps?.size}
+                spinnerVariant={loaderProps?.spinnerVariant}
+                title={loaderProps?.title}
+                variant={loaderProps?.variant}
+                className="absolute inset-0 rounded-[inherit]"
+              />
+            )}
           </div>
         )}
       </div>

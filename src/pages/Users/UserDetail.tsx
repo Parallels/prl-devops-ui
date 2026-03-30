@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
-import { AccessMatrix, type AccessMatrixPermission, FormField, FormLayout, Input, Panel, Pill, Section, TagPicker, Tabs, Toggle, TagPanel } from '@prl/ui-kit';
+import { AccessMatrix, type AccessMatrixPermission, FormField, FormLayout, Input, Panel, Section, TagPicker, Tabs, Toggle, TagPanel } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
-import { ClaimGroupResponse, ClaimResponse, DevOpsUser, RoleResponse } from '@/interfaces/devops';
+import { ClaimGroupResponse, DevOpsClaim, DevOpsUser, DevOpsRole } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
@@ -12,8 +12,8 @@ export interface UserDetailRef {
 
 export interface UserDetailProps {
   user: DevOpsUser;
-  availableRoles?: RoleResponse[];
-  availableClaims?: ClaimResponse[];
+  availableRoles?: DevOpsRole[];
+  availableClaims?: DevOpsClaim[];
   onSave: (updated: DevOpsUser) => void;
   onDirtyChange?: (isDirty: boolean) => void;
 }

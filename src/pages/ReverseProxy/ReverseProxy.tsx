@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ConfirmModal, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, NotificationModal, Pause, Pill, SplitView, Toggle, type SplitViewItem } from '@prl/ui-kit';
+import { ConfirmModal, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, NotificationModal, Pill, SplitView, Toggle, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { ReverseProxyConfig, ReverseProxyHost } from '@/interfaces/ReverseProxy';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';

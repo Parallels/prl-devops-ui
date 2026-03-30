@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useClickOutside } from '@/hooks/useClickOutside';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSession } from '@/contexts/SessionContext';
 import { useEventsHub } from '@/contexts/EventsHubContext';
@@ -339,17 +340,7 @@ export const HostSwitcher: React.FC<HostSwitcherProps> = ({ color = 'blue' }) =>
   }, [loadHosts]);
 
   // Close dropdown on outside click
-  useEffect(() => {
-    if (!isOpen) return;
-    const handle = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-        setSwitchError(null);
-      }
-    };
-    document.addEventListener('mousedown', handle);
-    return () => document.removeEventListener('mousedown', handle);
-  }, [isOpen]);
+  useClickOutside(containerRef, () => { setIsOpen(false); setSwitchError(null); }, isOpen);
 
   // ── Derived display values ─────────────────────────────────────────────────
   const currentHost = hosts.find((h) => h.id === session?.hostId);

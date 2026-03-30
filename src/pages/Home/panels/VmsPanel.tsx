@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Table, Pill } from '@prl/ui-kit';
 import type { TableColumn } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
@@ -119,12 +119,13 @@ export function VmsPanel() {
 
   useEffect(() => { void fetchVms(); }, [fetchVms]);
 
-  // Deduplicate: orchestrator VMs first, then local VMs not already present
+  // Deduplicate: orchestrator VMs first (dedup by ID), then local VMs not already present
   const rows = useMemo<VmPanelRow[]>(() => {
-    const orchIds = new Set(orchestratorVms.map((v) => v.ID).filter(Boolean));
+    const orchDeduped = orchestratorVms.filter((v, idx, arr) => arr.findIndex((u) => u.ID === v.ID) === idx);
+    const orchIds = new Set(orchDeduped.map((v) => v.ID).filter(Boolean));
     const localOnly = localVms.filter((v) => !orchIds.has(v.ID));
     return [
-      ...orchestratorVms.map((v) => ({ ...v, _source: 'orchestrator' as const })),
+      ...orchDeduped.map((v) => ({ ...v, _source: 'orchestrator' as const })),
       ...localOnly.map((v) => ({ ...v, _source: 'local' as const })),
     ];
   }, [orchestratorVms, localVms]);

@@ -2,7 +2,7 @@ import classNames from 'classnames';
 import React, { type ForwardedRef, type InputHTMLAttributes, forwardRef } from 'react';
 import { useIconRenderer } from '../contexts/IconContext';
 import type { ButtonColor } from './Button';
-import { ThemeColor } from '@/theme';
+import { ThemeColor } from '../theme/Theme';
 
 type InputValidationStatus = 'none' | 'error' | 'success';
 type InputSize = 'sm' | 'md' | 'lg';
@@ -22,17 +22,17 @@ const sizeStyles: Record<
 > = {
   sm: {
     input: 'px-3 py-1.5 text-sm',
-    leadingPadding: 'pl-9',
-    trailingPadding: 'pr-9',
-    iconSize: '',
-    iconLeft: 'left-3',
-    iconRight: 'right-3',
+    leadingPadding: 'pl-8',
+    trailingPadding: 'pr-8',
+    iconSize: 'h-3.5 w-3.5',
+    iconLeft: 'left-2.5',
+    iconRight: 'right-2.5',
   },
   md: {
     input: 'px-3.5 py-2.5 text-sm',
     leadingPadding: 'pl-10',
     trailingPadding: 'pr-10',
-    iconSize: '',
+    iconSize: 'h-4 w-4',
     iconLeft: 'left-3.5',
     iconRight: 'right-3.5',
   },
@@ -40,7 +40,7 @@ const sizeStyles: Record<
     input: 'px-4 py-3 text-base',
     leadingPadding: 'pl-11',
     trailingPadding: 'pr-11',
-    iconSize: '',
+    iconSize: 'h-5 w-5',
     iconLeft: 'left-4',
     iconRight: 'right-4',
   },

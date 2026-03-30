@@ -50,8 +50,9 @@ export const DevResetHandler: React.FC = () => {
       navigate('/onboarding', { replace: true });
     };
 
-    window.addEventListener('keydown', (e) => { void handler(e); });
-    return () => window.removeEventListener('keydown', (e) => { void handler(e); });
+    const wrapper = (e: KeyboardEvent) => { void handler(e); };
+    window.addEventListener('keydown', wrapper);
+    return () => window.removeEventListener('keydown', wrapper);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!banner) return null;

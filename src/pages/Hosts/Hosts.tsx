@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   ApplyConfirmModal,
@@ -17,6 +17,7 @@ import {
   Trash,
   TooltipWrapper,
   type SplitViewItem,
+  type ThemeColor,
 } from '@prl/ui-kit';
 import { useSession } from '@/contexts/SessionContext';
 import { useEventsHub } from '@/contexts/EventsHubContext';
@@ -47,18 +48,18 @@ import { PageHeaderIcon } from '@/components/PageHeader';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function HostItemLabel({ host }: { host: DevOpsRemoteHost }) {
-  const enableTone = host.enabled === false ? 'amber' : 'emerald';
-  const stateTone = host.state === 'healthy' ? 'emerald' : 'rose';
+const HostItemLabel = memo(function HostItemLabel({ host }: { host: DevOpsRemoteHost }) {
+  const enableTone: ThemeColor = host.enabled === false ? 'amber' : 'emerald';
+  const stateTone: ThemeColor = host.state === 'healthy' ? 'emerald' : 'rose';
   const hostName = host.description ? host.description : host.host;
   return (
     <div className="flex gap-2 flex-1 w-full flex-col">
       <span className="grow font-medium truncate">{hostName}</span>
       <div className="flex flex-wrap items-center gap-1">
-        <Pill size="sm" tone={stateTone as any} variant="soft">
+        <Pill size="sm" tone={stateTone} variant="soft">
           {host.state.charAt(0).toUpperCase() + host.state.slice(1)}
         </Pill>
-        <Pill size="sm" tone={enableTone as any} variant="soft">
+        <Pill size="sm" tone={enableTone} variant="soft">
           {host.enabled === false ? 'Disabled' : 'Enabled'}
         </Pill>
         {(host.tags?.length ?? 0) > 0
@@ -74,14 +75,14 @@ function HostItemLabel({ host }: { host: DevOpsRemoteHost }) {
       </div>
     </div>
   );
-}
+});
 
-function HostSubtitleLabel({ host }: { host: DevOpsRemoteHost }) {
+const HostSubtitleLabel = memo(function HostSubtitleLabel({ host }: { host: DevOpsRemoteHost }) {
   if (host.vms?.length ?? 0 > 0) {
     return <div className="flex gap-2 min-w-0 flex-1 w-full flex-col text-neutral-400 mt-2">{`${host.vms?.length || 0} VM${host.vms?.length !== 1 ? 's' : ''}`}</div>;
   }
-  return undefined;
-}
+  return null;
+});
 
 // ── Page component ────────────────────────────────────────────────────────────
 
@@ -446,14 +447,14 @@ export const Hosts: React.FC = () => {
       hosts.map((host) => ({
         id: host.id ?? '',
         label: <HostItemLabel host={host} />,
-        subtitle: HostSubtitleLabel({ host }),
+        subtitle: <HostSubtitleLabel host={host} />,
         icon: 'Host' as const,
         highlight: highlightedHostIds.has(host.id ?? ''),
         panel: <HostDetailPanel host={host} />,
         subContent:
           host.vms && host.vms.length > 0 ? (
             <div className="border-t border-gray-100 dark:border-gray-800">
-              {host.vms.map((vm) => (
+              {host.vms.filter((vm, idx, arr) => arr.findIndex((v) => v.ID === vm.ID) === idx).map((vm) => (
                 <div
                   key={vm.ID as string}
                   role="button"

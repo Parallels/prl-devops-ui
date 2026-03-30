@@ -1,4 +1,4 @@
-import { resolveColor, type ThemeColor } from './Theme';
+import { resolveColor, type ThemeColor, type ThemeMultiColor } from './Theme';
 
 type RandomIntensity = 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900;
 
@@ -67,3 +67,44 @@ export const getRandomThemeColorClass = (prefix: 'bg' | 'text' | 'border' = 'bg'
   const { token } = getRandomThemeColorValue();
   return `${prefix}-${token}`;
 };
+
+// Ordered spectrum colors from ThemeMultiColor — used as the primary palette before falling back to random.
+const THEME_MULTI_COLORS: ThemeMultiColor[] = [
+  'red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal',
+  'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'rose',
+  'slate', 'gray', 'zinc', 'neutral', 'stone',
+];
+
+/**
+ * Returns an array of `count` Tailwind color utility classes.
+ * Uses ThemeMultiColor values in order (at intensity 500) for the first N items,
+ * then falls back to `getRandomThemeColorClass` for any overflow.
+ *
+ * @example
+ * getColorPalette(5)           // ['bg-red-500', 'bg-orange-500', ...]
+ * getColorPalette(5, 'text')   // ['text-red-500', 'text-orange-500', ...]
+ */
+export const getColorPalette = (count: number, prefix: 'bg' | 'text' | 'border' = 'bg'): string[] =>
+  Array.from({ length: count }, (_, i) => {
+    if (i < THEME_MULTI_COLORS.length) {
+      return `${prefix}-${resolveColor(THEME_MULTI_COLORS[i])}-500`;
+    }
+    return getRandomThemeColorClass(prefix);
+  });
+
+/**
+ * Returns an array of `count` ThemeColor names (e.g. `'red'`, `'orange'`, `'blue'`).
+ * Uses ThemeMultiColor values in order for the first N items,
+ * then falls back to random colors from RANDOM_THEME_COLORS for overflow.
+ * Useful when components construct their own Tailwind class strings via template literals.
+ *
+ * @example
+ * getColorPaletteNames(3) // ['red', 'orange', 'amber']
+ */
+export const getColorPaletteNames = (count: number): ThemeColor[] =>
+  Array.from({ length: count }, (_, i) => {
+    if (i < THEME_MULTI_COLORS.length) {
+      return THEME_MULTI_COLORS[i] as ThemeColor;
+    }
+    return randomFrom(RANDOM_THEME_COLORS);
+  });

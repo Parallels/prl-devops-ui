@@ -4,11 +4,13 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LineCh
 import StatTile from './StatTile';
 import type { StatTileProps } from './StatTile';
 import type { ThemeColor } from '../theme';
+import { getColorPaletteNames } from '../theme';
 
 export interface StatGraphSeries {
   key: string;
   label: string;
-  color: ThemeColor;
+  /** Omit to auto-assign from the theme palette. */
+  color?: ThemeColor;
 }
 
 export interface StatGraphTileProps extends Omit<StatTileProps, 'body' | 'progress' | 'trend' | 'meta' | 'footer'> {
@@ -116,23 +118,41 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
   // Graph colors helper
   const getColor = useCallback((color: string) => {
     const colorMap: Record<string, string> = {
-      blue: '#3b82f6',
-      sky: '#0ea5e9',
-      emerald: '#10b981',
-      indigo: '#6366f1',
-      slate: '#64748b',
-      amber: '#f59e0b',
-      green: '#22c55e',
+      // Spectrum colors (ThemeMultiColor — Tailwind 500 hex values)
       red: '#ef4444',
-      rose: '#f43f5e',
+      orange: '#f97316',
+      amber: '#f59e0b',
+      yellow: '#eab308',
+      lime: '#84cc16',
+      green: '#22c55e',
+      emerald: '#10b981',
+      teal: '#14b8a6',
+      cyan: '#06b6d4',
+      sky: '#0ea5e9',
+      blue: '#3b82f6',
+      indigo: '#6366f1',
       violet: '#8b5cf6',
-      parallels: '#e4001b',
+      purple: '#a855f7',
+      fuchsia: '#d946ef',
+      pink: '#ec4899',
+      rose: '#f43f5e',
+      slate: '#64748b',
+      gray: '#6b7280',
+      zinc: '#71717a',
       neutral: '#737373',
+      stone: '#78716c',
+      // Semantic aliases
+      parallels: '#e4001b',
       text: '#64748b',
       grid: '#e2e8f0',
     };
     return colorMap[color] || '#3b82f6';
   }, []);
+
+  const resolvedSeries = useMemo(() => {
+    const palette = getColorPaletteNames(series.length);
+    return series.map((s, i) => ({ ...s, color: (s.color ?? palette[i]) as ThemeColor }));
+  }, [series]);
 
   const chartData = useMemo(() => {
     if (!maxDataPoints || maxDataPoints <= 0 || data.length <= maxDataPoints) return data;
@@ -197,7 +217,7 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
     if (!showLegend || variant !== 'bar') return null;
     return (
       <div className="flex items-center space-x-4">
-        {series.map((s) => (
+        {resolvedSeries.map((s) => (
           <div key={s.key} className="flex items-center">
             <div className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: getColor(s.color) }} />
             <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">{s.label}</span>
@@ -205,7 +225,7 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
         ))}
       </div>
     );
-  }, [showLegend, variant, series, getColor]);
+  }, [showLegend, variant, resolvedSeries, getColor]);
 
   const textColor = '#64748b';
   const gridColor = '#e2e8f0';
@@ -224,12 +244,12 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
                 </>
               )}
               <RechartsTooltip content={rechartsTooltipContent} cursor={{ fill: 'rgba(100,116,139,0.05)' }} isAnimationActive={false} />
-              {series.map((s) => (
+              {resolvedSeries.map((s) => (
                 <Bar key={s.key} dataKey={s.key} fill={getColor(s.color)} radius={[4, 4, 4, 4]} isAnimationActive={chartAnimation} animationDuration={chartAnimation ? chartAnimationDuration : 0} />
               ))}
             </BarChart>
           </ResponsiveContainer>
-          <PortalTooltip tooltip={tooltip} series={series} getColor={getColor} />
+          <PortalTooltip tooltip={tooltip} series={resolvedSeries} getColor={getColor} />
         </div>
       );
     }
@@ -242,8 +262,8 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
               <YAxis domain={yDomain} hide />
               <Line
                 type="monotone"
-                dataKey={series[0].key}
-                stroke={getColor(series[0].color)}
+                dataKey={resolvedSeries[0].key}
+                stroke={getColor(resolvedSeries[0].color)}
                 strokeWidth={3}
                 dot={false}
                 activeDot={{ r: 6, strokeWidth: 0 }}
@@ -253,7 +273,7 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
               {showTooltip && <RechartsTooltip content={rechartsTooltipContent} cursor={false} isAnimationActive={false} />}
             </LineChart>
           </ResponsiveContainer>
-          <PortalTooltip tooltip={tooltip} series={series} getColor={getColor} />
+          <PortalTooltip tooltip={tooltip} series={resolvedSeries} getColor={getColor} />
         </div>
       );
     }

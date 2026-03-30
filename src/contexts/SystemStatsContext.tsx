@@ -33,6 +33,16 @@ interface SystemStatsContextType {
   setHardwareInfo: (info: HostHardwareInfo) => void;
 }
 
+interface RawStatsBody {
+  memory_bytes?: number;
+  memory_alloc_bytes?: number;
+  cpu_user_seconds?: number;
+  cpu_system_seconds?: number;
+  cpu_percent?: number;
+  goroutines?: number;
+  goroutines_smoothed?: number;
+}
+
 const SystemStatsContext = createContext<SystemStatsContextType | null>(null);
 
 export const SystemStatsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -64,7 +74,7 @@ export const SystemStatsProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     if (!latestMsg || !latestMsg.raw.body) return;
 
-    const body = latestMsg.raw.body as any;
+    const body = latestMsg.raw.body as RawStatsBody;
 
     let msgTimestamp = latestMsg.receivedAt;
     if (latestMsg.raw.timestamp) {

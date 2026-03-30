@@ -1,5 +1,5 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Alert, CollapsiblePanel, FormField, Input, MultiToggle, Panel, PasswordInput } from '@prl/ui-kit';
+import { Alert, CollapsiblePanel, FormField, Input, MultiToggle, Panel, PasswordInput, type ThemeColor } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import type { AddOrchestratorHostRequest } from '@/interfaces/devops';
 import { TagInput } from './TagInput';
@@ -7,7 +7,7 @@ import type { AuthType, ConnectFormHandle, ConnectFormState } from './types';
 
 export interface ConnectToHostFormProps {
   hostname: string;
-  color: string;
+  color: ThemeColor;
   onConnected: () => void;
   onStateChange?: (state: ConnectFormState) => void;
 }
@@ -90,7 +90,7 @@ export const ConnectToHostForm = forwardRef<ConnectFormHandle, ConnectToHostForm
       <Panel variant="glass" padding="xs">
         <FormField label="Host URL" required width="full" error={urlError}>
           <Input
-            tone={color as any}
+            tone={color}
             type="url"
             value={hostUrl}
             onChange={(e) => setHostUrl(e.target.value)}
@@ -102,13 +102,13 @@ export const ConnectToHostForm = forwardRef<ConnectFormHandle, ConnectToHostForm
           />
         </FormField>
         <FormField label="Description" width="full">
-          <Input tone={color as any} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mac Mini M1 (optional)" />
+          <Input tone={color} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mac Mini M1 (optional)" />
         </FormField>
       </Panel>
 
       <Panel variant="glass" padding="xs">
         <MultiToggle
-          color={color as any}
+          color={color}
           size="md"
           value={authType}
           variant="solid"
@@ -123,11 +123,11 @@ export const ConnectToHostForm = forwardRef<ConnectFormHandle, ConnectToHostForm
         {authType === 'credentials' && (
           <div className="grid grid-cols-2 gap-3 mt-3">
             <FormField label="Username" required width="full" error={usernameError}>
-              <Input tone={color as any} value={username} onChange={(e) => setUsername(e.target.value)} onBlur={() => touch('username')} placeholder="root" autoComplete="username" />
+              <Input tone={color} value={username} onChange={(e) => setUsername(e.target.value)} onBlur={() => touch('username')} placeholder="root" autoComplete="username" />
             </FormField>
             <FormField label="Password" required width="full" error={passwordError}>
               <PasswordInput
-                tone={color as any}
+                tone={color}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 onBlur={() => touch('password')}
@@ -141,7 +141,7 @@ export const ConnectToHostForm = forwardRef<ConnectFormHandle, ConnectToHostForm
         {authType === 'api_key' && (
           <div className="mt-3">
             <FormField label="API Key" required width="full" error={apiKeyError}>
-              <PasswordInput tone={color as any} value={apiKey} onChange={(e) => setApiKey(e.target.value)} onBlur={() => touch('apiKey')} placeholder="Enter API key" autoComplete="off" />
+              <PasswordInput tone={color} value={apiKey} onChange={(e) => setApiKey(e.target.value)} onBlur={() => touch('apiKey')} placeholder="Enter API key" autoComplete="off" />
             </FormField>
           </div>
         )}

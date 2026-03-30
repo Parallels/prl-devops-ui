@@ -4,11 +4,13 @@ import StatTile from "./StatTile";
 import type { StatTileProps } from "./StatTile";
 import { CustomIcon } from "./CustomIcon";
 import type { ThemeColor } from "../theme";
+import { getColorPaletteNames } from "../theme";
 
 export interface StatChartItem {
   label: string;
   value: number;
-  color: ThemeColor;
+  /** Omit to auto-assign from the theme palette. */
+  color?: ThemeColor;
   intensity?: string;
   onClick?: () => void;
 }
@@ -27,6 +29,12 @@ export interface StatChartTileProps extends Omit<StatTileProps, "body" | "title"
 const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const currentDataset = data[currentIndex];
+
+  const resolvedItems = useMemo(() => {
+    const palette = getColorPaletteNames(currentDataset.items.length);
+    return currentDataset.items.map((item, i) => ({ ...item, color: (item.color ?? palette[i]) as ThemeColor }));
+  }, [currentDataset]);
+
   const total = useMemo(() => currentDataset.items.reduce((acc, item) => acc + item.value, 0), [currentDataset]);
 
   const handlePrev = () => {
@@ -62,7 +70,7 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
           onClick: undefined,
         },
       ]
-      : currentDataset.items.map((item) => {
+      : resolvedItems.map((item) => {
         const percent = item.value / total;
         const dashArray = `${circumference * percent} ${circumference}`;
         const dashOffset = -circumference * cumulativePercent;
@@ -201,7 +209,7 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
           {/* Legend */}
           {total > 0 && (
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-4 px-2">
-              {currentDataset.items.map((item, idx) => (
+              {resolvedItems.map((item, idx) => (
                 <div
                   key={idx}
                   className={classNames(

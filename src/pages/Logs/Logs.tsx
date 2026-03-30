@@ -1,10 +1,27 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import classNames from 'classnames';
-import { formatLogTime } from '@prl/ui-kit';
+import { formatLogTime, Input, Picker } from '@prl/ui-kit';
+import type { PickerItem } from '@prl/ui-kit';
 import { useEventsHub } from '@/contexts/EventsHubContext';
+import { useSession } from '@/contexts/SessionContext';
 import { CustomIcon } from '@/controls';
-import { normalizeLevel, LEVEL_META, levelMeta } from '@/utils/logUtils';
-import { LogViewer } from '@/components/LogViewer';
+import { normalizeLevel, levelMeta } from '@/utils/logUtils';
+import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { devopsService } from '@/services/devops';
+
+const LEVEL_PICKER_ITEMS: PickerItem[] = [
+    { id: 'debug', title: 'Debug' },
+    { id: 'info',  title: 'Info' },
+    { id: 'warn',  title: 'Warn' },
+    { id: 'error', title: 'Error' },
+    { id: 'fatal', title: 'Fatal' },
+];
+
+interface HostCacheEntry {
+    id: string;
+    host: string;
+    description: string;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -15,56 +32,55 @@ interface LogMessage {
     time: string;
 }
 
-type LogTarget = 'global' | string; // 'global' or a hostId
+interface MergedEntry {
+    id: string;
+    ts: number;
+    source: string; // 'global' | hostId
+    level: string;
+    message: string;
+    time: string;
+}
 
 // ---------------------------------------------------------------------------
-// Global log viewer (system_logs container)
+// Merged log viewer — handles all selected sources in one sorted stream
 // ---------------------------------------------------------------------------
-const GlobalLogViewer: React.FC<{ onClear: () => void }> = ({ onClear }) => {
-    const { containerMessages } = useEventsHub();
-    const [autoScroll, setAutoScroll] = React.useState(true);
-    const [filterLevel, setFilterLevel] = React.useState('');
-    const [search, setSearch] = React.useState('');
-    const listRef = React.useRef<HTMLDivElement>(null);
-    const isProgrammaticRef = React.useRef(false);
+interface MergedLogViewerProps {
+    entries: MergedEntry[];
+    onClear: () => void;
+    showSourceBadge: boolean;
+}
 
-    const logMessages = useMemo(() => {
-        return (containerMessages['system_logs'] ?? [])
-            .map((m) => {
-                const body = m.raw.body as LogMessage | null;
-                return {
-                    ...m,
-                    _body: body,
-                    _level: body?.level ? normalizeLevel(body.level) : '',
-                    _ts: body?.time ? (new Date(body.time).getTime() || m.receivedAt) : m.receivedAt,
-                };
-            })
-            .sort((a, b) => a._ts - b._ts);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [containerMessages['system_logs']]);
+const MergedLogViewer: React.FC<MergedLogViewerProps> = ({ entries, onClear, showSourceBadge }) => {
+      const { themeColor } = useSystemSettings();
+    const [autoScroll, setAutoScroll] = useState(true);
+    const [filterLevels, setFilterLevels] = useState<string[]>(() => LEVEL_PICKER_ITEMS.map((i) => i.id));
+    const [search, setSearch] = useState('');
+    const listRef = useRef<HTMLDivElement>(null);
+    const isProgrammaticRef = useRef(false);
+
+    const deferredEntries = useDeferredValue(entries);
 
     const filtered = useMemo(() => {
-        let result = logMessages;
-        if (filterLevel) {
-            result = result.filter((m) => m._level === filterLevel);
+        let result = deferredEntries;
+        if (filterLevels.length > 0 && filterLevels.length < LEVEL_PICKER_ITEMS.length) {
+            result = result.filter((e) => filterLevels.includes(normalizeLevel(e.level)));
         }
         if (search.trim()) {
             let rx: RegExp | null = null;
             try { rx = new RegExp(search.trim(), 'i'); } catch { /* literal fallback */ }
-            result = result.filter((m) => {
-                const msg = m._body?.message ?? '';
-                return rx ? rx.test(msg) : msg.toLowerCase().includes(search.trim().toLowerCase());
+            result = result.filter((e) => {
+                return rx ? rx.test(e.message) : e.message.toLowerCase().includes(search.trim().toLowerCase());
             });
         }
         return result;
-    }, [logMessages, filterLevel, search]);
+    }, [deferredEntries, filterLevels, search]);
 
     React.useLayoutEffect(() => {
         setAutoScroll(true);
         if (listRef.current) listRef.current.scrollTop = 0;
-    }, [filterLevel, search]);
+    }, [filterLevels, search]);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (autoScroll && listRef.current) {
             isProgrammaticRef.current = true;
             listRef.current.scrollTop = listRef.current.scrollHeight;
@@ -72,7 +88,7 @@ const GlobalLogViewer: React.FC<{ onClear: () => void }> = ({ onClear }) => {
         }
     }, [filtered, autoScroll]);
 
-    const contentKey = `${filterLevel}:${search}:${filtered.length === 0 ? 'empty' : 'has'}`;
+    const contentKey = `${filterLevels.join(',')}:${search}:${filtered.length === 0 ? 'empty' : 'has'}`;
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-neutral-950">
@@ -80,9 +96,12 @@ const GlobalLogViewer: React.FC<{ onClear: () => void }> = ({ onClear }) => {
             <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 flex-shrink-0">
                 <div className="relative flex-1">
                     <CustomIcon icon="Search" className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
-                    <input
+                    <Input
                         type="text"
+                        leadingIcon="Search"
                         value={search}
+                        size='sm'
+                        tone={themeColor}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search / regexp…"
                         className="w-full bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded pl-7 pr-7 py-1 text-xs font-mono text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50"
@@ -94,16 +113,20 @@ const GlobalLogViewer: React.FC<{ onClear: () => void }> = ({ onClear }) => {
                         </button>
                     )}
                 </div>
-                <select
-                    value={filterLevel}
-                    onChange={(e) => setFilterLevel(e.target.value)}
-                    className="bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded px-2 py-1 text-xs font-mono text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50"
-                >
-                    <option value="">All</option>
-                    {(['debug', 'info', 'warn', 'error', 'fatal'] as const).map((l) => (
-                        <option key={l} value={l}>{LEVEL_META[l].label}</option>
-                    ))}
-                </select>
+                <div className="w-50 shrink-0 h-full">
+                    <Picker
+                        items={LEVEL_PICKER_ITEMS}
+                        multi
+                        selectedIds={filterLevels}
+                        onMultiChange={setFilterLevels}
+                        placeholder="All levels"
+                        size="sm"
+                        color={themeColor}
+                        fullWidth
+                        fullHeight
+                        escapeBoundary
+                    />
+                </div>
                 <button
                     type="button"
                     onClick={() => setAutoScroll((v) => !v)}
@@ -118,7 +141,7 @@ const GlobalLogViewer: React.FC<{ onClear: () => void }> = ({ onClear }) => {
                 <button
                     type="button"
                     onClick={onClear}
-                    disabled={logMessages.length === 0}
+                    disabled={entries.length === 0}
                     className="px-2 py-1 rounded text-xs font-mono border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 hover:border-rose-400 dark:hover:border-rose-500/40 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Clear logs"
                 >✕</button>
@@ -129,17 +152,21 @@ const GlobalLogViewer: React.FC<{ onClear: () => void }> = ({ onClear }) => {
                 <div key={contentKey}>
                     {filtered.length === 0 ? (
                         <p className="text-neutral-400 dark:text-neutral-600 py-4 text-center">
-                            {logMessages.length === 0 ? 'Waiting for log messages…' : 'No matches.'}
+                            {entries.length === 0 ? 'Waiting for log messages…' : 'No matches.'}
                         </p>
                     ) : (
-                        filtered.map((msg) => {
-                            if (!msg._body) return null;
-                            const meta = levelMeta(msg._body.level);
+                        filtered.map((entry) => {
+                            const meta = levelMeta(entry.level);
                             return (
-                                <div key={msg.id} className={classNames('flex gap-2 py-0.5 hover:bg-neutral-50 dark:hover:bg-white/5 rounded', meta.row)}>
-                                    <span className="shrink-0 text-neutral-400 dark:text-neutral-600">{formatLogTime(msg._body.time)}</span>
+                                <div key={entry.id} className={classNames('flex gap-2 py-0.5 hover:bg-neutral-50 dark:hover:bg-white/5 rounded', meta.row)}>
+                                    <span className="shrink-0 text-neutral-400 dark:text-neutral-600">{formatLogTime(entry.time)}</span>
                                     <span className={classNames('shrink-0 w-7', meta.badge)}>{meta.label}</span>
-                                    <span className="break-all">{msg._body.message}</span>
+                                    {showSourceBadge && (
+                                        <span className="shrink-0 max-w-[80px] truncate rounded px-1 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 text-[10px] leading-[18px]">
+                                            {entry.source === 'global' ? 'global' : entry.source}
+                                        </span>
+                                    )}
+                                    <span className="break-all">{entry.message}</span>
                                 </div>
                             );
                         })
@@ -149,8 +176,8 @@ const GlobalLogViewer: React.FC<{ onClear: () => void }> = ({ onClear }) => {
 
             {/* Footer */}
             <div className="flex items-center justify-between px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 flex-shrink-0">
-                <span>{filtered.length} / {logMessages.length} lines</span>
-                <span>{logMessages.length > 0 ? `${logMessages.length} buffered` : 'no logs'}</span>
+                <span>{filtered.length} / {entries.length} lines</span>
+                <span>{entries.length > 0 ? `${entries.length} buffered` : 'no logs'}</span>
             </div>
         </div>
     );
@@ -160,52 +187,99 @@ const GlobalLogViewer: React.FC<{ onClear: () => void }> = ({ onClear }) => {
 // Main Logs page
 // ---------------------------------------------------------------------------
 export const Logs: React.FC = () => {
-    const { clearContainer, hostLogs, clearHostLogs } = useEventsHub();
-    const [target, setTarget] = useState<LogTarget>('global');
+    const { themeColor } = useSystemSettings();
+    const { session } = useSession();
+    const { containerMessages, clearContainer, hostLogs, clearHostLogs } = useEventsHub();
+    const [selectedSource, setSelectedSource] = useState<string>('global');
+    const [hostCache, setHostCache] = useState<HostCacheEntry[]>([]);
 
-    // Build target list: global + any host that has buffered logs
+    // Fetch all orchestrator hosts once on mount (and when the connected hostname changes)
+    // and cache as a lean { id, host, description } array to avoid repeated API calls.
+    useEffect(() => {
+        const hostname = session?.hostname;
+        if (!hostname) return;
+        void devopsService.orchestrator.getOrchestratorHosts(hostname)
+            .then((hosts) => {
+                setHostCache(
+                    (hosts ?? [])
+                        .filter((h) => h.id)
+                        .map((h) => ({ id: h.id!, host: h.host ?? '', description: h.description ?? '' }))
+                );
+            })
+            .catch(() => { /* non-fatal — names fall back to raw id */ });
+    }, [session?.hostname]);
+
+    // Build source list: global + any host that has buffered logs
     const hostIds = useMemo(() => Object.keys(hostLogs).filter((id) => hostLogs[id].length > 0), [hostLogs]);
 
+    const pickerItems = useMemo<PickerItem[]>(() => {
+        const items: PickerItem[] = [{ id: 'global', title: 'Global' }];
+        for (const id of hostIds) {
+            const cached = hostCache.find((h) => h.id === id);
+            items.push({ id, title: cached?.description || cached?.host || id });
+        }
+        return items;
+    }, [hostIds, hostCache]);
+
+    // Entries for the selected source
+    const entries = useMemo<MergedEntry[]>(() => {
+        if (selectedSource === 'global') {
+            return (containerMessages['system_logs'] ?? []).map((m) => {
+                const body = m.raw.body as LogMessage | null;
+                return {
+                    id: m.id,
+                    ts: body?.time ? (new Date(body.time).getTime() || m.receivedAt) : m.receivedAt,
+                    source: 'global',
+                    level: body?.level ?? '',
+                    message: body?.message ?? '',
+                    time: body?.time ?? '',
+                };
+            }).sort((a, b) => a.ts - b.ts);
+        }
+        return (hostLogs[selectedSource] ?? []).map((e) => ({
+            id: e.id,
+            ts: e.ts,
+            source: selectedSource,
+            level: e.level,
+            message: e.message,
+            time: e.time,
+        }));
+    }, [selectedSource, containerMessages, hostLogs]);
+
     const handleClear = useCallback(() => {
-        if (target === 'global') {
+        if (selectedSource === 'global') {
             clearContainer('system_logs');
         } else {
-            clearHostLogs(target);
+            clearHostLogs(selectedSource);
         }
-    }, [target, clearContainer, clearHostLogs]);
-
-    const targetLogs = target !== 'global' ? (hostLogs[target] ?? []) : [];
+    }, [selectedSource, clearContainer, clearHostLogs]);
 
     return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden">
-            {/* ── Target selector bar ─────────────────────────────────── */}
+            {/* ── Source selector bar ──────────────────────────────────── */}
             <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900 flex-shrink-0">
                 <CustomIcon icon="Log" className="h-4 w-4 text-neutral-400 dark:text-neutral-500 shrink-0" />
                 <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400 uppercase tracking-wider shrink-0">Source</span>
-                <select
-                    value={target}
-                    onChange={(e) => setTarget(e.target.value as LogTarget)}
-                    className="bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded px-2 py-1 text-xs font-mono text-neutral-700 dark:text-neutral-300 focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50"
-                >
-                    <option value="global">Global</option>
-                    {hostIds.map((id) => (
-                        <option key={id} value={id}>{id}</option>
-                    ))}
-                </select>
+                <div className="w-100">
+                    <Picker
+                        items={pickerItems}
+                        selectedId={selectedSource}
+                        onSelect={(item) => setSelectedSource(item.id)}
+                        size="sm"
+              color={themeColor}
+                        fullWidth
+                        escapeBoundary
+                    />
+                </div>
             </div>
 
             {/* ── Log content ─────────────────────────────────────────── */}
             <div className="flex-1 min-h-0">
-                {target === 'global' ? (
-                    <GlobalLogViewer onClear={handleClear} />
-                ) : (
-                    <LogViewer
-                        key={target}
-                        logs={targetLogs}
-                        configSlug={`logs::${target}::config`}
-                        onClear={handleClear}
-                    />
-                )}
+                <MergedLogViewer
+                    entries={entries}
+                    onClear={handleClear}
+                    showSourceBadge={false}
+                />
             </div>
         </div>
     );
