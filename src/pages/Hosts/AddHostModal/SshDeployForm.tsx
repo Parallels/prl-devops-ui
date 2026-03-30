@@ -1,8 +1,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Alert, ButtonSelector, ButtonSelectorOption, CollapsiblePanel, FormField, Input, MultiToggle, Panel, PasswordInput, ThemeColor, Toggle } from '@prl/ui-kit';
+import { Alert, ButtonSelector, ButtonSelectorOption, CollapsiblePanel, FormField, Input, MultiToggle, Panel, PasswordInput, TagPicker, ThemeColor, Toggle } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import type { DeployOrchestratorHostRequest } from '@/interfaces/devops';
-import { TagInput } from './TagInput';
 import type { SshAuthMethod, SshDeployFormHandle, SshDeployFormState } from './types';
 import { arrayToModuleState, DEFAULT_MODULES, moduleStateToArray } from '@/pages/Onboarding/Panels/helpers';
 import { ModuleId, ModuleState } from '@/pages/Onboarding/Panels';
@@ -231,7 +230,7 @@ export const SshDeployForm = forwardRef<SshDeployFormHandle, SshDeployFormProps>
 
       {/* Tags */}
       <CollapsiblePanel title="Tags" variant="glass" padding="xs">
-        <TagInput value={tags} onChange={setTags} color={color} />
+        <TagPicker items={[]} value={tags} onChange={setTags} allowCreate color={color} normalizeValue={(v) => v.toUpperCase()} escapeBoundary />
       </CollapsiblePanel>
 
       {error && <Alert variant="subtle" tone="danger" title="Error" description={error} />}

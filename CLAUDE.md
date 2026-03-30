@@ -1,5 +1,9 @@
 # Claude Code Configuration - RuFlo V3
 
+> **IMPORTANT**: These rules are MANDATORY for every interaction in this project.
+> Before responding to ANY message, read and follow the Swarm Activation section.
+> There are NO exceptions for code-related tasks.
+
 ## Behavioral Rules (Always Enforced)
 
 - Do what has been asked; nothing more, nothing less
@@ -11,15 +15,41 @@
 - ALWAYS read a file before editing it
 - NEVER commit secrets, credentials, or .env files
 
+## Project Stack
+
+This is a **Tauri v2 desktop application** with a **React/TypeScript frontend** and an internal **React UI Kit package**.
+
+- **Frontend**: React, TypeScript, Vite
+- **Desktop shell**: Tauri v2 (Rust)
+- **IPC**: Tauri commands (`invoke`) and events (`listen`/`emit`)
+- **State**: Frontend manages UI state; Rust backend manages system/OS-level state
+- **Build target**: Native desktop (macOS, Linux, Windows)
+- **UI Kit**: Internal React component library at `/packages/ui-kit` — consumed by the frontend, maintained as its own package
+
+### Key Constraints
+
+- Frontend code lives in `/src` — React components, hooks, TypeScript only
+- Rust/Tauri code lives in `/src-tauri` — commands, plugins, system integration
+- UI Kit lives in `/packages/ui-kit` — has its own `package.json`, build, and lint pipeline
+- NEVER mix frontend and Tauri concerns — IPC boundary must stay clean
+- NEVER modify `/packages/ui-kit` without also verifying the frontend still builds
+- Tauri commands must be declared in `src-tauri/src/main.rs` or a dedicated commands module
+- Use `invoke` for request/response patterns, Tauri events for push/streaming from Rust to frontend
+- Always check `src-tauri/tauri.conf.json` before changing capabilities or permissions
+- Rust changes require `cargo build` — always verify Rust compiles before committing
+
 ## File Organization
 
 - NEVER save to root folder — use the directories below
-- Use `/src` for source code files
-- Use `/tests` for test files
-- Use `/docs` for documentation and markdown files
-- Use `/config` for configuration files
-- Use `/scripts` for utility scripts
-- Use `/examples` for example code
+- `/src` — React components, hooks, TypeScript source
+- `/src-tauri` — Rust backend, Tauri commands, plugins
+- `/src-tauri/src` — Rust source files
+- `/packages/ui-kit` — internal React component library (self-contained package)
+- `/tests` — frontend test files
+- `/docs` — documentation and markdown files
+- `/config` — configuration files
+- `/scripts` — utility scripts
+- `/examples` — example code
 
 ## Project Architecture
 
@@ -29,6 +59,7 @@
 - Prefer TDD London School (mock-first) for new code
 - Use event sourcing for state changes
 - Ensure input validation at system boundaries
+- IPC layer is a system boundary — validate on both sides (TypeScript + Rust)
 
 ### Project Config
 
@@ -41,25 +72,42 @@
 ## Build & Test
 
 ```bash
-# Build
+# UI Kit (MUST pass before frontend build)
+cd packages/ui-kit && npm run build
+cd packages/ui-kit && npm run lint
+cd packages/ui-kit && npm test
+
+# Frontend only
 npm run build
-
-# Test
 npm test
-
-# Lint
 npm run lint
+
+# Full Tauri app (frontend + Rust)
+npm run tauri build
+
+# Tauri dev mode
+npm run tauri dev
+
+# Rust only
+cd src-tauri && cargo build
+cd src-tauri && cargo test
+cd src-tauri && cargo clippy
 ```
 
-- ALWAYS run tests after making code changes
-- ALWAYS verify build succeeds before committing
+- ALWAYS run `cd packages/ui-kit && npm run build && npm run lint` after any changes to the UI Kit
+- ALWAYS run `npm test` after frontend changes
+- ALWAYS run `cargo clippy` after Rust changes
+- ALWAYS verify `npm run tauri build` succeeds before committing
+- NEVER commit if the UI Kit build or lint fails
+- NEVER commit if Rust fails to compile
 
 ## Security Rules
 
 - NEVER hardcode API keys, secrets, or credentials in source files
 - NEVER commit .env files or any file containing secrets
-- Always validate user input at system boundaries
-- Always sanitize file paths to prevent directory traversal
+- Always validate user input at system boundaries (TypeScript AND Rust)
+- Always sanitize file paths to prevent directory traversal — especially in Tauri commands
+- Tauri capabilities in `tauri.conf.json` follow least-privilege — do not expand them without review
 - Run `npx @claude-flow/cli@latest security scan` after security-related changes
 
 ## Concurrency: 1 MESSAGE = ALL RELATED OPERATIONS
@@ -70,6 +118,33 @@ npm run lint
 - ALWAYS spawn ALL agents in ONE message with full instructions via Task tool
 - ALWAYS batch ALL file reads/writes/edits in ONE message
 - ALWAYS batch ALL Bash commands in ONE message
+
+## MANDATORY: Swarm Activation
+
+**BEFORE doing ANY task that involves writing, editing, or analyzing code, you MUST:**
+
+1. Call `mcp__ruflo__swarm_init` with topology `hierarchical`, maxAgents `8`, strategy `specialized`
+2. In the SAME message, spawn ALL agents using `mcp__ruflo__agent_spawn`:
+   - `architect` — component structure, DDD bounded contexts, Tauri IPC boundary design, UI Kit API contracts
+   - `coder` — React components, TypeScript, hooks, Rust/Tauri commands, UI Kit components
+   - `reviewer` — code quality, React patterns, Rust idioms, accessibility, UI Kit consistency
+   - `tester` — Jest/Vitest unit tests, React Testing Library, Rust cargo tests, UI Kit regression
+   - `security` — CVE scanning, XSS, Tauri capability audit, IPC input validation
+3. Set `run_in_background: true` on ALL agent Task calls
+4. After spawning — STOP. Do not add more tool calls. Wait for agent results.
+
+**This is not optional. Responding directly to code tasks without spawning the swarm is not permitted.**
+
+## Swarm Rules
+
+- ALL agent spawns MUST happen in ONE single message (parallel execution)
+- NEVER poll for status after spawning — trust agents to return results
+- Consensus: `raft`
+- Shared memory namespace: `prl-devops-ui`
+- Checkpoint via `post-task` hooks after each swarm completes
+- For UI tasks: `architect` agent MUST validate against existing DDD bounded contexts before `coder` proceeds
+- For UI Kit tasks: `reviewer` agent MUST verify no breaking changes to public component API before `coder` proceeds
+- For Tauri tasks: `architect` agent MUST review IPC boundary before `coder` touches Rust
 
 ## Swarm Orchestration
 
@@ -88,27 +163,6 @@ npm run lint
 
 - Always check for `[AGENT_BOOSTER_AVAILABLE]` or `[TASK_MODEL_RECOMMENDATION]` before spawning agents
 - Use Edit tool directly when `[AGENT_BOOSTER_AVAILABLE]`
-
-## Swarm Configuration & Anti-Drift
-
-- ALWAYS use hierarchical topology for coding swarms
-- Keep maxAgents at 6-8 for tight coordination
-- Use specialized strategy for clear role boundaries
-- Use `raft` consensus for hive-mind (leader maintains authoritative state)
-- Run frequent checkpoints via `post-task` hooks
-- Keep shared memory namespace for all agents
-
-```bash
-npx @claude-flow/cli@latest swarm init --topology hierarchical --max-agents 8 --strategy specialized
-```
-
-## Swarm Execution Rules
-
-- ALWAYS use `run_in_background: true` for all agent Task calls
-- ALWAYS put ALL agent Task calls in ONE message for parallel execution
-- After spawning, STOP — do NOT add more tool calls or check status
-- Never poll TaskOutput or check swarm status — trust agents to return
-- When agent results arrive, review ALL results before proceeding
 
 ## V3 CLI Commands
 
@@ -138,18 +192,23 @@ npx @claude-flow/cli@latest doctor --fix
 ## Available Agents (60+ Types)
 
 ### Core Development
+
 `coder`, `reviewer`, `tester`, `planner`, `researcher`
 
 ### Specialized
+
 `security-architect`, `security-auditor`, `memory-specialist`, `performance-engineer`
 
 ### Swarm Coordination
+
 `hierarchical-coordinator`, `mesh-coordinator`, `adaptive-coordinator`
 
 ### GitHub & Repository
+
 `pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`
 
 ### SPARC Methodology
+
 `sparc-coord`, `sparc-coder`, `specification`, `pseudocode`, `architecture`
 
 ## Memory Commands Reference
@@ -171,7 +230,7 @@ npx @claude-flow/cli@latest memory retrieve --key "pattern-auth" --namespace pat
 ## Quick Setup
 
 ```bash
-claude mcp add claude-flow -- npx -y @claude-flow/cli@latest
+claude mcp add ruflo -- node node_modules/ruflo/bin/ruflo.js mcp start
 npx @claude-flow/cli@latest daemon start
 npx @claude-flow/cli@latest doctor --fix
 ```
@@ -184,5 +243,5 @@ npx @claude-flow/cli@latest doctor --fix
 
 ## Support
 
-- Documentation: https://github.com/ruvnet/claude-flow
-- Issues: https://github.com/ruvnet/claude-flow/issues
+- Documentation: <https://github.com/ruvnet/ruflo>
+- Issues: <https://github.com/ruvnet/ruflo/issues>

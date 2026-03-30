@@ -28,3 +28,20 @@ dist-ssr
 .vite/
 .local/
 .env
+.swarm/
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/daemon.pid
+.swarm/
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/daemon.pid
+.claude-flow/sessions/
+.claude-flow/metrics/
+.claude-flow/security/
+*.db
+# RuFlo runtime
+node_modules/
+package-lock.json
+.claude-flow/daemon-state.json
+.claude-flow/swarm/swarm-state.json
