@@ -343,7 +343,7 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
         {...rest}
       >
         {/* ── Header ──────────────────────────────────────────────────── */}
-        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-neutral-200/70 pl-4 pr-3 py-4 dark:border-neutral-700/60">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-neutral-200/70 pl-4 pr-3 py-4 dark:border-neutral-700/60">
           {onBack && (
             <div className="flex shrink-0 items-center self-center">
               <IconButton
@@ -400,7 +400,7 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
         {bodyHeader && (
           <div
             id={bodyId}
-            className="flex-shrink-0 border-b border-neutral-200/70 bg-neutral-50 px-6 py-3 dark:border-neutral-700/60 dark:bg-neutral-800/60"
+            className="shrink-0 border-b border-neutral-200/70 bg-neutral-50 px-6 py-3 dark:border-neutral-700/60 dark:bg-neutral-800/60"
           >
             {bodyHeader}
           </div>
@@ -428,7 +428,7 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
         {footerContent && (
           <div
             className={classNames(
-              'flex flex-shrink-0 items-center justify-end gap-3 bg-neutral-50 px-6 py-4 dark:bg-neutral-800/60',
+              'flex shrink-0 items-center justify-end gap-3 bg-neutral-50 px-6 py-4 dark:bg-neutral-800/60',
               showFooterDividerClass,
             )}
           >
