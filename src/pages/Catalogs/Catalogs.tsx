@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, Library, Pill, SearchBar, SidePanel, SplitView, type SplitViewItem } from '@prl/ui-kit';
+import { CustomIcon, DeleteConfirmModal, EmptyState, IconButton, Library, Pill, SearchBar, SidePanel, SplitView, type SplitViewItem } from '@prl/ui-kit';
 import { useLocation } from 'react-router-dom';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
