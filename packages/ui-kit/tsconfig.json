@@ -24,7 +24,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "declaration": true
+    "declaration": true,
+    "types": ["node"]
   },
   "include": [
     "src"
