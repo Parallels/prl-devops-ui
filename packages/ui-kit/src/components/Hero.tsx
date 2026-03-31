@@ -102,7 +102,7 @@ const paddingMap: Record<HeroPadding, string> = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-const Hero: React.FC<HeroProps> = ({ title, subtitle, icon, tone = 'parallels', titleSize = 'sm', subtitleSize = 'xs', padding = 'sm', rounded = true, decoration = 'both', className, ...rest }) => {
+const Hero: React.FC<HeroProps> = ({ title, subtitle, icon, tone = 'blue', titleSize = 'sm', subtitleSize = 'xs', padding = 'sm', rounded = true, decoration = 'both', className, ...rest }) => {
   const showShapes = decoration === 'shapes' || decoration === 'both';
   const showGradient = decoration === 'gradient' || decoration === 'both';
 

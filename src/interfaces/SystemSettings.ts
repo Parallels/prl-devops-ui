@@ -1,9 +1,9 @@
 import type { ThemeColor } from '@prl/ui-kit';
 
 export interface SystemSettings {
-    themeColor: ThemeColor;
+  themeColor: ThemeColor;
 }
 
 export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
-    themeColor: 'parallels',
+  themeColor: 'blue',
 };
