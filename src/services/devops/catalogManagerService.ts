@@ -532,6 +532,34 @@ class CatalogManagerService {
       throw error;
     }
   }
+
+  /**
+   * Update the metadata (description) of a specific catalog manifest item via a catalog manager
+   *
+   * Endpoint: PUT /api/v1/catalog-managers/{managerId}/catalog/{manifestId}/{version}/{architecture}/metadata
+   */
+  async updateCatalogManifestDescription(
+    hostname: string,
+    managerId: string,
+    manifestId: string,
+    versionId: string,
+    architecture: string,
+    description: string
+  ): Promise<boolean> {
+    try {
+      const base = this.getCatalogBasePath(managerId);
+      await apiService.put(
+        hostname,
+        `${base}/${manifestId}/${versionId}/${architecture}/metadata`,
+        { description },
+        { errorPrefix: `Failed to update metadata for catalog manifest ${manifestId}` }
+      );
+      return true;
+    } catch (error) {
+      console.error(`Failed to update metadata for catalog manifest ${manifestId}:`, error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance

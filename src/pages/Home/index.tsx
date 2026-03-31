@@ -57,15 +57,15 @@ export const Home: React.FC = () => {
 
   const resourcePages = useMemo(() => {
     const pages: { title: string; res: OrchestratorResource }[] = [];
+    if (showOrchestrator) {
+      orchResources.forEach((res) => {
+        pages.push({ title: (ARCH_META[res.cpu_type] ?? UNKNOWN_META).label, res });
+      });
+    }
     if (showLocal && hw?.total?.logical_cpu_count) {
       pages.push({
         title: `Local Host${hw.cpu_type ? ` / ${hw.cpu_type.toUpperCase()}` : ''}`,
         res: hw as unknown as OrchestratorResource,
-      });
-    }
-    if (showOrchestrator) {
-      orchResources.forEach((res) => {
-        pages.push({ title: (ARCH_META[res.cpu_type] ?? UNKNOWN_META).label, res });
       });
     }
     return pages;
@@ -260,10 +260,10 @@ export const Home: React.FC = () => {
   return (
     <div className="flex flex-col w-full h-full bg-neutral-50 dark:bg-neutral-950">
       {/* ── Sticky header ───────────────────────────────────────── */}
-      <div className="sticky top-0 z-10 bg-neutral-50 dark:bg-neutral-950 px-6 pt-6 pb-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-2">
+      <div className="sticky top-0 z-10 bg-neutral-50 dark:bg-neutral-950 px-6 pt-2 pb-3 border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-2">
         <div className="flex gap-2 flex-col grow">
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">{displayName ?? 'Dashboard'}</h1>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5">Connected {session?.connectedAt ? `since ${new Date(session.connectedAt).toLocaleTimeString()}` : ''}</p>
+          <h1 className="text-xl font-bold text-neutral-900 dark:text-white">{displayName ?? 'Dashboard'}</h1>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">Connected {session?.connectedAt ? `since ${new Date(session.connectedAt).toLocaleTimeString()}` : ''}</p>
         </div>
         {isLayoutEditMode ? (
           <div className="flex items-center gap-2">

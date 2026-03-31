@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, Pill, SearchBar, SidePanel, SplitView, Tabs, type SplitViewItem } from '@prl/ui-kit';
+import { Button, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, Library, Pill, SearchBar, SidePanel, SplitView, type SplitViewItem } from '@prl/ui-kit';
 import { useLocation } from 'react-router-dom';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
@@ -8,7 +8,7 @@ import { CatalogPushRequest } from '@/interfaces/devops';
 import { Claims, Modules } from '@/interfaces/tokenTypes';
 import { devopsService } from '@/services/devops';
 import { PageHeaderIcon } from '@/components/PageHeader';
-import { CatalogDetailContent, CatalogVersionsContent } from './CatalogDetailPanel';
+import { CatalogDetailContent } from './CatalogDetailPanel';
 import { CatalogManagerEditorModal, DeleteCatalogManagerModal } from './CatalogManagerModals';
 import { UploadCatalogModal } from './CatalogUploadModal';
 import { DownloadCatalogVmModal, DownloadVmFormData } from './CatalogVmModals';
@@ -63,7 +63,6 @@ export const Catalogs: React.FC = () => {
   const [catalogReloadToken, setCatalogReloadToken] = useState(0);
 
   const [selectedCatalogItem, setSelectedCatalogItem] = useState<SelectedCatalogItem | null>(null);
-  const [activeDetailTab, setActiveDetailTab] = useState<'details' | 'versions'>('details');
 
   const [isManagerModalOpen, setIsManagerModalOpen] = useState(false);
   const [editingManager, setEditingManager] = useState<CatalogManager | null>(null);
@@ -443,9 +442,8 @@ export const Catalogs: React.FC = () => {
               query={query}
               reloadToken={catalogReloadToken}
               selectedManifestId={selectedCatalogItem?.source.id === source.id ? selectedCatalogItem.manifest.id : undefined}
-              onManifestClick={(manifest, tab) => {
+              onManifestClick={(manifest) => {
                 setSelectedCatalogItem({ source, manifest });
-                setActiveDetailTab(tab ?? 'details');
               }}
               onDownloadRow={(row) => openDownloadVmModal({ source, row })}
               onStatsChange={(stats) => {
@@ -562,63 +560,26 @@ export const Catalogs: React.FC = () => {
       />
 
       <SidePanel
+        icon={<Library className={`w-5 h-5 text-${themeColor}-500`} />}
+        subtitle={selectedCatalogItem?.manifest.versions.length ? `${selectedCatalogItem.manifest.versions.length} version${selectedCatalogItem.manifest.versions.length > 1 ? 's' : ''}` : undefined}
         isOpen={!!selectedCatalogItem}
         onClose={() => setSelectedCatalogItem(null)}
         title={selectedCatalogItem?.manifest.title ?? 'Catalog Details'}
-        subtitle={selectedCatalogItem?.manifest.manifestId}
         width={520}
-        headerActions={
-          <>
-            <IconButton
-              icon="Trash"
-              size="sm"
-              variant="ghost"
-              color="danger"
-              aria-label="Delete catalog manifest"
-              onClick={() =>
-                selectedCatalogItem &&
-                setCatalogToDelete({
-                  source: selectedCatalogItem.source,
-                  manifestId: selectedCatalogItem.manifest.manifestId,
-                })
-              }
-            />
-          </>
-        }
+        resizable
       >
         {selectedCatalogItem && (
-          <Tabs
-            value={activeDetailTab}
-            onChange={(id) => setActiveDetailTab(id as 'details' | 'versions')}
-            variant="underline"
-            size="sm"
-            color={themeColor}
-            panelClassName="overflow-y-auto"
-            items={[
-              {
-                id: 'details',
-                label: 'Details',
-                panel: <CatalogDetailContent manifest={selectedCatalogItem.manifest} />,
-              },
-              {
-                id: 'versions',
-                label: `Versions (${selectedCatalogItem.manifest.versions.length})`,
-                panel: (
-                  <CatalogVersionsContent
-                    manifest={selectedCatalogItem.manifest}
-                    onDownloadItem={(row) => openDownloadVmModal({ source: selectedCatalogItem.source, row })}
-                    onDeleteItem={(row) =>
-                      setCatalogToDelete({
-                        source: selectedCatalogItem.source,
-                        manifestId: row.manifestId,
-                        version: row.version !== '-' ? row.version : undefined,
-                      })
-                    }
-                  />
-                ),
-              },
-            ]}
-          />
+          <div className="h-full overflow-y-auto">
+            <CatalogDetailContent
+              manifest={selectedCatalogItem.manifest}
+              hostname={hostname}
+              source={selectedCatalogItem.source}
+              canEdit={hasPushCatalogClaim}
+              onReload={() => setCatalogReloadToken((prev) => prev + 1)}
+              onClose={() => setSelectedCatalogItem(null)}
+              onPullRow={(row) => openDownloadVmModal({ source: selectedCatalogItem.source, row })}
+            />
+          </div>
         )}
       </SidePanel>
 

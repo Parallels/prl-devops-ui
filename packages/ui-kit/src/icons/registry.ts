@@ -126,7 +126,15 @@ import { RemoteHost } from './components/RemoteHost';
 import { Login } from './components/Login';
 import { Logout } from './components/Logout';
 import { Snapshot } from './components/Snapshot';
-import { Revert } from './components/Revert'
+import { Revert } from './components/Revert';
+import { CleanBrush } from './components/CleanBrush';
+import { Pull } from './components/Pull';
+import { Push } from './components/Push';
+import { CatalogVersion } from './components/CatalogVersion';
+import { File } from './components/File';
+import { Revoke } from './components/Revoke';
+import { Taint } from './components/Taint';
+import { Unlock } from './components/Unlock';
 
 export type IconName =
   | 'Add'
@@ -256,7 +264,15 @@ export type IconName =
   | 'Login'
   | 'Logout'
   | 'Snapshot'
-  | 'Revert';
+  | 'Revert'
+  | 'CleanBrush'
+  | 'Pull'
+  | 'Push'
+  | 'CatalogVersion'
+  | 'File'
+  | 'Revoke'
+  | 'Taint'
+  | 'Unlock';
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
   Add: Add,
@@ -387,4 +403,12 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
   Logout: Logout,
   Snapshot: Snapshot,
   Revert: Revert,
+  CleanBrush: CleanBrush,
+  Pull: Pull,
+  Push: Push,
+  CatalogVersion: CatalogVersion,
+  File: File,
+  Revoke: Revoke,
+  Taint: Taint,
+  Unlock: Unlock,
 };

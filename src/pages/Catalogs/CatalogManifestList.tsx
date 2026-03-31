@@ -12,6 +12,7 @@ import {
   Panel,
   Pill,
   Table,
+  TagPanel,
   TruncatedText,
   type DropdownButtonOption,
   type TableColumn,
@@ -93,17 +94,17 @@ const buildManifestCard = (manifest: CatalogManifestItem): ManifestCardView => {
 const getProviderIcon = (provider: string): React.ReactNode => {
   switch (provider) {
     case 'local':
-      return <Folder className="w-4 h-4" />;
+      return <Folder className="w-6 h-6 m-2" />;
     case 'minio':
-      return <Minio className="w-4 h-4" />;
+      return <Minio className="w-6 h-6 m-2" />;
     case 'aws-s3':
-      return <Aws className="w-4 h-4" />;
+      return <Aws className="w-6 h-6 m-2" />;
     case 'azure-storage-account':
-      return <Azure className="w-4 h-4" />;
+      return <Azure className="w-6 h-6 m-2" />;
     case 'artifactory':
-      return <Artifactory className="w-4 h-4" />;
+      return <Artifactory className="w-6 h-6 m-2" />;
     default:
-      return <Library className="w-4 h-4" />;
+      return <Library className="w-6 h-6 m-2" />;
   }
 };
 
@@ -326,17 +327,17 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
           padding="xs"
           color={panelColor}
           decoration="both"
-          bodyClassName="overflow-hidden w-full"
+          bodyClassName="overflow-hidden w-full h-full"
           className={active ? `border-${themeColor}-300/80 ring-1 ring-${themeColor}-200/80 dark:border-${themeColor}-500/70 dark:ring-${themeColor}-500/30` : ''}
           onClick={(e) => {
             e.stopPropagation();
             onSelectItem(manifest);
           }}
         >
-          <div className="pointer-events-none absolute inset-0" />
-          <div className="relative space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0 flex-1">
+          <div className="flex pointer-events-none absolute inset-0 h-full" />
+          <div className="flex grow flex-col relative space-y-3 h-full">
+            <div className="flex grow items-start justify-between gap-2">
+              <div className="grow min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <CatalogManifest className="w-4 h-4 shrink-0" />
                   <p className="text-[10px] font-semibold uppercase tracking-[0.17em] text-neutral-500 dark:text-neutral-400">Manifest</p>
@@ -344,28 +345,23 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
                 <h3 className="pt-1">
                   <TruncatedText text={manifest.title} className="text-xl font-semibold text-neutral-900 dark:text-neutral-100" />
                 </h3>
-                <p className="line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400 pt-1">{manifest.description || 'Ready-to-use virtual machine image catalog.'}</p>
+                <p className=" line-clamp-2 text-xs text-neutral-500 dark:text-neutral-400 pt-1">{manifest.description || 'Ready-to-use virtual machine image catalog.'}</p>
               </div>
               <div className="flex flex-col items-end gap-1">
                 {manifest.provider && <div className="flex items-center gap-1 text-neutral-500 dark:text-neutral-400">{getProviderIcon(manifest.provider.type)}</div>}
                 <Pill tone={themeColor} size="xs" className="px-3">
                   {manifest.versions.length} version{manifest.versions.length !== 1 ? 's' : ''}
                 </Pill>
-                {manifest.versions.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="link"
-                    color={themeColor}
-                    size="sm"
-                    className="shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectItem(manifest, 'versions');
-                    }}
-                  >
-                    See all
-                  </Button>
-                )}
+                              {manifest.taintedCount > 0 && (
+                <Pill size="xs" tone="warning" variant="soft" className="w-fit p-2">
+                  {manifest.taintedCount} tainted
+                </Pill>
+              )}
+              {manifest.revokedCount > 0 && (
+                <Pill size="xs" tone="danger" variant="soft" className="w-fit p-2">
+                  {manifest.revokedCount} revoked
+                </Pill>
+              )}
               </div>
             </div>
 
@@ -396,27 +392,10 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-1 min-h-[36px] items-center">
-              {manifest.taintedCount > 0 && (
-                <Pill size="sm" tone="warning" variant="soft" className="w-fit p-2">
-                  {manifest.taintedCount} tainted
-                </Pill>
-              )}
-              {manifest.revokedCount > 0 && (
-                <Pill size="sm" tone="danger" variant="soft" className="w-fit p-2">
-                  {manifest.revokedCount} revoked
-                </Pill>
-              )}
-              {(featuredTags.length > 0 ? featuredTags : manifest.taintedCount === 0 && manifest.revokedCount === 0 ? ['untagged'] : []).map((tag) => {
-                const isLatest = tag.toLowerCase() === 'latest';
-                return (
-                  <Pill key={`${manifest.id}-${tag}`} size="sm" tone={isLatest ? 'success' : 'neutral'} variant={isLatest ? 'soft' : 'outline'} className="w-fit p-2">
-                    {tag}
-                  </Pill>
-                );
-              })}
+            <div className="flex grow flex-wrap gap-1 min-h-9 items-center">
+              <TagPanel size='md' tags={featuredTags.map((t) => ({ label: t.toLowerCase(), tone: t.toLowerCase() === 'latest' ? 'success' : themeColor, variant: t.toLowerCase() === 'latest' ? 'soft' : 'outline', size: "xs" }))} tagLimit={5} />
             </div>
-
+            <div className=' flex'>
             {onDownloadItem ? (
               <DropdownButton
                 label={`Pull Version ${latestVersionLabel}`}
@@ -441,7 +420,8 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
               <Button variant="solid" color={themeColor} size="sm" leadingIcon="Download" fullWidth disabled>
                 Pull ({latestVersionLabel})
               </Button>
-            )}
+              )}
+              </div>
           </div>
         </Panel>
       );

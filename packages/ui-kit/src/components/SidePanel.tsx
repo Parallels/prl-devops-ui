@@ -15,6 +15,8 @@ export interface SidePanelProps {
     subtitle?: React.ReactNode;
     /** Width of the panel in px (default: 420) */
     width?: number;
+    /** Optional icon rendered to the left of the title */
+    icon?: React.ReactNode;
     /** Extra nodes rendered in the header next to the close button */
     headerActions?: React.ReactNode;
     /** Sticky footer rendered at the bottom of the panel */
@@ -49,6 +51,7 @@ export const SidePanel: React.FC<SidePanelProps> = ({
     onClose,
     title,
     subtitle,
+    icon,
     width = 420,
     headerActions,
     footer,
@@ -149,7 +152,8 @@ export const SidePanel: React.FC<SidePanelProps> = ({
                 style={{ width: resolvedWidth }}
             >
                 {/* ── Header ─────────────────────────────────────────────── */}
-                <div className="flex-none flex items-start justify-between gap-3 border-b border-neutral-200 dark:border-neutral-700 px-4 py-3">
+                <div className="flex-none flex items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-700 px-4 py-3">
+                    {icon && <div className="shrink-0 mt-0.5">{icon}</div>}
                     <div className="min-w-0 flex-1">
                         {title && (
                             <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100 truncate">

@@ -66,7 +66,7 @@ export const TagPanel: React.FC<TagPanelProps> = ({ title, subtitle, tags, tagLi
     <div className={classNames('flex flex-col', className)}>
       {title != null && <Section title={title} subtitle={subtitle} actions={actions} size={size} variant={variant} noPadding={noPadding} />}
 
-      <div className={classNames('flex flex-wrap items-center gap-1.5 px-0 pb-1', bodyClassName)}>
+      <div className={classNames('flex flex-wrap items-center gap-1 px-0 pb-1', bodyClassName)}>
         {tags.length === 0 ? (
           emptyState ? (
             <>{emptyState}</>
@@ -83,7 +83,7 @@ export const TagPanel: React.FC<TagPanelProps> = ({ title, subtitle, tags, tagLi
 
             {limited && (
               <button type="button" onClick={() => setExpanded(true)} aria-label={`Show ${overflowCount} more tags`} className="inline-flex">
-                <Pill tone={overflowTone} variant="soft" size="sm">
+                <Pill tone={overflowTone} variant="soft" size={size}>
                   +{overflowCount}
                 </Pill>
               </button>

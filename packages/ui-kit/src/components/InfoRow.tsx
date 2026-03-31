@@ -220,13 +220,15 @@ export const InfoRow: React.FC<InfoRowProps> = ({
 
     if (isEmpty && hideIfEmpty) return null;
 
-    const tokens             = sizeTokens[size];
-    const labelTokens        = sizeTokens[labelSize ?? size];
-    const valueTokens        = sizeTokens[valueSize ?? size];
-    const rowPadding         = padding !== undefined ? paddingTokens[padding] : tokens.defaultPadding;
-    const resolvedLabelWidth = labelWidth !== undefined ? labelWidth : tokens.defaultLabelWidth;
-    const showCopy           = copyable && copyText !== null && !isEmpty;
-    const canTooltip         = tooltipOnTruncate && !wrap && copyText !== null;
+    const tokens          = sizeTokens[size];
+    const labelTokens     = sizeTokens[labelSize ?? size];
+    const valueTokens     = sizeTokens[valueSize ?? size];
+    const rowPadding      = padding !== undefined ? paddingTokens[padding] : tokens.defaultPadding;
+    const showCopy        = copyable && copyText !== null && !isEmpty;
+    const canTooltip      = tooltipOnTruncate && !wrap && copyText !== null;
+    // Smart layout: label caps at 30% of row width, value gets the rest.
+    // Falls back to fixed-width flex when an explicit labelWidth is provided.
+    const useSmartLayout  = labelWidth === undefined;
 
     const handleCopy = () => {
         if (!copyText || copied) return;
@@ -251,20 +253,24 @@ export const InfoRow: React.FC<InfoRowProps> = ({
                 'group flex items-center gap-3 transition-colors duration-300',
                 rowPadding,
                 !noPadding && tokens.horizontalPadding,
-                hoverable && 'rounded-md mx-1 hover:bg-neutral-50 dark:hover:bg-neutral-800/50',
+                hoverable && 'rounded-md mx-1',
+                hoverable && !copied && 'hover:bg-neutral-50 dark:hover:bg-neutral-800/50',
                 !noBorder && !hoverable && 'border-b border-neutral-100 dark:border-neutral-800 last:border-0',
                 copied && 'bg-emerald-50/60 dark:bg-emerald-950/20',
                 copied && hoverable && 'animate-copied-flash',
                 className,
             )}
         >
-            {/* Label — fixed-width column */}
-            <span className={classNames(
-                labelTokens.text,
-                'grow shrink-0 text-neutral-500 dark:text-neutral-400',
-                resolvedLabelWidth,
-                labelClassName,
-            )}>
+            {/* Label — natural content width, capped at 30%; fixed width when labelWidth is explicit */}
+            <span
+                className={classNames(
+                    labelTokens.text,
+                    'text-neutral-500 dark:text-neutral-400',
+                    useSmartLayout ? 'shrink-0 min-w-0 truncate' : `grow shrink-0 ${labelWidth ?? tokens.defaultLabelWidth}`,
+                    labelClassName,
+                )}
+                style={useSmartLayout ? { maxWidth: '30%' } : undefined}
+            >
                 {label}
             </span>
 
@@ -279,7 +285,7 @@ export const InfoRow: React.FC<InfoRowProps> = ({
                     className={classNames(
                         valueTokens.text,
                         'font-medium',
-                        wrap ? 'break-words whitespace-normal text-right' : 'truncate',
+                        wrap ? 'wrap-break-word whitespace-normal text-right' : 'truncate',
                         isEmpty
                             ? 'text-neutral-400 dark:text-neutral-600'
                             : 'text-neutral-800 dark:text-neutral-200',

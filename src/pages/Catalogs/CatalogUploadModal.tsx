@@ -627,6 +627,7 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({ isOpen, 
 
   return (
     <Modal
+      icon="Push"
       isOpen={isOpen}
       onClose={onClose}
       title="Upload to Catalog"

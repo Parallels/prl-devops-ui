@@ -16,7 +16,7 @@ interface HostInformationPanelProps {
 
 export function HostInformationPanel({ hw }: HostInformationPanelProps) {
   return (
-    <Panel variant="glass" padding="sm">
+    <Panel variant="glass" padding="sm" className="h-full">
       <Section title="Host" size="lg" noPadding />
       <InfoRow noBorder labelSize="sm" noPadding label="CPU" value={hw?.cpu_brand ?? hw?.cpu_type} />
       <InfoRow noBorder labelSize="sm" noPadding label="Architecture" value={hw?.cpu_type} />

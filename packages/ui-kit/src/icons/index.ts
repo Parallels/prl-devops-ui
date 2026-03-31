@@ -124,5 +124,13 @@ export * from './components/Pin';
 export * from './components/RemoteHost';
 export * from './components/Login';
 export * from './components/Logout';
-export * from './components/Snapshot'
-export * from './components/Revert'
+export * from './components/Snapshot';
+export * from './components/Revert';
+export * from './components/CleanBrush';
+export * from './components/Pull';
+export * from './components/Push';
+export * from './components/CatalogVersion';
+export * from './components/File';
+export * from './components/Revoke';
+export * from './components/Taint';
+export * from './components/Unlock';

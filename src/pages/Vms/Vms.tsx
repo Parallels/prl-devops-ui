@@ -563,7 +563,7 @@ export const Vms: React.FC = () => {
         highlight: highlightedItemId === 'local',
         actions: (
           <IconButton
-            icon="Download"
+            icon="Pull"
             size="xs"
             variant="ghost"
             color={themeColor}
@@ -605,7 +605,8 @@ export const Vms: React.FC = () => {
         highlight: highlightedItemId === 'orchestrator',
         actions: (
           <IconButton
-            icon="Download"
+            tooltip='Downloads a vm from the Catalog'
+            icon="Pull"
             size="xs"
             variant="ghost"
             color={themeColor}

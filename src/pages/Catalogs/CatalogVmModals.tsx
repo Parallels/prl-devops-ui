@@ -60,7 +60,7 @@ export const DownloadCatalogVmModal: React.FC<DownloadCatalogVmModalProps> = ({
 
   return (
     <Modal
-      icon="Download"
+      icon="Pull"
       isOpen={isOpen}
       onClose={onClose}
       title="Download Virtual Machine"
