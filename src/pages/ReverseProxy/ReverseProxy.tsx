@@ -290,8 +290,8 @@ export const ReverseProxy: React.FC<ReverseProxyProps> = ({ orchestratorHostId, 
           }
           listActions={
             <>
-              {canCreate && <IconButton variant="ghost" size="xs" color={themeColor} icon="Add" onClick={() => setShowAddModal(true)} aria-label="Add proxy host" />}
-              <IconButton variant="ghost" size="xs" color={themeColor} icon="Restart" onClick={() => void fetchAll()} aria-label="Refresh" />
+              {canCreate && <IconButton tooltip='Create Route' variant="ghost" size="xs" color={themeColor} icon="Add" onClick={() => setShowAddModal(true)} aria-label="Add proxy host" />}
+              <IconButton tooltip='Refresh' variant="ghost" size="xs" color={themeColor} icon="Restart" onClick={() => void fetchAll()} aria-label="Refresh" />
             </>
           }
           panelHeaderProps={(activeItem) => {

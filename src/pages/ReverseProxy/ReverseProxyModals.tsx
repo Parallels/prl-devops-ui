@@ -71,7 +71,7 @@ const TagInput: React.FC<TagInputProps> = ({ values, placeholder, onChange, disa
   };
   return (
     <div
-      className={`rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 p-1.5 min-h-[38px] flex flex-wrap gap-1 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
+      className={`rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 p-1.5 min-h-9.5 flex flex-wrap gap-1 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}
     >
       {values.map((v) => (
         <span key={v} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300">
@@ -82,7 +82,7 @@ const TagInput: React.FC<TagInputProps> = ({ values, placeholder, onChange, disa
         </span>
       ))}
       <input
-        className="flex-1 min-w-[100px] bg-transparent text-sm text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none px-1"
+        className="flex-1 min-w-25 bg-transparent text-sm text-neutral-800 dark:text-neutral-200 placeholder-neutral-400 outline-none px-1"
         placeholder={values.length === 0 ? placeholder : ''}
         value={draft}
         disabled={disabled}
@@ -713,7 +713,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
 
       {!tlsEnabled && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
-          <CustomIcon icon="Info" className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+          <CustomIcon icon="Info" className="w-4 h-4 text-neutral-400 shrink-0" />
           <p className="text-xs text-neutral-500 dark:text-neutral-400">TLS is optional. You can skip this step and add certificates later from the Settings tab.</p>
         </div>
       )}
@@ -726,7 +726,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
         <div className="space-y-3">
           {httpRoutes.length === 0 && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
-              <CustomIcon icon="Info" className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+              <CustomIcon icon="Info" className="w-4 h-4 text-neutral-400 shrink-0" />
               <p className="text-xs text-neutral-500 dark:text-neutral-400">No routes yet. Add at least one HTTP route, or add them later from the detail panel.</p>
             </div>
           )}
@@ -997,7 +997,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
           <ul className="space-y-1">
             {['Databases (Postgres, MySQL)', 'Redis / message queues', 'SSH & custom protocols'].map((f) => (
               <li key={f} className="flex items-center gap-1.5 text-xs text-neutral-500 dark:text-neutral-400">
-                <span className={`w-1 h-1 rounded-full flex-shrink-0 ${routeMode === 'tcp' ? `bg-${themeColor}-400` : 'bg-neutral-300 dark:bg-neutral-600'}`} />
+                <span className={`w-1 h-1 rounded-full shrink-0 ${routeMode === 'tcp' ? `bg-${themeColor}-400` : 'bg-neutral-300 dark:bg-neutral-600'}`} />
                 {f}
               </li>
             ))}
@@ -1011,7 +1011,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
           <React.Fragment key={label}>
             <div className="flex items-center gap-1">
               <span
-                className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center flex-shrink-0 ${
+                className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0 ${
                   routeMode === 'http'
                     ? `bg-${themeColor}-100 dark:bg-${themeColor}-900/40 text-${themeColor}-600 dark:text-${themeColor}-400`
                     : `bg-${themeColor}-100 dark:bg-${themeColor}-900/40 text-${themeColor}-600 dark:text-${themeColor}-400`
@@ -1022,7 +1022,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
               <span className="text-xs text-neutral-500 dark:text-neutral-400 whitespace-nowrap">{label}</span>
             </div>
             {i < arr.length - 1 && (
-              <div className={`flex-1 h-px min-w-[12px] ${routeMode === 'http' ? `bg-${themeColor}-200 dark:bg-${themeColor}-800/60` : `bg-${themeColor}-200 dark:bg-${themeColor}-800/60`}`} />
+              <div className={`flex-1 h-px min-w-3 ${routeMode === 'http' ? `bg-${themeColor}-200 dark:bg-${themeColor}-800/60` : `bg-${themeColor}-200 dark:bg-${themeColor}-800/60`}`} />
             )}
           </React.Fragment>
         ))}

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Alert, Button, DeleteConfirmModal, FormField, FormLayout, Input, Modal, ModalActions, Panel, Select, Toggle } from '@prl/ui-kit';
+import { Alert, Button, DeleteConfirmModal, FormField, FormLayout, Input, Modal, ModalActions, Panel, Select, TagPicker, Toggle } from '@prl/ui-kit';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { CatalogManager } from '@/interfaces/CatalogManager';
-import { CatalogManagerFormData } from './CatalogModels';
+import { CatalogManagerFormData } from '../CatalogModels';
 
 interface CatalogManagerEditorModalProps {
   isOpen: boolean;
@@ -32,6 +32,7 @@ export const CatalogManagerEditorModal: React.FC<CatalogManagerEditorModalProps>
   const { themeColor } = useSystemSettings();
   return (
     <Modal
+      icon={isEditMode ? 'Edit' : 'Add'}
       isOpen={isOpen}
       onClose={onClose}
       title={isEditMode ? 'Edit Catalog Manager' : 'Add Catalog Service'}
@@ -52,8 +53,7 @@ export const CatalogManagerEditorModal: React.FC<CatalogManagerEditorModalProps>
         </Panel>
 
         <Panel backgroundColor="white" variant="glass" padding="xs">
-          <FormLayout columns={2} gap="sm">
-            <FormField label="Authentication Method" width="full">
+          <FormField label="Authentication Method" width="full">
               <Select
                 value={managerForm.authentication_method}
                 tone={themeColor}
@@ -67,8 +67,8 @@ export const CatalogManagerEditorModal: React.FC<CatalogManagerEditorModalProps>
                 <option value="credentials">Credentials</option>
                 <option value="api_key">API Key</option>
               </Select>
-            </FormField>
-
+          </FormField>
+          <FormLayout columns={managerForm.authentication_method === 'credentials' ? 2 : 1} gap="sm">
             {managerForm.authentication_method === 'credentials' ? (
               <>
                 <FormField label="Username" required width="full">
@@ -88,12 +88,15 @@ export const CatalogManagerEditorModal: React.FC<CatalogManagerEditorModalProps>
 
         <Panel backgroundColor="white" variant="glass" padding="xs">
           <FormLayout columns={1} gap="sm">
-            <FormField label="Required Claims" width="full" helpText="Comma-separated list of claims required to use this manager.">
-              <Input
-                tone={themeColor}
-                placeholder="e.g. LIST_CATALOG_MANIFEST, CREATE_CATALOG_MANIFEST"
+            <FormField label="Required Claims" width="full" helpText="Claims required to use this manager. Tags are uppercased automatically.">
+              <TagPicker
+                color={themeColor}
+                items={[]}
+                allowCreate
+                escapeBoundary
                 value={managerForm.required_claims}
-                onChange={(e) => onFormChange({ ...managerForm, required_claims: e.target.value })}
+                placeholder="e.g. LIST_CATALOG_MANIFEST"
+                onChange={(values) => onFormChange({ ...managerForm, required_claims: values.map((v) => v.toUpperCase()) })}
               />
             </FormField>
 

@@ -120,7 +120,7 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
                     {/* Icon slot */}
                     {icon && (
                         <div className={classNames(
-                            'w-10 h-10 flex-shrink-0 self-center',
+                            'w-10 h-10 shrink-0 self-center',
                             tokens.labelText,
                             iconClassName,
                         )}>
@@ -162,28 +162,28 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
 
                     {/* Hover actions */}
                     {hoverActions && (
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover/tree-card:opacity-100 transition-opacity duration-150 flex-shrink-0 self-start mt-1">
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover/tree-card:opacity-100 transition-opacity duration-150 shrink-0 self-start mt-1">
                             {hoverActions}
                         </div>
                     )}
 
                     {/* Always-visible actions */}
                     {actions && (
-                        <div className="flex items-center gap-0.5 flex-shrink-0 self-start mt-1">
+                        <div className="flex items-center gap-0.5 shrink-0 self-start mt-1">
                             {actions}
                         </div>
                     )}
 
                     {/* Drag handle */}
                     {dragHandle && (
-                        <div className="flex items-center flex-shrink-0 self-start mt-1">
+                        <div className="flex items-center shrink-0 self-start mt-1">
                             {dragHandle}
                         </div>
                     )}
 
                     {/* Expand toggle */}
                     {canExpand && (
-                        <div className="flex items-center flex-shrink-0 self-start mt-1">
+                        <div className="flex items-center shrink-0 self-start mt-1">
                             <button
                                 type="button"
                                 onClick={handleToggle}

@@ -9,9 +9,9 @@ import { Claims, Modules } from '@/interfaces/tokenTypes';
 import { devopsService } from '@/services/devops';
 import { PageHeaderIcon } from '@/components/PageHeader';
 import { CatalogDetailContent } from './CatalogDetailPanel';
-import { CatalogManagerEditorModal, DeleteCatalogManagerModal } from './CatalogManagerModals';
-import { UploadCatalogModal } from './CatalogUploadModal';
-import { DownloadCatalogVmModal, DownloadVmFormData } from './CatalogVmModals';
+import { CatalogManagerEditorModal, DeleteCatalogManagerModal } from './Modals/CatalogManagerModals';
+import { UploadCatalogModal } from './Modals/UploadCatalogModal';
+import { DownloadCatalogModal, DownloadVmFormData } from './Modals/DownloadCatalogModals';
 import { CatalogSourcePanel, type CatalogSourceStats } from './CatalogPanels';
 import { CatalogManifestItem, CatalogRow, CatalogSource, defaultManagerForm, managerToForm, normalizeForDirtyCheck, toManagerRequest } from './CatalogModels';
 import type { CatalogsDeepLinkState } from '@/types/deepLink';
@@ -468,6 +468,7 @@ export const Catalogs: React.FC = () => {
       actionLabel="Add Catalog"
       actionColor={themeColor}
       actionLeadingIcon="Add"
+      actionVariant='solid'
     />
   );
 
@@ -630,7 +631,7 @@ export const Catalogs: React.FC = () => {
         onSubmit={(data) => void handleUploadCatalog(data)}
       />
 
-      <DownloadCatalogVmModal
+      <DownloadCatalogModal
         isOpen={!!downloadVmModalItem}
         loading={downloadVmLoading}
         error={downloadVmError}

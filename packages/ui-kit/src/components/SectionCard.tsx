@@ -10,6 +10,7 @@ export interface SectionCardProps {
     /** Section heading displayed above the content area. */
     title: string;
     titleClassName?: string;
+    actions?: React.ReactNode;
     /**
      * Visual treatment of the card container.
      * - `glass`    — frosted glass (default)
@@ -60,6 +61,7 @@ const sizeTokens: Record<SectionCardSize, { header: string; body: string }> = {
 export const SectionCard: React.FC<SectionCardProps> = ({
     title,
     titleClassName,
+    actions,
     variant = 'glass',
     size = 'md',
     blur = false,
@@ -73,13 +75,16 @@ export const SectionCard: React.FC<SectionCardProps> = ({
         <div className={classNames('overflow-hidden', variantStyles[variant], className)}>
             {/* Section heading */}
             <div className={header}>
-                <span className={classNames(
-                    'text-[10px] font-semibold uppercase tracking-widest',
-                    'text-neutral-400 dark:text-neutral-500',
-                    titleClassName,
-                )}>
-                    {title}
-                </span>
+                <div className="flex items-center justify-between">
+                    <span className={classNames(
+                        'text-[10px] font-semibold uppercase tracking-widest',
+                        'text-neutral-400 dark:text-neutral-500',
+                        titleClassName,
+                    )}>
+                        {title}
+                    </span>
+                    {actions && <div>{actions}</div>}
+                </div>
             </div>
 
             {/* Body */}

@@ -141,6 +141,11 @@ export interface TableProps<T> {
   /** Called whenever the user changes column visibility. Receives the full current config. */
   onColumnVisibilityChange?: (visibility: Record<string, boolean>) => void;
   /**
+   * When true, shows the column visibility toggle button in the header bar.
+   * Defaults to false — the icon is hidden unless this prop is explicitly set.
+   */
+  showColumnSelector?: boolean;
+  /**
    * Enables drag-to-resize column headers. Each column can opt out via `column.resizable = false`.
    */
   resizableColumns?: boolean;
@@ -740,6 +745,7 @@ function TableComponent<T>({
   headerTitle = '',
   columnVisibility: columnVisibilityProp,
   onColumnVisibilityChange,
+  showColumnSelector = false,
   resizableColumns = false,
   columnWidths: columnWidthsProp,
   onColumnWidthChange,
@@ -1375,7 +1381,7 @@ function TableComponent<T>({
     <div className={wrapperClasses} style={style}>
       <div className={classNames('relative flex flex-col', fullHeight && 'flex-1 overflow-hidden h-full')}>
         {/* ── Header bar ────────────────────────────────────────────────────── */}
-        {(headerActions || showViewToggle || hasHideableColumns || isUserGroupable || userStickyColumns) && (
+        {(headerActions || showViewToggle || (showColumnSelector && hasHideableColumns) || isUserGroupable || userStickyColumns) && (
           <div className="flex-none flex items-center gap-3 border-b border-neutral-200 px-6 py-3 dark:border-neutral-700">
             {headerTitle && <div className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">{headerTitle}</div>}
             <div className="flex-1" />
@@ -1419,7 +1425,7 @@ function TableComponent<T>({
               )}
 
               {/* Column visibility toggle — table view only */}
-              {hasHideableColumns && activeView === 'table' && (
+              {showColumnSelector && hasHideableColumns && activeView === 'table' && (
                 <div className="relative" ref={colPanelRef}>
                   <IconButton
                     icon="EyeOpen"

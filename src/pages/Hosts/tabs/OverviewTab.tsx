@@ -1,4 +1,4 @@
-import { formatMB, InfoRow, MultiProgressBar, Pill, SectionCard, Table, type Column } from '@prl/ui-kit';
+import { Button, ChevronRight, formatMB, InfoRow, MultiProgressBar, Pill, SectionCard, Table, type Column } from '@prl/ui-kit';
 import { useNavigate } from 'react-router-dom';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
@@ -61,16 +61,6 @@ const vmColumns: Column<VirtualMachine>[] = [
       </span>
     ),
   },
-  {
-    id: 'uptime',
-    header: 'Uptime',
-    accessor: 'Uptime',
-    align: 'center',
-    width: 110,
-    render: (row) => (
-      <span className="text-xs text-neutral-500 dark:text-neutral-400">{row.Uptime ?? '—'}</span>
-    ),
-  },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -87,6 +77,7 @@ export function OverviewTab({ host }: { host: DevOpsRemoteHost }) {
   const isHealthy = host.state === 'healthy';
   const shouldBlur = !isHealthy;
   const vms = host.vms?.filter((vm) => vm.State === 'running') ?? [];
+
 
   const diskTotal = host.detailed_resources?.total?.disk_size ?? host.detailed_resources?.total?.disk_count;
   const diskInUse = host.detailed_resources?.total_in_use?.disk_size ?? host.detailed_resources?.total_in_use?.disk_count;
@@ -109,37 +100,42 @@ export function OverviewTab({ host }: { host: DevOpsRemoteHost }) {
 
       {/* Virtual Machines table */}
       <SectionCard
-        title={`Virtual Machines${vms.length > 0 ? ` (${vms.length})` : ''}`}
+        title={`Virtual Machines${vms.length > 0 ? ` (${vms.length} running)` : ''}`}
         blur={shouldBlur}
+        actions={
+          <Button
+            variant="clear"
+            size="xs"
+            accentColor={themeColor}
+            color="slate"
+            onClick={() => navigate('/vms')}
+          >
+            View All <ChevronRight className="w-3 h-3" />
+          </Button>
+        }
       >
-        {vms.length > 0 && (
-          <div className="flex justify-end pb-1">
-            <button
-              onClick={() => navigate('/vms')}
-              className="text-xs font-medium transition-colors text-neutral-400 hover:text-neutral-700 dark:text-neutral-500 dark:hover:text-neutral-200"
-            >
-              View All ›
-            </button>
+        {vms.length  ? (
+          <Table<VirtualMachine>
+            columns={vmColumns}
+            data={vms}
+            color={themeColor}
+            rowKey={(row) => String(row.ID ?? Math.random())}
+            hoverable
+            noBorders
+            stickyHeader
+            variant="flat" 
+            defaultSort={{ columnId: 'name', direction: 'asc' }}
+            emptyState={
+              <div className="py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">
+                No virtual machines on this host
+              </div>
+            }
+          />
+        ): (
+          <div className="py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">
+            No running virtual machines on this host
           </div>
         )}
-        <Table<VirtualMachine>
-          columns={vmColumns}
-          data={vms}
-          color={themeColor}
-          rowKey={(row) => String(row.ID ?? Math.random())}
-          hoverable
-          groupable
-          userStickyColumns
-          noBorders
-          stickyHeader
-          variant="flat"
-          defaultSort={{ columnId: 'name', direction: 'asc' }}
-          emptyState={
-            <div className="py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">
-              No virtual machines on this host
-            </div>
-          }
-        />
       </SectionCard>
 
       {/* Resources */}

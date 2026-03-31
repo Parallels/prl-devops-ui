@@ -36,7 +36,7 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host }) => {
           },
         ]
       : []),
-    { id: 'settings', label: 'Settings', panel: <SettingsTab host={host} /> },
+    // { id: 'settings', label: 'Settings', panel: <SettingsTab host={host} /> },
     ...(isHealthy(host) && host.enabled ? [{ id: 'logs', label: 'Logs', panel: <LogsTab host={host} /> }] : []),
   ];
 
