@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY packages/ui-kit/package*.json ./packages/ui-kit/
 
-RUN npm ci
+RUN npm install
 
 # Copy source and build
 COPY . .

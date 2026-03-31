@@ -1,41 +1,40 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import parallelsBars from '../../assets/images/parallels-bars-small.png';
-import { Alert, Button, FormField, FormLayout, Input, Modal, Panel, Toggle } from '../../controls';
+import { Alert, Button, FormField, FormLayout, Input, Modal, Panel, PasswordInput, Select, Toggle } from '../../controls';
 import { useConfig } from '../../contexts/ConfigContext';
 import { useSession } from '../../contexts/SessionContext';
+import { useLockedHost } from '../../contexts/LockedHostContext';
 import { authService } from '../../services/authService';
-import { HostAuthType, HostConfig } from '../../interfaces/Host';
+import { HostConfig } from '../../interfaces/Host';
 import { getPasswordKey, getApiKeyKey } from '../../utils/secretKeys';
 import { decodeToken } from '../../utils/tokenUtils';
 import { devopsService } from '../../services/devops';
 import { HostHardwareInfo } from '../../interfaces/devops';
 
-interface DialogInformation {
-  isOpen: boolean;
-  title: string;
-  message: string;
-  errorMessage?: string;
-}
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface FormErrors {
-  serverUrl?: string;
   username?: string;
   password?: string;
   apiKey?: string;
 }
 
 type TouchedFields = {
-  serverUrl: boolean;
   username: boolean;
   password: boolean;
   apiKey: boolean;
 };
 
+interface DialogInformation {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  errorMessage?: string;
+  tone: 'danger' | 'success' | 'warning' | 'neutral';
+}
+
 export interface LoginPrefill {
-  serverUrl?: string;
-  authType?: HostAuthType;
-  username?: string;
   hostId?: string;
 }
 
@@ -43,103 +42,203 @@ interface LoginProps {
   prefill?: LoginPrefill;
 }
 
+interface LoginErrorResult {
+  title: string;
+  message: string;
+  details?: string;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const friendlyLoginError = (error: unknown, targetUrl?: string): LoginErrorResult => {
+  const apiErr = error as { message?: string; statusCode?: number };
+  const status = apiErr?.statusCode;
+  const rawMsg = apiErr?.message ?? (error instanceof Error ? error.message : String(error));
+  const rawLower = rawMsg.toLowerCase();
+
+  if (status === 401) return { title: 'Authentication Failed', message: 'Invalid credentials. Please check your username and password.', details: 'HTTP 401 Unauthorized' };
+  if (status === 403) return { title: 'Access Denied', message: 'Your account does not have permission to sign in.', details: 'HTTP 403 Forbidden' };
+  if (status === 404) return { title: 'Endpoint Not Found', message: 'The authentication endpoint was not found. Please verify the server URL is correct.', details: 'HTTP 404 Not Found' };
+  if (status && status >= 500) return { title: 'Server Error', message: 'The server is currently unavailable or encountered an internal error.', details: `HTTP ${status}` };
+
+  const isNetworkError = !status && (rawLower.includes('load failed') || rawLower.includes('failed to fetch') || rawLower.includes('network request failed') || rawLower.includes('network error') || rawLower.includes('networkerror'));
+  if (isNetworkError && !import.meta.env.DEV && typeof window !== 'undefined' && window.location.protocol === 'https:' && targetUrl?.toLowerCase().startsWith('http:')) {
+    return { title: 'Mixed Content Blocked', message: 'Your browser blocked the connection because this app is running over HTTPS but the server URL uses HTTP.' };
+  }
+  if (isNetworkError) return { title: 'Cannot Reach Server', message: 'Could not connect to the server. Please check the URL, verify the server is running, and check your network.' };
+  if (rawLower.includes('timeout') || rawLower.includes('timed out')) return { title: 'Connection Timed Out', message: 'The server did not respond in time.' };
+  if (rawLower.includes('certificate') || rawLower.includes('ssl') || rawLower.includes('tls')) return { title: 'SSL / Certificate Error', message: 'A certificate error occurred. The server may be using a self-signed or expired certificate.', details: rawMsg };
+
+  return { title: 'Connection Failed', message: rawMsg || 'An unexpected error occurred. Please try again.' };
+};
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export const Login: React.FC<LoginProps> = ({ prefill }) => {
   const config = useConfig();
   const { setSession } = useSession();
+  const { isLocked, hostUrl, lockedHostname, username: lockedUsername, hasPassword, password: lockedPassword } = useLockedHost();
   const navigate = useNavigate();
-  const [isSaving, setIsSaving] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [serverUrl, setServerUrl] = useState(prefill?.serverUrl ?? '');
-  const [authType, setAuthType] = useState<HostAuthType>(prefill?.authType ?? 'credentials');
-  const [username, setUsername] = useState(prefill?.username ?? '');
+
+  // ── Host list ──────────────────────────────────────────────────────────────
+  const [hosts, setHosts] = useState<HostConfig[]>([]);
+  const [hostsLoading, setHostsLoading] = useState(!isLocked);
+  const [selectedHostId, setSelectedHostId] = useState<string>('');
+
+  // ── Form fields ────────────────────────────────────────────────────────────
+  const [authType, setAuthType] = useState<'credentials' | 'api_key'>('credentials');
+  const [username, setUsername] = useState(lockedUsername ?? '');
   const [password, setPassword] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [keepLoggedIn, setKeepLoggedIn] = useState(true);
-  const [formTouched, setFormTouched] = useState<TouchedFields>({
-    serverUrl: false,
-    username: false,
-    password: false,
-    apiKey: false,
-  });
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [dialog, setDialog] = useState<DialogInformation>({
-    isOpen: false,
-    title: '',
-    message: '',
-  });
 
+  // ── Submit state ───────────────────────────────────────────────────────────
+  const [isSaving, setIsSaving] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Validation ─────────────────────────────────────────────────────────────
+  const [formTouched, setFormTouched] = useState<TouchedFields>({ username: false, password: false, apiKey: false });
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [dialog, setDialog] = useState<DialogInformation>({ isOpen: false, title: '', message: '', tone: 'danger' });
+
+  // Build a synthetic in-memory host when in locked mode
+  const lockedHost = isLocked && hostUrl && lockedHostname
+    ? ({
+        id: `locked:${lockedHostname}`,
+        hostname: lockedHostname,
+        baseUrl: hostUrl,
+        authType: 'credentials' as const,
+        username: lockedUsername ?? '',
+        keepLoggedIn: false, // creds come from env, never persisted
+        lastUsed: new Date().toISOString(),
+        type: 'Orchestrator' as const,
+      } satisfies HostConfig)
+    : null;
+
+  // Load all saved hosts on mount (skipped in locked mode)
+  useEffect(() => {
+    if (isLocked) return;
+    const loadHosts = async () => {
+      const saved = (await config.get<HostConfig[]>('hosts')) ?? [];
+      setHosts(saved);
+      const target =
+        (prefill?.hostId && saved.find((h) => h.id === prefill.hostId)) ??
+        saved.find((h) => h.isDefault) ??
+        [...saved].sort((a, b) => (b.lastUsed ?? '').localeCompare(a.lastUsed ?? ''))[0];
+      if (target) setSelectedHostId(target.id);
+      setHostsLoading(false);
+    };
+    void loadHosts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Populate form fields whenever the selected host changes (normal mode only)
+  useEffect(() => {
+    if (isLocked || !selectedHostId || hostsLoading) return;
+    const host = hosts.find((h) => h.id === selectedHostId);
+    if (!host) return;
+
+    setAuthType(host.authType);
+    setUsername(host.authType === 'credentials' ? (host.username ?? '') : '');
+    setKeepLoggedIn(host.keepLoggedIn ?? true);
+    setPassword('');
+    setApiKey('');
+    setFormTouched({ username: false, password: false, apiKey: false });
+
+    // Attempt to pre-fill saved credential
+    const loadSecret = async () => {
+      const secretKey = host.authType === 'credentials' ? getPasswordKey(host.hostname) : getApiKeyKey(host.hostname);
+      const secret = await config.getSecret(secretKey);
+      if (secret) {
+        if (host.authType === 'credentials') setPassword(secret);
+        else setApiKey(secret);
+      }
+    };
+    void loadSecret();
+  }, [selectedHostId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-login when both VITE_DEFAULT_USERNAME and VITE_DEFAULT_PASSWORD are set
+  useEffect(() => {
+    if (!isLocked || !lockedHost || !lockedUsername || !hasPassword || !lockedPassword) return;
+    setIsSaving(true);
+    const performAutoLogin = async () => {
+      try {
+        authService.setCredentials(lockedHostname!, {
+          url: hostUrl!,
+          username: lockedUsername,
+          password: lockedPassword,
+          email: lockedUsername,
+          api_key: '',
+        });
+        await authService.forceReauth(lockedHostname!);
+
+        let hardwareInfo: HostHardwareInfo | undefined;
+        try { hardwareInfo = await devopsService.config.getHardwareInfo(lockedHostname!); } catch { /* non-fatal */ }
+
+        authService.currentHostname = lockedHostname!;
+        const token = authService.getToken(lockedHostname!);
+        const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
+
+        setSession({
+          serverUrl: hostUrl!,
+          hostname: lockedHostname!,
+          username: lockedUsername,
+          authType: 'credentials',
+          hostId: lockedHost.id,
+          connectedAt: new Date().toISOString(),
+          tokenPayload,
+          hardwareInfo,
+        });
+        navigate('/', { replace: true });
+      } catch (error: unknown) {
+        setIsSaving(false);
+        const { title, message: errMessage, details } = friendlyLoginError(error, hostUrl ?? '');
+        setDialog({ isOpen: true, title, message: errMessage, errorMessage: details, tone: 'danger' });
+      }
+    };
+    void performAutoLogin();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Elapsed-time counter while saving
   useEffect(() => {
     if (isSaving) {
       setElapsedSeconds(0);
-      timerRef.current = setInterval(() => {
-        setElapsedSeconds((s) => s + 1);
-      }, 1000);
+      timerRef.current = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
     } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     }
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
+    return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
   }, [isSaving]);
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { validateForm(); }, [serverUrl, username, password, apiKey, authType]);
 
   const validateForm = () => {
     const newErrors: FormErrors = {};
-
-    if (!serverUrl.trim()) {
-      newErrors.serverUrl = 'Server URL is required';
-    } else {
-      try {
-        new URL(serverUrl);
-      } catch {
-        newErrors.serverUrl = 'Please enter a valid URL';
-      }
-    }
-
     if (authType === 'credentials') {
       if (!username.trim()) newErrors.username = 'Username is required';
       if (!password.trim()) newErrors.password = 'Password is required';
     } else {
       if (!apiKey.trim()) newErrors.apiKey = 'API Key is required';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleBlur = (field: keyof TouchedFields) => {
-    setFormTouched((prev) => ({ ...prev, [field]: true }));
-  };
+  useEffect(() => { validateForm(); }, [username, password, apiKey, authType]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleBlur = (field: keyof TouchedFields) => setFormTouched((prev) => ({ ...prev, [field]: true }));
+  const hasError = (field: keyof FormErrors) => formTouched[field as keyof TouchedFields] && !!errors[field];
+  const isFormValid = Object.keys(errors).length === 0;
+  const selectedHost = isLocked ? lockedHost : hosts.find((h) => h.id === selectedHostId);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    setFormTouched({
-      serverUrl: true,
-      username: authType === 'credentials',
-      password: authType === 'credentials',
-      apiKey: authType === 'api_key',
-    });
-
-    const isValid = validateForm();
-    if (!isValid) return;
-
+    setFormTouched({ username: authType === 'credentials', password: authType === 'credentials', apiKey: authType === 'api_key' });
+    if (!validateForm() || !selectedHost) return;
     setIsSaving(true);
 
     const signIn = async () => {
       try {
-        const normalizedUrl = serverUrl.replace(/\/+$/, '');
-        const urlObj = new URL(normalizedUrl);
-        const hostname = urlObj.hostname;
+        const normalizedUrl = selectedHost.baseUrl.replace(/\/+$/, '');
+        const hostname = selectedHost.hostname;
 
         authService.setCredentials(hostname, {
           url: normalizedUrl,
@@ -165,41 +264,24 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
         }
         await config.flushSecrets();
 
-        // Fetch hardware info (non-fatal)
         let hardwareInfo: HostHardwareInfo | undefined;
-        try {
-          hardwareInfo = await devopsService.config.getHardwareInfo(hostname);
-        } catch { /* non-fatal */ }
+        try { hardwareInfo = await devopsService.config.getHardwareInfo(hostname); } catch { /* non-fatal */ }
 
-        // Upsert host by hostname
-        const existingHosts = (await config.get<HostConfig[]>('hosts')) ?? [];
-        const existingIndex = existingHosts.findIndex((h) => h.hostname === hostname);
-        const willBeOnlyHost = existingIndex >= 0 ? existingHosts.length === 1 : existingHosts.length === 0;
-
-        const hostEntry: HostConfig = {
-          id: existingIndex >= 0 ? existingHosts[existingIndex].id : crypto.randomUUID(),
-          hostname,
-          baseUrl: normalizedUrl,
+        // Update the selected host in config (saves any credential/keepLoggedIn changes)
+        const allHosts = (await config.get<HostConfig[]>('hosts')) ?? [];
+        const idx = allHosts.findIndex((h) => h.id === selectedHost.id);
+        const updatedHost: HostConfig = {
+          ...selectedHost,
           authType,
           username: authType === 'credentials' ? username : '',
           keepLoggedIn,
           lastUsed: new Date().toISOString(),
-          isDefault: willBeOnlyHost
-            ? true
-            : existingIndex >= 0
-              ? existingHosts[existingIndex].isDefault
-              : undefined,
-          type: 'Orchestrator',
           hardwareInfo,
         };
+        if (idx >= 0) allHosts[idx] = updatedHost;
+        else allHosts.push(updatedHost);
 
-        if (existingIndex >= 0) {
-          existingHosts[existingIndex] = hostEntry;
-        } else {
-          existingHosts.push(hostEntry);
-        }
-
-        await config.set('hosts', existingHosts);
+        await config.set('hosts', allHosts);
         await config.save();
 
         authService.currentHostname = hostname;
@@ -211,7 +293,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
           hostname,
           username: authType === 'credentials' ? username : '',
           authType,
-          hostId: hostEntry.id,
+          hostId: updatedHost.id,
           connectedAt: new Date().toISOString(),
           tokenPayload,
           hardwareInfo,
@@ -220,196 +302,173 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
         navigate('/', { replace: true });
       } catch (error: unknown) {
         setIsSaving(false);
-        setDialog({
-          isOpen: true,
-          title: 'Connection Failed',
-          message: 'Could not connect to the server with the provided credentials.',
-          errorMessage: (error as Error)?.message || JSON.stringify(error),
-        });
+        const { title, message: errMessage, details } = friendlyLoginError(error, selectedHost.baseUrl);
+        setDialog({ isOpen: true, title, message: errMessage, errorMessage: details, tone: 'danger' });
       }
     };
 
     void signIn();
   };
 
-  const hasError = (field: keyof FormErrors) =>
-    formTouched[field as keyof TouchedFields] && !!errors[field];
-
-  const isFormValid = Object.keys(errors).length === 0;
-
   return (
     <>
       <div className="flex min-h-screen w-screen flex-col items-center justify-center gap-6 p-6">
-        <Panel maxWidth={500} variant="elevated" bodyClassName="h-full">
+        <Panel maxWidth={460} variant="elevated" bodyClassName="h-full">
+          {/* Brand */}
           <div className="flex items-center justify-center pb-2 p-3">
             <div className="flex items-center">
-              <div className="h-[48px] w-[48px] flex items-center justify-center">
+              <div className="h-[40px] w-[40px] flex items-center justify-center">
                 <img className="h-full" src={parallelsBars} alt="Parallels DevOps" />
               </div>
-              <div className="flex items-start font-medium text-black dark:text-gray-300 ml-3 text-2xl">
-                <span className="text-[#6c757d] dark:text-black pr-2">Parallels</span>
+              <div className="flex items-start font-medium ml-2.5 text-xl">
+                <span className="text-[#6c757d] dark:text-neutral-400 pr-1.5">Parallels</span>
                 <span className="text-gray-900 dark:text-gray-300">DevOps</span>
               </div>
             </div>
           </div>
-          <div className="text-center text-lg font-semibold">Welcome back!</div>
-          <div className="text-center text-sm text-neutral-600 dark:text-neutral-300 mb-4 px-4">
-            Sign in to continue to your DevOps server.
+
+          <div className="text-center text-base font-semibold text-neutral-900 dark:text-neutral-100">Welcome back!</div>
+          <div className="text-center text-sm text-neutral-500 dark:text-neutral-400 mb-4">
+            {isLocked ? `Sign in to ${lockedHostname ?? hostUrl}.` : 'Select a server and sign in.'}
           </div>
 
-          <form onSubmit={handleSubmit} noValidate>
-            <FormLayout columns={1} gap="sm">
-              <FormField
-                label="Server URL"
-                required={true}
-                width="full"
-                error={hasError('serverUrl') ? errors.serverUrl : undefined}
-              >
-                <Input
-                  type="url"
-                  tone="blue"
-                  value={serverUrl}
-                  onChange={(e) => setServerUrl(e.target.value)}
-                  onBlur={() => {
-                    if (serverUrl && !/^https?:\/\//i.test(serverUrl)) {
-                      setServerUrl('https://' + serverUrl);
-                    }
-                    handleBlur('serverUrl');
-                  }}
-                  required={true}
-                  placeholder="https://your-server.example.com"
-                />
-              </FormField>
+          {hostsLoading ? (
+            <div className="py-8 text-center text-sm text-neutral-400">Loading…</div>
+          ) : !isLocked && hosts.length === 0 ? (
+            <div className="py-6 text-center space-y-3">
+              <p className="text-sm text-neutral-500">No servers configured.</p>
+              <Button variant="solid" color="blue" onClick={() => navigate('/onboarding', { state: { prefill: { fromLogin: true } } })}>
+                Add a Server
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} noValidate>
+              <FormLayout columns={1} gap="sm">
+                {/* Server — selector in normal mode, read-only badge in locked mode */}
+                {isLocked ? (
+                  <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 dark:border-neutral-700 dark:bg-neutral-800/60">
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-400 dark:text-neutral-500 mb-0.5">Server</p>
+                    <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">{hostUrl}</p>
+                  </div>
+                ) : (
+                  <FormField label="Server" required width="full">
+                    <Select
+                      tone="blue"
+                      value={selectedHostId}
+                      onChange={(e) => setSelectedHostId(e.target.value)}
+                      disabled={isSaving}
+                    >
+                      {hosts.map((h) => (
+                        <option key={h.id} value={h.id}>
+                          {h.hostname} — {h.baseUrl}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormField>
+                )}
 
-              <div className="py-2">
-                <Toggle
-                  label="Use API Key"
-                  description={
-                    authType === 'api_key'
-                      ? 'Authenticate with an API key'
-                      : 'Authenticate with username and password'
-                  }
-                  checked={authType === 'api_key'}
-                  onChange={(e) => setAuthType(e.target.checked ? 'api_key' : 'credentials')}
-                  size="sm"
+                {/* Credentials fields */}
+                {authType === 'credentials' && (
+                  <>
+                    <FormField label="Username" required width="full" error={hasError('username') ? errors.username : undefined}>
+                      <Input
+                        type="text"
+                        tone="blue"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        onBlur={() => handleBlur('username')}
+                        required
+                        placeholder="Enter your username"
+                        autoComplete="username"
+                        disabled={isSaving || (isLocked && !!lockedUsername)}
+                      />
+                    </FormField>
+                    {/* Hide password field in locked mode when password comes from env */}
+                    {!hasPassword && (
+                      <FormField label="Password" required width="full" error={hasError('password') ? errors.password : undefined}>
+                        <PasswordInput
+                          tone="blue"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          onBlur={() => handleBlur('password')}
+                          required
+                          placeholder="Enter your password"
+                          autoComplete="current-password"
+                          disabled={isSaving}
+                        />
+                      </FormField>
+                    )}
+                  </>
+                )}
+
+                {authType === 'api_key' && !isLocked && (
+                  <FormField label="API Key" required width="full" error={hasError('apiKey') ? errors.apiKey : undefined}>
+                    <PasswordInput
+                      tone="blue"
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      onBlur={() => handleBlur('apiKey')}
+                      required
+                      placeholder="Enter your API key"
+                      autoComplete="off"
+                      disabled={isSaving}
+                    />
+                  </FormField>
+                )}
+
+                {!isLocked && (
+                  <div className="py-1">
+                    <Toggle
+                      label="Keep me logged in"
+                      description={keepLoggedIn ? 'Credentials will be stored securely' : 'You will need to re-enter credentials on next launch'}
+                      checked={keepLoggedIn}
+                      onChange={(e) => setKeepLoggedIn(e.target.checked)}
+                      size="sm"
+                      color="blue"
+                    />
+                  </div>
+                )}
+              </FormLayout>
+
+              <div className="mt-4 space-y-2">
+                <Button
+                  variant="solid"
                   color="blue"
-                />
-              </div>
-
-              {authType === 'credentials' && (
-                <>
-                  <FormField
-                    label="Username"
-                    required={true}
-                    width="full"
-                    error={hasError('username') ? errors.username : undefined}
-                  >
-                    <Input
-                      type="text"
-                      tone="blue"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      onBlur={() => handleBlur('username')}
-                      required={true}
-                      placeholder="Enter your username"
-                      autoComplete="username"
-                    />
-                  </FormField>
-                  <FormField
-                    label="Password"
-                    required={true}
-                    width="full"
-                    error={hasError('password') ? errors.password : undefined}
-                  >
-                    <Input
-                      type="password"
-                      tone="blue"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      onBlur={() => handleBlur('password')}
-                      required={true}
-                      placeholder="Enter your password"
-                      autoComplete="current-password"
-                    />
-                  </FormField>
-                </>
-              )}
-
-              {authType === 'api_key' && (
-                <FormField
-                  label="API Key"
-                  required={true}
-                  width="full"
-                  error={hasError('apiKey') ? errors.apiKey : undefined}
+                  fullWidth
+                  disabled={isSaving || !isFormValid || !selectedHost}
+                  type="submit"
                 >
-                  <Input
-                    type="password"
-                    tone="blue"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    onBlur={() => handleBlur('apiKey')}
-                    required={true}
-                    placeholder="Enter your API key"
-                  />
-                </FormField>
-              )}
-
-              <div className="py-2">
-                <Toggle
-                  label="Keep me logged in"
-                  description={
-                    keepLoggedIn
-                      ? 'Credentials will be stored securely'
-                      : 'You will need to re-enter credentials on next launch'
-                  }
-                  checked={keepLoggedIn}
-                  onChange={(e) => setKeepLoggedIn(e.target.checked)}
-                  size="sm"
-                  color="blue"
-                />
+                  {isSaving ? `Signing in… (${elapsedSeconds}s)` : 'Login'}
+                </Button>
+                {!isLocked && (
+                  <div className="text-center py-1">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/onboarding', { state: { prefill: { fromLogin: true } } })}
+                      className="text-xs text-neutral-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                    >
+                      + Add a new server
+                    </button>
+                  </div>
+                )}
               </div>
-            </FormLayout>
-
-            <div className="my-4 flex flex-col gap-2">
-              <Button
-                variant="solid"
-                fullWidth={true}
-                disabled={isSaving || !isFormValid}
-                type="submit"
-              >
-                {isSaving ? `Signing in... (${elapsedSeconds}s)` : 'Sign In'}
-              </Button>
-            </div>
-          </form>
+            </form>
+          )}
         </Panel>
-
-        <Modal
-          title={dialog.title}
-          isOpen={dialog.isOpen}
-          onClose={() => setDialog((prev) => ({ ...prev, isOpen: false }))}
-        >
-          <div>
-            {dialog.errorMessage ? (
-              <Alert
-                variant="outline"
-                tone="danger"
-                title={dialog.message}
-                description={dialog.errorMessage}
-              />
-            ) : (
-              <p>{dialog.message}</p>
-            )}
-            <div className="flex justify-end pt-3">
-              <Button
-                variant="solid"
-                onClick={() => setDialog((prev) => ({ ...prev, isOpen: false }))}
-              >
-                OK
-              </Button>
-            </div>
-          </div>
-        </Modal>
       </div>
+
+      <Modal
+        title={dialog.title}
+        isOpen={dialog.isOpen}
+        onClose={() => setDialog((p) => ({ ...p, isOpen: false }))}
+      >
+        <div>
+          <Alert variant="outline" tone={dialog.tone} title={dialog.message} description={dialog.errorMessage} />
+          <div className="flex justify-end pt-3">
+            <Button variant="solid" onClick={() => setDialog((p) => ({ ...p, isOpen: false }))}>OK</Button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 };

@@ -1,14 +1,16 @@
 
 import React from 'react';
-import { createBrowserRouter, RouterProvider, useLocation } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, useLocation, Outlet, Navigate } from 'react-router-dom';
 import { MainLayout } from '../layout/MainLayout';
-import { Home } from '../pages/Home';
+import { Home } from '../pages/Home/index';
 import { UxDemo } from '@prl/ui-kit/pages/UxDemo/UxDemo';
 import { Catalogs } from '../pages/Catalogs/Catalogs';
 import { Vms } from '../pages/Vms/Vms';
 import { StartupGuard } from '../components/StartupGuard';
 import { Onboarding, OnboardingPrefill } from '../pages/Onboarding/Onboarding';
 import { Login, LoginPrefill } from '../pages/Login/Login';
+import { DevResetHandler } from '../components/DevResetHandler';
+import { useLockedHost } from '../contexts/LockedHostContext';
 import { Hosts } from '@/pages/Hosts/Hosts';
 import { NotFound } from '../pages/NotFound';
 import { Forbidden } from '../pages/Forbidden';
@@ -24,10 +26,20 @@ import { Cache } from '@/pages/Cache/Cache';
 import { ReverseProxy } from '@/pages/ReverseProxy/ReverseProxy';
 import { Jobs } from '@/pages/Jobs/Jobs';
 
+const RootLayout: React.FC = () => (
+    <>
+        <DevResetHandler />
+        <Outlet />
+    </>
+);
+
 const OnboardingRoute: React.FC = () => {
     const location = useLocation();
-    const prefill = (location.state as { prefill?: OnboardingPrefill } | null)?.prefill;
+    const { isLocked } = useLockedHost();
 
+    if (isLocked) return <Navigate to="/login" replace />;
+
+    const prefill = (location.state as { prefill?: OnboardingPrefill } | null)?.prefill;
     return <Onboarding prefill={prefill} />;
 };
 
@@ -39,6 +51,9 @@ const LoginRoute: React.FC = () => {
 };
 
 export const router = createBrowserRouter([
+    {
+        element: <RootLayout />,
+        children: [
     {
         path: '/onboarding',
         element: <OnboardingRoute />,
@@ -164,6 +179,8 @@ export const router = createBrowserRouter([
     {
         path: '*',
         element: <NotFound />,
+    },
+        ],
     },
 ]);
 

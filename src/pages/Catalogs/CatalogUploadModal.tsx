@@ -16,68 +16,17 @@ import {
   Picker,
   type PickerItem,
   type PickerFilter,
+  TagPicker,
   type ThemeColor,
+  Panel,
+  CollapsiblePanel,
 } from '@prl/ui-kit';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
-import { CatalogPushRequest } from '@/interfaces/devops';
+import { CatalogPushRequest, DevOpsClaim } from '@/interfaces/devops';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { devopsService } from '@/services/devops';
 import { OsIcon } from '@/utils/virtualMachine';
 import { getStateTone } from '@/utils/vmUtils';
-
-// ─── Chip input ──────────────────────────────────────────────────────────────
-
-interface ChipInputProps {
-  values: string[];
-  onChange: (next: string[]) => void;
-  placeholder?: string;
-}
-
-const ChipInput: React.FC<ChipInputProps> = ({ values, onChange, placeholder }) => {
-  const [draft, setDraft] = useState('');
-
-  const commit = () => {
-    const v = draft.trim().replace(/,+$/, '');
-    if (v && !values.includes(v)) onChange([...values, v]);
-    setDraft('');
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <Input
-          value={draft}
-          size="sm"
-          placeholder={placeholder ?? 'Type and press Enter…'}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit(); }
-            if (e.key === 'Backspace' && !draft && values.length) onChange(values.slice(0, -1));
-          }}
-        />
-        <Button type="button" variant="soft" color="slate" size="sm" onClick={commit}>Add</Button>
-      </div>
-      {values.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {values.map((v) => (
-            <span
-              key={v}
-              className="inline-flex items-center gap-1 rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
-            >
-              {v}
-              <button
-                type="button"
-                onClick={() => onChange(values.filter((x) => x !== v))}
-                className="ml-0.5 flex-none leading-none text-neutral-400 transition-colors hover:text-neutral-700 dark:hover:text-neutral-200"
-                aria-label={`Remove ${v}`}
-              >×</button>
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 
 // ─── Storage Provider Picker ──────────────────────────────────────────────────
@@ -146,14 +95,9 @@ const defaultProviderFields = (): StorageProviderFields => ({
   art_auth: 'access_key',
 });
 
-const SECRET_FIELDS = new Set([
-  'access_key', 'secret_key', 'session_token', 'storage_account_key', 'password',
-]);
+const SECRET_FIELDS = new Set(['access_key', 'secret_key', 'session_token', 'storage_account_key', 'password']);
 
-function buildConnectionString(
-  provider: ProviderKey,
-  fields: Record<string, string | boolean>,
-): string {
+function buildConnectionString(provider: ProviderKey, fields: Record<string, string | boolean>): string {
   const parts: string[] = [`provider=${provider}`];
   for (const [key, val] of Object.entries(fields)) {
     if (val === '' || val === false || val === undefined) continue;
@@ -162,14 +106,14 @@ function buildConnectionString(
   return parts.join(';');
 }
 
-function buildMaskedPreview(
-  provider: ProviderKey,
-  fields: Record<string, string | boolean>,
-): string {
+function buildMaskedPreview(provider: ProviderKey, fields: Record<string, string | boolean>): string {
   const parts: string[] = [`provider=${provider}`];
   for (const [key, val] of Object.entries(fields)) {
     if (val === '' || val === false || val === undefined) continue;
-    if (val === true) { parts.push(`${key}=true`); continue; }
+    if (val === true) {
+      parts.push(`${key}=true`);
+      continue;
+    }
     parts.push(SECRET_FIELDS.has(key) ? `${key}=****` : `${key}=${val}`);
   }
   return parts.join(';');
@@ -199,8 +143,7 @@ const StorageProviderPicker: React.FC<StorageProviderPickerProps> = ({ onChange,
   const [provider, setProvider] = useState<ProviderKey | ''>('');
   const [fields, setFields] = useState<StorageProviderFields>(defaultProviderFields);
 
-  const setField = <K extends keyof StorageProviderFields>(key: K, val: StorageProviderFields[K]) =>
-    setFields((prev) => ({ ...prev, [key]: val }));
+  const setField = <K extends keyof StorageProviderFields>(key: K, val: StorageProviderFields[K]) => setFields((prev) => ({ ...prev, [key]: val }));
 
   // Derive the canonical fields map and completeness for the current provider
   const { canonicalFields, isComplete } = useMemo(() => {
@@ -271,15 +214,14 @@ const StorageProviderPicker: React.FC<StorageProviderPickerProps> = ({ onChange,
     }
   }, [provider, canonicalFields, isComplete, onChange]);
 
-  const previewString = provider && isComplete
-    ? buildMaskedPreview(provider as ProviderKey, canonicalFields)
-    : '';
+  const previewString = provider && isComplete ? buildMaskedPreview(provider as ProviderKey, canonicalFields) : '';
 
   return (
     <div className="space-y-3">
       {/* Provider select */}
       <FormField label="Provider" required width="full">
         <Select
+          tone={themeColor}
           value={provider}
           size="sm"
           onChange={(e) => {
@@ -299,8 +241,7 @@ const StorageProviderPicker: React.FC<StorageProviderPickerProps> = ({ onChange,
       {/* Provider-specific fields */}
       {provider === 'local' && (
         <FormField label="Catalog Path" required width="full">
-          <Input size="sm" placeholder="/var/catalog" value={fields.catalog_path}
-            onChange={(e) => setField('catalog_path', e.target.value)} className="font-mono text-xs" />
+          <Input tone={themeColor} size="sm" placeholder="/var/catalog" value={fields.catalog_path} onChange={(e) => setField('catalog_path', e.target.value)} className="font-mono text-xs" />
         </FormField>
       )}
 
@@ -308,41 +249,48 @@ const StorageProviderPicker: React.FC<StorageProviderPickerProps> = ({ onChange,
         <div className="space-y-3">
           <FormLayout columns={2} gap="sm">
             <FormField label="Endpoint" required width="full">
-              <Input size="sm" placeholder="https://s3.example.com" value={fields.minio_endpoint}
-                onChange={(e) => setField('minio_endpoint', e.target.value)} className="font-mono text-xs" />
+              <Input
+                tone={themeColor}
+                size="sm"
+                placeholder="https://s3.example.com"
+                value={fields.minio_endpoint}
+                onChange={(e) => setField('minio_endpoint', e.target.value)}
+                className="font-mono text-xs"
+              />
             </FormField>
             <FormField label="Bucket" required width="full">
-              <Input size="sm" placeholder="my-bucket" value={fields.minio_bucket}
-                onChange={(e) => setField('minio_bucket', e.target.value)} />
+              <Input tone={themeColor} size="sm" placeholder="my-bucket" value={fields.minio_bucket} onChange={(e) => setField('minio_bucket', e.target.value)} />
             </FormField>
           </FormLayout>
           <div className="flex gap-6">
             <label className="flex items-center gap-2 cursor-pointer select-none">
-              <Toggle size="sm" color="blue" checked={fields.minio_use_ssl}
-                onChange={(e) => setField('minio_use_ssl', e.target.checked)} />
+              <Toggle color={themeColor} size="sm" checked={fields.minio_use_ssl} onChange={(e) => setField('minio_use_ssl', e.target.checked)} />
               <span className="text-sm text-neutral-700 dark:text-neutral-300">Use SSL</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer select-none">
-              <Toggle size="sm" color="blue" checked={fields.minio_ignore_cert}
-                onChange={(e) => setField('minio_ignore_cert', e.target.checked)} />
+              <Toggle color={themeColor} size="sm" checked={fields.minio_ignore_cert} onChange={(e) => setField('minio_ignore_cert', e.target.checked)} />
               <span className="text-sm text-neutral-700 dark:text-neutral-300">Ignore Certificate</span>
             </label>
           </div>
           <div>
             <p className="mb-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">Authentication</p>
-            <MultiToggle options={MINIO_AUTH_OPTIONS} value={fields.minio_auth}
+            <MultiToggle
+              options={MINIO_AUTH_OPTIONS}
+              value={fields.minio_auth}
               onChange={(v) => setField('minio_auth', v as MinioAuthMode)}
-              variant="solid" color={themeColor} size="sm" adaptiveWidth />
+              variant="solid"
+              color={themeColor}
+              size="sm"
+              adaptiveWidth
+            />
           </div>
           {fields.minio_auth === 'keys' && (
             <FormLayout columns={2} gap="sm">
               <FormField label="Access Key" required width="full">
-                <PasswordInput size="sm" placeholder="access key" value={fields.minio_access_key}
-                  onChange={(e) => setField('minio_access_key', e.target.value)} />
+                <PasswordInput tone={themeColor} size="sm" placeholder="access key" value={fields.minio_access_key} onChange={(e) => setField('minio_access_key', e.target.value)} />
               </FormField>
               <FormField label="Secret Key" required width="full">
-                <PasswordInput size="sm" placeholder="secret key" value={fields.minio_secret_key}
-                  onChange={(e) => setField('minio_secret_key', e.target.value)} />
+                <PasswordInput tone={themeColor} size="sm" placeholder="secret key" value={fields.minio_secret_key} onChange={(e) => setField('minio_secret_key', e.target.value)} />
               </FormField>
             </FormLayout>
           )}
@@ -353,36 +301,29 @@ const StorageProviderPicker: React.FC<StorageProviderPickerProps> = ({ onChange,
         <div className="space-y-3">
           <FormLayout columns={2} gap="sm">
             <FormField label="Bucket" required width="full">
-              <Input size="sm" placeholder="my-bucket" value={fields.s3_bucket}
-                onChange={(e) => setField('s3_bucket', e.target.value)} />
+              <Input tone={themeColor} size="sm" placeholder="my-bucket" value={fields.s3_bucket} onChange={(e) => setField('s3_bucket', e.target.value)} />
             </FormField>
             <FormField label="Region" required width="full">
-              <Input size="sm" placeholder="us-east-1" value={fields.s3_region}
-                onChange={(e) => setField('s3_region', e.target.value)} />
+              <Input tone={themeColor} size="sm" placeholder="us-east-1" value={fields.s3_region} onChange={(e) => setField('s3_region', e.target.value)} />
             </FormField>
           </FormLayout>
           <div>
             <p className="mb-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">Authentication</p>
-            <MultiToggle options={S3_AUTH_OPTIONS} value={fields.s3_auth}
-              onChange={(v) => setField('s3_auth', v as S3AuthMode)}
-              variant="solid" color={themeColor} size="sm" adaptiveWidth />
+            <MultiToggle options={S3_AUTH_OPTIONS} value={fields.s3_auth} onChange={(v) => setField('s3_auth', v as S3AuthMode)} variant="solid" color={themeColor} size="sm" adaptiveWidth />
           </div>
           {fields.s3_auth === 'keys' && (
             <FormLayout columns={2} gap="sm">
               <FormField label="Access Key" required width="full">
-                <PasswordInput size="sm" placeholder="access key" value={fields.s3_access_key}
-                  onChange={(e) => setField('s3_access_key', e.target.value)} />
+                <PasswordInput tone={themeColor} size="sm" placeholder="access key" value={fields.s3_access_key} onChange={(e) => setField('s3_access_key', e.target.value)} />
               </FormField>
               <FormField label="Secret Key" required width="full">
-                <PasswordInput size="sm" placeholder="secret key" value={fields.s3_secret_key}
-                  onChange={(e) => setField('s3_secret_key', e.target.value)} />
+                <PasswordInput tone={themeColor} size="sm" placeholder="secret key" value={fields.s3_secret_key} onChange={(e) => setField('s3_secret_key', e.target.value)} />
               </FormField>
             </FormLayout>
           )}
           {fields.s3_auth === 'session' && (
             <FormField label="Session Token" required width="full">
-              <PasswordInput size="sm" placeholder="session token" value={fields.s3_session_token}
-                onChange={(e) => setField('s3_session_token', e.target.value)} />
+              <PasswordInput tone={themeColor} size="sm" placeholder="session token" value={fields.s3_session_token} onChange={(e) => setField('s3_session_token', e.target.value)} />
             </FormField>
           )}
         </div>
@@ -392,17 +333,14 @@ const StorageProviderPicker: React.FC<StorageProviderPickerProps> = ({ onChange,
         <div className="space-y-3">
           <FormLayout columns={2} gap="sm">
             <FormField label="Storage Account Name" required width="full">
-              <Input size="sm" placeholder="mystorageaccount" value={fields.az_storage_account_name}
-                onChange={(e) => setField('az_storage_account_name', e.target.value)} />
+              <Input tone={themeColor} size="sm" placeholder="mystorageaccount" value={fields.az_storage_account_name} onChange={(e) => setField('az_storage_account_name', e.target.value)} />
             </FormField>
             <FormField label="Container Name" required width="full">
-              <Input size="sm" placeholder="my-container" value={fields.az_container_name}
-                onChange={(e) => setField('az_container_name', e.target.value)} />
+              <Input tone={themeColor} size="sm" placeholder="my-container" value={fields.az_container_name} onChange={(e) => setField('az_container_name', e.target.value)} />
             </FormField>
           </FormLayout>
           <FormField label="Storage Account Key" required width="full">
-            <PasswordInput size="sm" placeholder="account key" value={fields.az_storage_account_key}
-              onChange={(e) => setField('az_storage_account_key', e.target.value)} />
+            <PasswordInput tone={themeColor} size="sm" placeholder="account key" value={fields.az_storage_account_key} onChange={(e) => setField('az_storage_account_key', e.target.value)} />
           </FormField>
         </div>
       )}
@@ -411,39 +349,38 @@ const StorageProviderPicker: React.FC<StorageProviderPickerProps> = ({ onChange,
         <div className="space-y-3">
           <FormLayout columns={2} gap="sm">
             <FormField label="URL" required width="full">
-              <Input size="sm" placeholder="https://artifactory.example.com" value={fields.art_url}
-                onChange={(e) => setField('art_url', e.target.value)} className="font-mono text-xs" />
+              <Input
+                tone={themeColor}
+                size="sm"
+                placeholder="https://artifactory.example.com"
+                value={fields.art_url}
+                onChange={(e) => setField('art_url', e.target.value)}
+                className="font-mono text-xs"
+              />
             </FormField>
             <FormField label="Port" width="full">
-              <Input size="sm" placeholder="8081" value={fields.art_port}
-                onChange={(e) => setField('art_port', e.target.value)} />
+              <Input tone={themeColor} size="sm" placeholder="8081" value={fields.art_port} onChange={(e) => setField('art_port', e.target.value)} />
             </FormField>
           </FormLayout>
           <FormField label="Repository" required width="full">
-            <Input size="sm" placeholder="my-repo" value={fields.art_repo}
-              onChange={(e) => setField('art_repo', e.target.value)} />
+            <Input tone={themeColor} size="sm" placeholder="my-repo" value={fields.art_repo} onChange={(e) => setField('art_repo', e.target.value)} />
           </FormField>
           <div>
             <p className="mb-1.5 text-xs font-medium text-neutral-500 dark:text-neutral-400">Authentication</p>
-            <MultiToggle options={ART_AUTH_OPTIONS} value={fields.art_auth}
-              onChange={(v) => setField('art_auth', v as ArtAuthMode)}
-              variant="solid" color={themeColor} size="sm" adaptiveWidth />
+            <MultiToggle options={ART_AUTH_OPTIONS} value={fields.art_auth} onChange={(v) => setField('art_auth', v as ArtAuthMode)} variant="solid" color={themeColor} size="sm" adaptiveWidth />
           </div>
           {fields.art_auth === 'access_key' && (
             <FormField label="Access Key" required width="full">
-              <PasswordInput size="sm" placeholder="access key" value={fields.art_access_key}
-                onChange={(e) => setField('art_access_key', e.target.value)} />
+              <PasswordInput tone={themeColor} size="sm" placeholder="access key" value={fields.art_access_key} onChange={(e) => setField('art_access_key', e.target.value)} />
             </FormField>
           )}
           {fields.art_auth === 'userpass' && (
             <FormLayout columns={2} gap="sm">
               <FormField label="Username" required width="full">
-                <Input size="sm" placeholder="username" value={fields.art_username}
-                  onChange={(e) => setField('art_username', e.target.value)} />
+                <Input tone={themeColor} size="sm" placeholder="username" value={fields.art_username} onChange={(e) => setField('art_username', e.target.value)} />
               </FormField>
               <FormField label="Password" required width="full">
-                <PasswordInput size="sm" placeholder="password" value={fields.art_password}
-                  onChange={(e) => setField('art_password', e.target.value)} />
+                <PasswordInput tone={themeColor} size="sm" placeholder="password" value={fields.art_password} onChange={(e) => setField('art_password', e.target.value)} />
               </FormField>
             </FormLayout>
           )}
@@ -453,12 +390,8 @@ const StorageProviderPicker: React.FC<StorageProviderPickerProps> = ({ onChange,
       {/* Connection string preview */}
       {previewString && (
         <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-700 dark:bg-neutral-900/50">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
-            Connection String Preview
-          </p>
-          <p className="break-all font-mono text-xs text-neutral-600 dark:text-neutral-300">
-            {previewString}
-          </p>
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">Connection String Preview</p>
+          <p className="break-all font-mono text-xs text-neutral-600 dark:text-neutral-300">{previewString}</p>
         </div>
       )}
     </div>
@@ -548,18 +481,12 @@ interface UploadCatalogModalProps {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
-  isOpen,
-  hostname,
-  loading,
-  error,
-  onClose,
-  onSubmit,
-}) => {
+export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({ isOpen, hostname, loading, error, onClose, onSubmit }) => {
   const { themeColor } = useSystemSettings();
   const [form, setForm] = useState<UploadFormState>(defaultForm);
   const [vms, setVms] = useState<VirtualMachine[]>([]);
   const [vmsLoading, setVmsLoading] = useState(false);
+  const [internalClaims, setInternalClaims] = useState<DevOpsClaim[]>([]);
   const [validationError, setValidationError] = useState<string | null>(null);
   const prevOpen = useRef(false);
 
@@ -574,32 +501,47 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
         .then(setVms)
         .catch(() => setVms([]))
         .finally(() => setVmsLoading(false));
+      devopsService.claims
+        .getClaims(hostname)
+        .then((all) => setInternalClaims(all.filter((c) => !!c.internal)))
+        .catch(() => setInternalClaims([]));
     }
     prevOpen.current = isOpen;
   }, [isOpen, hostname]);
 
-  const set = <K extends keyof UploadFormState>(key: K, value: UploadFormState[K]) =>
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const set = <K extends keyof UploadFormState>(key: K, value: UploadFormState[K]) => setForm((prev) => ({ ...prev, [key]: value }));
 
   // Map VirtualMachine[] → PickerItem[] for the UI kit Picker component
-  const vmPickerItems = useMemo<PickerItem[]>(() => vms.map(vm => ({
-    id: vm.ID,
-    icon: <OsIcon os={vm.OS} className="h-5 w-5" />,
-    title: vm.Name ?? vm.ID,
-    subtitle: vm.OS,
-    tags: [{ label: vm.State ?? 'unknown', tone: getStateTone(vm.State) }],
-  })), [vms]);
+  const vmPickerItems = useMemo<PickerItem[]>(
+    () =>
+      vms.map((vm) => ({
+        id: vm.ID,
+        icon: <OsIcon os={vm.OS} className="h-5 w-5" />,
+        title: vm.Name ?? vm.ID,
+        subtitle: vm.OS,
+        tags: [{ label: vm.State ?? 'unknown', tone: getStateTone(vm.State) }],
+      })),
+    [vms],
+  );
 
-  const vmPickerFilter = useMemo<PickerFilter>(() => ({
-    label: 'Stopped',
-    predicate: (item) => {
-      const vm = vms.find(v => v.ID === item.id);
-      return vm?.State?.toLowerCase() === 'stopped';
-    },
-  }), [vms]);
+  const internalClaimItems = useMemo(
+    () => internalClaims.map((c) => ({ id: c.name, label: c.name, ...(c.description ? { description: c.description } : {}) })),
+    [internalClaims],
+  );
+
+  const vmPickerFilter = useMemo<PickerFilter>(
+    () => ({
+      label: 'Stopped',
+      predicate: (item) => {
+        const vm = vms.find((v) => v.ID === item.id);
+        return vm?.State?.toLowerCase() === 'stopped';
+      },
+    }),
+    [vms],
+  );
 
   const handleVmSelect = (item: PickerItem) => {
-    const vm = vms.find(v => v.ID === item.id);
+    const vm = vms.find((v) => v.ID === item.id);
     const vmName = vm?.Name ?? '';
     setForm((prev) => ({
       ...prev,
@@ -632,16 +574,21 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
   const handleSubmit = () => {
     const needsPath = form.sourceMode === 'vm' ? !form.vmId : !form.local_path.trim();
     if (needsPath) {
-      setValidationError(
-        form.sourceMode === 'vm'
-          ? 'Please select a stopped virtual machine.'
-          : 'Please provide the path to the VM bundle.',
-      );
+      setValidationError(form.sourceMode === 'vm' ? 'Please select a stopped virtual machine.' : 'Please provide the path to the VM bundle.');
       return;
     }
-    if (!form.catalog_id.trim()) { setValidationError('Catalog ID is required.'); return; }
-    if (!form.version.trim()) { setValidationError('Version is required.'); return; }
-    if (!form.architecture.trim()) { setValidationError('Architecture is required.'); return; }
+    if (!form.catalog_id.trim()) {
+      setValidationError('Catalog ID is required.');
+      return;
+    }
+    if (!form.version.trim()) {
+      setValidationError('Version is required.');
+      return;
+    }
+    if (!form.architecture.trim()) {
+      setValidationError('Architecture is required.');
+      return;
+    }
     setValidationError(null);
 
     const request: CatalogPushRequest = {
@@ -651,45 +598,59 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
       architecture: form.architecture.trim(),
       ...(form.description.trim() ? { description: form.description.trim() } : {}),
       ...(form.connection.trim() ? { connection: form.connection.trim() } : {}),
-      ...(form.compress ? {
-        compress: true,
-        compress_level: form.compress_level,
-      } : {}),
+      ...(form.compress
+        ? {
+            compress: true,
+            compress_level: form.compress_level,
+          }
+        : {}),
       ...(form.uuid.trim() ? { uuid: form.uuid.trim() } : {}),
       ...(form.tags.length ? { tags: form.tags } : {}),
       ...(form.required_roles.length ? { required_roles: form.required_roles } : {}),
       ...(form.required_claims.length ? { required_claims: form.required_claims } : {}),
-      ...((form.min_cpu || form.min_memory || form.min_disk) ? {
-        minimum_requirements: {
-          ...(form.min_cpu ? { cpu: Number(form.min_cpu) } : {}),
-          ...(form.min_memory ? { memory: Number(form.min_memory) } : {}),
-          ...(form.min_disk ? { disk: Number(form.min_disk) } : {}),
-        },
-      } : {}),
+      ...(form.min_cpu || form.min_memory || form.min_disk
+        ? {
+            minimum_requirements: {
+              ...(form.min_cpu ? { cpu: Number(form.min_cpu) } : {}),
+              ...(form.min_memory ? { memory: Number(form.min_memory) } : {}),
+              ...(form.min_disk ? { disk: Number(form.min_disk) } : {}),
+            },
+          }
+        : {}),
     };
 
     onSubmit(request);
   };
 
   const displayError = validationError ?? error;
-  const selectedVm = vms.find(v => v.ID === form.vmId);
+  const selectedVm = vms.find((v) => v.ID === form.vmId);
 
   return (
     <Modal
+      icon="Push"
       isOpen={isOpen}
       onClose={onClose}
       title="Upload to Catalog"
       description="Push a local virtual machine to the catalog service for distribution."
       size="xl"
+      actions={
+        <ModalActions>
+          <Button variant="soft" color="slate" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          {(selectedVm || (form.sourceMode === 'manual' && form.local_path !== '')) && (
+            <Button variant="solid" color={themeColor} onClick={handleSubmit} loading={loading}>
+              Upload to Catalog
+            </Button>
+          )}
+        </ModalActions>
+      }
     >
       <div className="space-y-3">
-
         {/* ── Source ─────────────────────────────────────────────────────── */}
-        <div className="overflow-visible rounded-xl border border-neutral-200 bg-neutral-50/70 p-3 dark:border-neutral-700 dark:bg-neutral-900/40">
+        <Panel padding="xs" variant="glass" backgroundColor="white">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-              Source
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Source</p>
             <MultiToggle
               options={SOURCE_MODES}
               value={form.sourceMode}
@@ -712,6 +673,7 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
           {form.sourceMode === 'vm' ? (
             <>
               <Picker
+                color={themeColor}
                 items={vmPickerItems}
                 loading={vmsLoading}
                 selectedId={form.vmId}
@@ -731,14 +693,10 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
               )}
             </>
           ) : (
-            <FormField
-              label="VM Bundle Path"
-              required
-              width="full"
-              helpText="Absolute path to the .pvm or .macvm bundle on this host."
-            >
+            <FormField label="VM Bundle Path" required width="full" helpText="Absolute path to the .pvm or .macvm bundle on this host.">
               <div className="flex gap-2">
                 <Input
+                  tone={themeColor}
                   size="sm"
                   placeholder="/Users/me/Parallels/MyVM.pvm"
                   value={form.local_path}
@@ -746,155 +704,138 @@ export const UploadCatalogModal: React.FC<UploadCatalogModalProps> = ({
                   className="font-mono text-xs"
                 />
                 {IS_TAURI && (
-                  <Button
-                    type="button"
-                    variant="soft"
-                    color={themeColor}
-                    size="sm"
-                    leadingIcon="Folder"
-                    onClick={() => void handleBrowse()}
-                  >
+                  <Button type="button" variant="soft" color={themeColor} size="sm" leadingIcon="Folder" onClick={() => void handleBrowse()}>
                     Browse
                   </Button>
                 )}
               </div>
             </FormField>
           )}
-        </div>
-
+        </Panel>
 
         {(selectedVm || (form.sourceMode === 'manual' && form.local_path !== '')) && (
           <>
             {/* ── Catalog Details ─────────────────────────────────────────────── */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900/30">
-              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                Catalog Details
-              </p>
+            <Panel padding="xs" variant="glass" backgroundColor="white">
+              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Catalog Details</p>
               <FormLayout columns={2} gap="sm">
                 <FormField label="Catalog ID" required width="full">
-                  <Input size="sm" placeholder="e.g. ubuntu-22-04" value={form.catalog_id}
-                    onChange={(e) => set('catalog_id', e.target.value)} />
+                  <Input tone={themeColor} size="sm" placeholder="e.g. ubuntu-22-04" value={form.catalog_id} onChange={(e) => set('catalog_id', e.target.value)} />
                 </FormField>
                 <FormField label="Description" width="full">
-                  <Input size="sm" placeholder="Brief description of this image" value={form.description}
-                    onChange={(e) => set('description', e.target.value)} />
+                  <Input tone={themeColor} size="sm" placeholder="Brief description of this image" value={form.description} onChange={(e) => set('description', e.target.value)} />
                 </FormField>
                 <FormField label="Version" required width="full">
-                  <Input size="sm" placeholder="e.g. 1.0.0" value={form.version}
-                    onChange={(e) => set('version', e.target.value)} />
+                  <Input tone={themeColor} size="sm" placeholder="e.g. 1.0.0" value={form.version} onChange={(e) => set('version', e.target.value)} />
                 </FormField>
                 <FormField label="Architecture" required width="full">
-                  <Combobox value={form.architecture} onChange={(v) => set('architecture', v)}
-                    options={ARCH_OPTIONS} placeholder="e.g. arm64" />
+                  <Combobox color={themeColor} value={form.architecture} onChange={(v) => set('architecture', v)} options={ARCH_OPTIONS} placeholder="e.g. arm64" />
                 </FormField>
               </FormLayout>
-              <FormField label="Connection" width="full"
-                helpText="Select a storage provider to build the connection string. Leave unset for the local catalog.">
-                <StorageProviderPicker
-                  value={form.connection}
-                  onChange={(conn) => set('connection', conn)}
-                  themeColor={themeColor}
-                />
+              <FormField label="Connection" width="full" helpText="Select a storage provider to build the connection string. Leave unset for the local catalog.">
+                <StorageProviderPicker value={form.connection} onChange={(conn) => set('connection', conn)} themeColor={themeColor} />
               </FormField>
-            </div>
+            </Panel>
 
             {/* ── Compression ─────────────────────────────────────────────────── */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900/30">
-              <div className="flex items-start justify-between gap-4">
+            <Panel padding="xs" variant="glass" backgroundColor="white">
+              <div className="flex items-start justify-between gap-4 p-1">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                    Compression
-                  </p>
-                  <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">
-                    Pack and compress the VM bundle before uploading.
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Compression</p>
+                  <p className="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">Pack and compress the VM bundle before uploading.</p>
                 </div>
-                <Toggle checked={form.compress}
-                  onChange={(e) => set('compress', e.target.checked)} size="sm" color="blue" />
+                <Toggle color={themeColor} checked={form.compress} onChange={(e) => set('compress', e.target.checked)} size="sm" />
               </div>
               {form.compress && (
                 <div className="mt-3 border-t border-neutral-100 pt-3 dark:border-neutral-700/60">
                   <FormField label="Compression Level" width="full">
-                    <Select value={form.compress_level} size="sm"
-                      onChange={(e) => set('compress_level', e.target.value)}>
+                    <Select tone={themeColor} value={form.compress_level} size="sm" onChange={(e) => set('compress_level', e.target.value)}>
                       {COMPRESSION_LEVELS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
                       ))}
                     </Select>
                   </FormField>
                 </div>
               )}
-            </div>
+            </Panel>
 
             {/* ── Access & Metadata ───────────────────────────────────────────── */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900/30">
-              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                Access & Metadata
-              </p>
+            <CollapsiblePanel title={( <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">Access & Metadata <span className="font-normal normal-case text-neutral-400">(optional)</span></p>)} padding="xs" variant="glass" backgroundColor="white">
+             
               <div className="space-y-3">
                 <FormField label="Tags" width="full" helpText="Free-form labels to help categorize this image.">
-                  <ChipInput values={form.tags} onChange={(v) => set('tags', v)}
-                    placeholder="e.g. production, ubuntu, base" />
+                  <TagPicker
+                    items={[]}
+                    value={form.tags}
+                    normalizeValue={(value) => value ? value.toLocaleUpperCase() : value}
+                    onChange={(v) => set('tags', v)}
+                    allowCreate
+                    placeholder="e.g. production, ubuntu, base"
+                    searchPlaceholder="Add a tag…"
+                    color={themeColor}
+                    escapeBoundary
+                  />
                 </FormField>
                 <FormLayout columns={2} gap="sm">
                   <FormField label="Required Roles" width="full" helpText="Users must hold one of these roles to download.">
-                    <ChipInput values={form.required_roles} onChange={(v) => set('required_roles', v)}
-                      placeholder="e.g. developer" />
+                    <TagPicker
+                      items={[]}
+                      value={form.required_roles}
+                      normalizeValue={(value) => value ? value.toLocaleUpperCase() : value}
+                      onChange={(v) => set('required_roles', v)}
+                      allowCreate
+                      placeholder="e.g. developer"
+                      searchPlaceholder="Add a role…"
+                      color={themeColor}
+                      escapeBoundary
+                    />
                   </FormField>
                   <FormField label="Required Claims" width="full" helpText="Users must hold all of these claims to download.">
-                    <ChipInput values={form.required_claims} onChange={(v) => set('required_claims', v)}
-                      placeholder="e.g. PULL_CATALOG_MANIFEST" />
+                    <TagPicker
+                      items={internalClaimItems}
+                      normalizeValue={(value) => value ? value.toLocaleUpperCase() : value}
+                      value={form.required_claims}
+                      onChange={(v) => set('required_claims', v)}
+                      allowCreate
+                      placeholder="e.g. PULL_CATALOG_MANIFEST"
+                      searchPlaceholder="Add a claim…"
+                      color={themeColor}
+                      escapeBoundary
+                    />
                   </FormField>
                 </FormLayout>
                 <FormField label="UUID (optional)" width="full" helpText="Override the auto-generated UUID for this manifest entry.">
-                  <Input size="sm" placeholder="Leave empty to auto-generate" value={form.uuid}
-                    onChange={(e) => set('uuid', e.target.value)} className="font-mono text-xs" />
+                  <Input tone={themeColor} size="sm" placeholder="Leave empty to auto-generate" value={form.uuid} onChange={(e) => set('uuid', e.target.value)} className="font-mono text-xs" />
                 </FormField>
               </div>
-            </div>
+            </CollapsiblePanel>
 
             {/* ── Minimum Requirements ────────────────────────────────────────── */}
-            <div className="rounded-xl border border-neutral-200 bg-white p-3 dark:border-neutral-700 dark:bg-neutral-900/30">
-              <p className="mb-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                Minimum Requirements{' '}
-                <span className="font-normal normal-case text-neutral-400">(optional)</span>
+            <CollapsiblePanel title={(
+              <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                Minimum Requirements <span className="font-normal normal-case text-neutral-400">(optional)</span>
               </p>
+            )} padding="xs" variant="glass" backgroundColor="white">
+ 
               <FormLayout columns={3} gap="sm">
                 <FormField label="CPU (cores)" width="full">
-                  <Input size="sm" type="number" min={1} placeholder="e.g. 2"
-                    value={form.min_cpu} onChange={(e) => set('min_cpu', e.target.value)} />
+                  <Input tone={themeColor} size="sm" type="number" min={1} placeholder="e.g. 2" value={form.min_cpu} onChange={(e) => set('min_cpu', e.target.value)} />
                 </FormField>
                 <FormField label="Memory (MB)" width="full">
-                  <Input size="sm" type="number" min={256} placeholder="e.g. 4096"
-                    value={form.min_memory} onChange={(e) => set('min_memory', e.target.value)} />
+                  <Input tone={themeColor} size="sm" type="number" min={256} placeholder="e.g. 4096" value={form.min_memory} onChange={(e) => set('min_memory', e.target.value)} />
                 </FormField>
                 <FormField label="Disk (MB)" width="full">
-                  <Input size="sm" type="number" min={1} placeholder="e.g. 20480"
-                    value={form.min_disk} onChange={(e) => set('min_disk', e.target.value)} />
+                  <Input tone={themeColor} size="sm" type="number" min={1} placeholder="e.g. 20480" value={form.min_disk} onChange={(e) => set('min_disk', e.target.value)} />
                 </FormField>
               </FormLayout>
-            </div>
+            </CollapsiblePanel>
 
-
-            {displayError && (
-              <Alert tone="danger" variant="subtle"
-                title={validationError ? 'Validation Error' : 'Upload Failed'}
-                description={displayError} />
-
-            )}
+            {displayError && <Alert tone="danger" variant="subtle" title={validationError ? 'Validation Error' : 'Upload Failed'} description={displayError} />}
           </>
         )}
       </div>
-
-
-      <ModalActions>
-        <Button variant="soft" color="slate" onClick={onClose} disabled={loading}>Cancel</Button>
-        {(selectedVm || (form.sourceMode === 'manual' && form.local_path !== '')) && (
-          <Button variant="solid" color={themeColor} onClick={handleSubmit} loading={loading}>
-            Upload to Catalog
-          </Button>
-        )}
-      </ModalActions>
-    </Modal >
+    </Modal>
   );
 };

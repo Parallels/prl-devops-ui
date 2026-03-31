@@ -2,7 +2,7 @@
  * DevOps API related interfaces
  */
 
-import { VirtualMachine } from "./VirtualMachine";
+import { VirtualMachine } from './VirtualMachine';
 
 /**
  * Catalog manifest item from API
@@ -144,17 +144,29 @@ export interface DevOpsRemoteHost {
   devops_version?: string;
   description?: string;
   tags?: string[];
-  state: "healthy" | "unhealthy";
+  state: 'healthy' | 'unhealthy';
   parallels_desktop_version?: string;
   parallels_desktop_licensed?: boolean;
   has_websocket_events?: boolean;
   is_reverse_proxy_enabled?: boolean;
+  enabled_modules?: string[];
   resources?: DevOpsRemoteHostResource[];
   detailed_resources?: DevOpsRemoteHostResourceDetailed;
   vms?: VirtualMachine[];
+  cache_config?: CacheConfig;
+  cache_items?: DevOpsRemoteHostItem[];
+  is_local?: boolean;
   [key: string]: unknown;
 }
 
+export interface DevOpsRemoteHostItem {
+  catalog_id: string;
+  version: string;
+  architecture: string;
+  cache_size: number;
+  cache_type: string;
+  cached_date: string;
+}
 export interface DevOpsRemoteHostResourceDetailed {
   total_apple_vms?: number;
   system_reserved?: HardwareResourceStats;
@@ -177,6 +189,55 @@ export interface DevOpsRemoteHostResource {
 }
 
 /**
+ * Claim assigned to a role or user (from /auth/claims or embedded in a role/user response)
+ */
+export interface DevOpsClaim {
+  id: string;
+  name: string;
+  description?: string;
+  internal?: string;
+  /** Display group (e.g. "Administration", "VMs"). Present on built-in claims. */
+  group?: string;
+  /** Resource row within the group (e.g. "User", "VM"). */
+  resource?: string;
+  /** Action column (e.g. "create", "read", "update", "delete"). */
+  action?: string;
+  /** Users that hold this claim directly. Only populated on /auth/claims endpoints. */
+  users?: DevOpsUser[];
+}
+
+/**
+ * A resource row within a claim group (returned by GET /v1/auth/claims/grouped)
+ */
+export interface ClaimGroupResourceResponse {
+  resource: string;
+  claims: DevOpsClaim[];
+}
+
+/**
+ * A top-level group section from GET /v1/auth/claims/grouped
+ */
+export interface ClaimGroupResponse {
+  group: string;
+  resources: ClaimGroupResourceResponse[];
+}
+
+/**
+ * Effective claim on a user — may be directly assigned or inherited from a role
+ */
+export interface UserClaimResponse {
+  id: string;
+  name: string;
+  /** true → claim comes from a role, not assigned directly */
+  is_inherited: boolean;
+  /**
+   * ID of the first role (in the user's role list) that granted this claim.
+   * Only set when is_inherited is true.
+   */
+  source_role?: string;
+}
+
+/**
  * DevOps user
  */
 export interface DevOpsUser {
@@ -184,8 +245,11 @@ export interface DevOpsUser {
   name?: string;
   email?: string;
   username?: string;
+  /** IDs of roles assigned to this user */
   roles?: string[];
+  /** IDs of claims assigned directly to this user */
   claims?: string[];
+  effective_claims?: UserClaimResponse[];
   isSuperUser?: boolean;
   [key: string]: unknown;
 }
@@ -198,6 +262,11 @@ export interface DevOpsCreateUserRequest {
   email: string;
   password: string;
   username: string;
+  /** Role IDs to assign. Defaults to ["USER"] if omitted. */
+  roles?: string[];
+  /** Direct claim IDs to assign. */
+  claims?: string[];
+  is_super_user?: boolean;
 }
 
 /**
@@ -250,13 +319,17 @@ export interface CatalogPushRequest {
 }
 
 /**
- * Roles and claims entity
+ * Roles and claims entity (legacy — kept for claims service compatibility)
  */
-export interface DevOpsRolesAndClaims {
+export interface DevOpsClaims {
   id?: string;
   name?: string;
   description?: string;
+  internal?: boolean;
   users?: DevOpsUser[];
+  group?: string;
+  resource?: string;
+  action?: string;
   [key: string]: unknown;
 }
 
@@ -269,17 +342,75 @@ export interface DevOpsRolesAndClaimsCreateRequest {
 }
 
 /**
+ * Role response from API — includes full claims and users lists
+ */
+export interface DevOpsRole {
+  id: string;
+  name: string;
+  description?: string;
+  internal?: boolean;
+  /** All claims that members of this role inherit */
+  claims: DevOpsClaim[];
+  /** All users that currently have this role assigned */
+  users: DevOpsUser[];
+}
+
+/**
+ * Request body for creating or updating a role
+ */
+export interface RoleRequest {
+  name: string;
+  description?: string;
+  /** Optional claim IDs to attach on creation */
+  claims?: string[];
+}
+
+/**
+ * Request body for adding a claim to a role
+ */
+export interface RoleClaimRequest {
+  /** Claim name / ID to add to the role */
+  name: string;
+}
+
+/**
  * Add orchestrator host request
  */
 export interface AddOrchestratorHostRequest {
   host: string;
   description?: string;
+  tags?: string[];
   authentication?: {
     username?: string;
     password?: string;
     api_key?: string;
   };
   [key: string]: unknown;
+}
+
+/**
+ * Deploy orchestrator host via SSH — async operation (POST /api/v1/orchestrator/hosts/deploy)
+ */
+export interface DeployOrchestratorHostRequest {
+  // SSH connection
+  ssh_host: string;
+  ssh_port?: string;
+  ssh_user: string;
+  ssh_password?: string;
+  ssh_key?: string;
+  ssh_insecure_host_key?: boolean;
+  sudo_password?: string;
+  // Agent identity in the orchestrator
+  host_name: string;
+  tags?: string[];
+  // Install options
+  root_password?: string;
+  enabled_modules?: string;
+  pd_version?: string;
+  agent_version?: string;
+  pre_release?: boolean;
+  agent_port?: string;
+  enrollment_token_ttl?: number;
 }
 
 /**
@@ -295,8 +426,6 @@ export interface UpdateOrchestratorHostRequest {
   };
   [key: string]: unknown;
 }
-
-
 
 /**
  * API Key entity
@@ -362,4 +491,21 @@ export interface VmCloneRequest {
  */
 export interface VmConfigureRequest {
   operations: VmOperation[];
+}
+
+export interface HostAddedEvent {
+  host_id: string;
+  host: string;
+  description?: string;
+}
+
+export interface HostRemovedEvent {
+  host_id: string;
+  host?: string;
+}
+
+export interface HostDeployedEvent {
+  host_id: string;
+  host?: string;
+  message?: string;
 }

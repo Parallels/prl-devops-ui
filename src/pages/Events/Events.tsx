@@ -3,9 +3,16 @@ import React, {
     useMemo, useRef, useState, useTransition,
 } from 'react';
 import classNames from 'classnames';
-import { useEventsHub, type EventsHubMessage } from '@/contexts/EventsHubContext';
+import {
+    useEventsHub,
+    type EventsHubMessage,
+    type ReverseProxyServiceStatus,
+    type ReverseProxyHostStatus,
+    type ReverseProxyHostStateValue,
+} from '@/contexts/EventsHubContext';
 import { WebSocketState } from '@/types/WebSocket';
 import { CustomIcon } from '@/controls';
+import { Picker, type PickerItem } from '@prl/ui-kit';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -93,11 +100,9 @@ interface RichMessage {
 // ---------------------------------------------------------------------------
 const EventRow = React.memo(function EventRow({
     msg,
-    isNew,
     onToggle,
 }: {
     msg: EventsHubMessage;
-    isNew: boolean;
     onToggle: (expanding: boolean) => void;
 }) {
     const [expanded, setExpanded] = useState(false);
@@ -114,22 +119,13 @@ const EventRow = React.memo(function EventRow({
     }, [expanded, onToggle]);
 
     return (
-        <div className={classNames(
-            'rounded transition-colors',
-            isNew && 'bg-sky-50/60 dark:bg-sky-500/5',
-        )}>
+        <div className="rounded">
             {/* Summary row */}
             <button
                 type="button"
                 onClick={handleToggle}
                 className="w-full flex items-center gap-2 px-2 py-0.5 text-left hover:bg-neutral-50 dark:hover:bg-white/5 rounded"
             >
-                {/* New dot */}
-                <span className={classNames(
-                    'h-1.5 w-1.5 flex-shrink-0 rounded-full transition-colors duration-500',
-                    isNew ? 'bg-sky-400' : 'bg-transparent'
-                )} />
-
                 {/* Timestamp */}
                 <span className="shrink-0 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 w-[84px]">
                     {formatTime(msg.receivedAt)}
@@ -191,20 +187,107 @@ const ConnectionBadge: React.FC<{ state: WebSocketState }> = ({ state }) => {
 };
 
 // ---------------------------------------------------------------------------
+// Reverse Proxy state summary group
+// ---------------------------------------------------------------------------
+const RP_STATE_DOT: Record<ReverseProxyHostStateValue, string> = {
+    starting: 'bg-amber-400 animate-pulse',
+    started: 'bg-emerald-500',
+    stopped: 'bg-neutral-400',
+    ip_changed: 'bg-sky-400',
+    error: 'bg-rose-500',
+};
+
+const RP_STATE_COLOR: Record<ReverseProxyHostStateValue, string> = {
+    starting: 'text-amber-600 dark:text-amber-400',
+    started: 'text-emerald-600 dark:text-emerald-400',
+    stopped: 'text-neutral-500 dark:text-neutral-400',
+    ip_changed: 'text-sky-600 dark:text-sky-400',
+    error: 'text-rose-600 dark:text-rose-400',
+};
+
+const ReverseProxyGroup: React.FC<{
+    serviceStatus: ReverseProxyServiceStatus | null;
+    hostStatuses: Record<string, ReverseProxyHostStatus>;
+}> = ({ serviceStatus, hostStatuses }) => {
+    const hosts = useMemo(
+        () => Object.values(hostStatuses).sort((a, b) => b.ts - a.ts),
+        [hostStatuses]
+    );
+
+    return (
+        <div className="border-b border-amber-200 dark:border-amber-500/20 bg-amber-50/40 dark:bg-amber-500/5 flex-shrink-0">
+            {/* Service state row */}
+            <div className="px-3 py-1.5 flex items-center gap-3 flex-wrap">
+                <span className="text-[10px] font-mono font-semibold text-amber-600 dark:text-amber-500 uppercase tracking-wide shrink-0">
+                    Reverse Proxy
+                </span>
+                {serviceStatus ? (
+                    <span className={classNames(
+                        'inline-flex items-center gap-1.5 text-[10px] font-mono',
+                        serviceStatus.state === 'started'
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-neutral-500 dark:text-neutral-400'
+                    )}>
+                        <span className={classNames(
+                            'h-1.5 w-1.5 rounded-full',
+                            serviceStatus.state === 'started' ? 'bg-emerald-500' : 'bg-neutral-400'
+                        )} />
+                        Service {serviceStatus.state}
+                    </span>
+                ) : (
+                    <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-600 italic">service state unknown</span>
+                )}
+                {hosts.length > 0 && (
+                    <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-600 ml-auto">
+                        {hosts.length} host{hosts.length !== 1 ? 's' : ''}
+                    </span>
+                )}
+            </div>
+
+            {/* Per-host state rows */}
+            {hosts.length > 0 && (
+                <div className="border-t border-amber-100 dark:border-amber-500/10">
+                    {hosts.map((h) => (
+                        <div key={h.id} className="px-3 py-0.5 flex items-center gap-2 text-[10px] font-mono border-b border-amber-100/50 dark:border-amber-500/5 last:border-0">
+                            <span className={classNames('h-1.5 w-1.5 rounded-full shrink-0', RP_STATE_DOT[h.state] ?? 'bg-neutral-400')} />
+                            <span className="text-neutral-500 dark:text-neutral-400 shrink-0 w-[72px] truncate" title={h.id}>
+                                {h.id.length > 8 ? `${h.id.slice(0, 8)}…` : h.id}
+                            </span>
+                            <span className={classNames('shrink-0 w-[64px]', RP_STATE_COLOR[h.state] ?? '')}>{h.state}</span>
+                            {h.state === 'ip_changed' && (h.old_ip || h.new_ip) && (
+                                <span className="text-sky-600 dark:text-sky-400 truncate">
+                                    {h.old_ip && `${h.old_ip} → `}{h.new_ip}
+                                </span>
+                            )}
+                            {h.state === 'error' && h.error_message && (
+                                <span className="text-rose-500 dark:text-rose-400 truncate">{h.error_message}</span>
+                            )}
+                            <span className="ml-auto text-neutral-400 dark:text-neutral-600 shrink-0">{formatTime(h.ts)}</span>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ---------------------------------------------------------------------------
 // Main Events page
 // ---------------------------------------------------------------------------
 export const Events: React.FC = () => {
-    const { allMessages, clearContainer, clearAllContainers, connectionState } = useEventsHub();
+    const { allMessages, clearContainer, clearAllContainers, connectionState, rpServiceStatus, rpHostStatuses } = useEventsHub();
     const [autoScroll, setAutoScroll] = useState(true);
-    const [filterType, setFilterType] = useState<string>('');
+    const [filterTypes, setFilterTypes] = useState<string[]>([]);
     const [search, setSearch] = useState<string>('');
-    const [newIds, setNewIds] = useState<Set<string>>(new Set());
     const listRef = useRef<HTMLDivElement>(null);
-    const prevCountRef = useRef(0);
     const isProgrammaticRef = useRef(false);
 
     // Defer search so the input stays responsive while the filter runs in the background
     const deferredSearch = useDeferredValue(search);
+
+    // Defer incoming messages — all heavy derivations run at low priority so
+    // they never interrupt user interactions (filter dropdown, search input).
+    const deferredMessages = useDeferredValue(allMessages);
 
     // Transition for filter type changes — keeps the UI interactive while re-filtering
     const [filterPending, startFilterTransition] = useTransition();
@@ -213,19 +296,21 @@ export const Events: React.FC = () => {
     // Pre-compute each message's search haystack once so filter is O(n) string
     // comparison instead of O(n × JSON.stringify) per keystroke.
     const richSorted = useMemo<RichMessage[]>(() => {
-        const arr = Array.from(allMessages).sort((a, b) => a.receivedAt - b.receivedAt);
+        const arr = Array.from(deferredMessages).sort((a, b) => a.receivedAt - b.receivedAt);
         return arr.map((msg) => ({
             msg,
             haystack: `${msg.raw.event_type} ${msg.raw.message} ${JSON.stringify(msg.raw.body)}`.toLowerCase(),
         }));
-    }, [allMessages]);
+    }, [deferredMessages]);
 
     // ── Type filter ─────────────────────────────────────────────────────────
     const typeFiltered = useMemo<RichMessage[]>(() => {
-        if (!filterType) return richSorted;
-        if (filterType === '_other') return richSorted.filter((r) => !KNOWN_TYPES.has(r.msg.raw.event_type));
-        return richSorted.filter((r) => r.msg.raw.event_type === filterType);
-    }, [richSorted, filterType]);
+        if (filterTypes.length === 0) return richSorted;
+        return richSorted.filter((r) => {
+            const et = r.msg.raw.event_type;
+            return filterTypes.some((t) => (t === '_other' ? !KNOWN_TYPES.has(et) : et === t));
+        });
+    }, [richSorted, filterTypes]);
 
     // ── Search filter (uses deferred value) ─────────────────────────────────
     const filtered = useMemo<RichMessage[]>(() => {
@@ -257,32 +342,11 @@ export const Events: React.FC = () => {
         return counts;
     }, [richSorted]);
 
-    // ── Reset on filter/search change ───────────────────────────────────────
+    // ── Reset scroll + autoscroll on filter/search change ───────────────────
     useLayoutEffect(() => {
-        setNewIds(new Set());
-        prevCountRef.current = 0;
         setAutoScroll(true);
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-    }, [filterType, deferredSearch]);
-
-    // ── Track new IDs (flash 2 s) ───────────────────────────────────────────
-    useEffect(() => {
-        const total = richSorted.length;
-        if (total > prevCountRef.current) {
-            const added = richSorted.slice(prevCountRef.current).map((r) => r.msg.id);
-            setNewIds((prev) => new Set([...prev, ...added]));
-            const timer = setTimeout(() => {
-                setNewIds((prev) => {
-                    const next = new Set(prev);
-                    added.forEach((id) => next.delete(id));
-                    return next;
-                });
-            }, 2000);
-            prevCountRef.current = total;
-            return () => clearTimeout(timer);
-        }
-        prevCountRef.current = total;
-    }, [richSorted.length]);
+    }, [filterTypes, deferredSearch]);
 
     // ── Auto-scroll to bottom ───────────────────────────────────────────────
     useEffect(() => {
@@ -299,17 +363,34 @@ export const Events: React.FC = () => {
     }, []);
 
     const handleClear = useCallback(() => {
-        if (filterType && filterType !== '_other') clearContainer(filterType);
-        else clearAllContainers();
-        setNewIds(new Set());
-        prevCountRef.current = 0;
-    }, [filterType, clearContainer, clearAllContainers]);
+        // If exactly one known container type is selected, clear just that container
+        const knownSelected = filterTypes.filter((t) => t !== '_other' && KNOWN_TYPES.has(t));
+        if (filterTypes.length === 1 && knownSelected.length === 1) {
+            clearContainer(knownSelected[0]);
+        } else {
+            clearAllContainers();
+        }
+    }, [filterTypes, clearContainer, clearAllContainers]);
 
-    const handleFilterChange = useCallback((value: string) => {
-        startFilterTransition(() => setFilterType(value));
+    const handleFilterChange = useCallback((ids: string[]) => {
+        startFilterTransition(() => setFilterTypes(ids));
     }, [startFilterTransition]);
 
-    const contentKey = `${filterType}:${deferredSearch}:${visibleRows.length === 0 ? 'empty' : 'has'}`;
+    // ── Filter picker items ──────────────────────────────────────────────────
+    const filterPickerItems = useMemo<PickerItem[]>(() =>
+        FILTER_TYPES
+            .filter((t) => t !== '')
+            .map((t) => ({
+                id: t,
+                title: TYPE_LABELS[t] ?? t,
+                subtitle: `${t === '_other'
+                    ? (typeCounts['_other'] ?? 0)
+                    : (typeCounts[t] ?? 0)} events`,
+            })),
+        [typeCounts]
+    );
+
+    const contentKey = `${filterTypes.join(',')}:${deferredSearch}:${visibleRows.length === 0 ? 'empty' : 'has'}`;
     const isStale = search !== deferredSearch || filterPending;
 
     return (
@@ -342,27 +423,19 @@ export const Events: React.FC = () => {
                     )}
                 </div>
 
-                {/* Event type filter */}
-                <select
-                    value={filterType}
-                    onChange={(e) => handleFilterChange(e.target.value)}
-                    className={classNames(
-                        'border rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-sky-400 dark:focus:border-sky-500/50 transition-colors',
-                        filterPending
-                            ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300'
-                            : 'bg-neutral-50 dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300',
-                    )}
-                >
-                    {FILTER_TYPES.map((t) => {
-                        const count = t === '' ? allMessages.length : (typeCounts[t] ?? 0);
-                        const label = TYPE_LABELS[t] ?? t;
-                        return (
-                            <option key={t} value={t}>
-                                {label} ({count})
-                            </option>
-                        );
-                    })}
-                </select>
+                {/* Event type filter — multi-select picker */}
+                <div className="w-[180px] shrink-0">
+                    <Picker
+                        items={filterPickerItems}
+                        multi
+                        selectedIds={filterTypes}
+                        onMultiChange={handleFilterChange}
+                        placeholder="All types"
+                        size="sm"
+                        color="sky"
+                        escapeBoundary
+                    />
+                </div>
 
                 {/* Auto-scroll toggle */}
                 <button
@@ -381,11 +454,16 @@ export const Events: React.FC = () => {
                 <button
                     type="button"
                     onClick={handleClear}
-                    disabled={allMessages.length === 0}
-                    title={filterType && filterType !== '_other' ? `Clear ${filterType}` : 'Clear all'}
+                    disabled={deferredMessages.length === 0}
+                    title={filterTypes.length === 1 && filterTypes[0] !== '_other' ? `Clear ${TYPE_LABELS[filterTypes[0]] ?? filterTypes[0]}` : 'Clear all'}
                     className="px-2 py-1 rounded text-xs font-mono border border-neutral-300 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 text-neutral-500 dark:text-neutral-400 hover:border-rose-400 dark:hover:border-rose-500/40 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >✕</button>
             </div>
+
+            {/* ── Reverse Proxy state group ──────────────────────────── */}
+            {(filterTypes.length === 0 || filterTypes.includes('reverse_proxy')) && (rpServiceStatus !== null || Object.keys(rpHostStatuses).length > 0) && (
+                <ReverseProxyGroup serviceStatus={rpServiceStatus} hostStatuses={rpHostStatuses} />
+            )}
 
             {/* ── Event rows ─────────────────────────────────────────── */}
             <div
@@ -408,7 +486,6 @@ export const Events: React.FC = () => {
                                 <EventRow
                                     key={msg.id}
                                     msg={msg}
-                                    isNew={newIds.has(msg.id)}
                                     onToggle={handleCardToggle}
                                 />
                             ))}
@@ -420,7 +497,7 @@ export const Events: React.FC = () => {
             {/* ── Footer ──────────────────────────────────────────────── */}
             <div className="flex items-center justify-between px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 flex-shrink-0">
                 <span>
-                    {filtered.length.toLocaleString()} / {allMessages.length.toLocaleString()} events
+                    {filtered.length.toLocaleString()} / {deferredMessages.length.toLocaleString()} events
                     {hiddenCount > 0 && <span className="ml-1 text-amber-500 dark:text-amber-400">(showing last {MAX_DISPLAY.toLocaleString()})</span>}
                 </span>
                 <ConnectionBadge state={connectionState} />

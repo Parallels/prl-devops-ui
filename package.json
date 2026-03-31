@@ -31,6 +31,7 @@
     "@tauri-apps/plugin-store": "^2.4.0",
     "@tauri-apps/plugin-stronghold": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.9.0",
+    "agentic-flow": "^2.0.7",
     "axios": "^1.14.0",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
@@ -52,6 +53,9 @@
       "vite": "^8.0.0"
     }
   },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.59.0"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
@@ -67,6 +71,7 @@
     "autoprefixer": "^10.4.27",
     "jsdom": "^29.0.1",
     "postcss": "^8.5.8",
+    "ruflo": "^3.5.48",
     "sass-embedded": "^1.98.0",
     "tailwindcss": "^4.2.2",
     "typescript": "~6.0.2",

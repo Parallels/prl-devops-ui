@@ -341,6 +341,27 @@ class AuthService {
   }
 
   /**
+   * Refresh the session token for a hostname and emit onTokenRefreshed$ so that
+   * SessionContext updates its claims/roles without a full logout.
+   * Use this when an auth event indicates the current user's permissions changed
+   * (e.g. USER_UPDATED, ROLE_CLAIM_ADDED/REMOVED on a role the user holds).
+   *
+   * @param hostname      The hostname whose session should be refreshed.
+   * @param serverUrl     Optional URL override (pass session.serverUrl to ensure
+   *                      the request targets the real host in dev proxy setups).
+   */
+  async refreshSession(hostname: string, serverUrl?: string): Promise<void> {
+    hostname = this.normalizeHostname(hostname);
+    if (serverUrl) {
+      const existing = this.credentialsCache.get(hostname);
+      if (existing) {
+        this.credentialsCache.set(hostname, { ...existing, url: serverUrl });
+      }
+    }
+    await this.refreshTokenInternal(hostname);
+  }
+
+  /**
    * Force re-authentication for a hostname.
    * Clears the cached token, performs a fresh login, and emits tokenRefreshed$
    * so that SessionContext updates its claims/roles without requiring a full

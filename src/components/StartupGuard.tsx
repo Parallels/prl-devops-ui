@@ -2,32 +2,99 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useConfig } from '../contexts/ConfigContext';
 import { useSession } from '../contexts/SessionContext';
+import { useLockedHost } from '../contexts/LockedHostContext';
 import { HostConfig } from '../interfaces/Host';
 import { authService } from '../services/authService';
 import { getPasswordKey, getApiKeyKey } from '../utils/secretKeys';
-import { OnboardingPrefill } from '../pages/Onboarding/Onboarding';
+import { LoginPrefill } from '../pages/Login/Login';
 import { decodeToken } from '../utils/tokenUtils';
+import { devopsService } from '../services/devops';
 
 export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const config = useConfig();
     const { session, setSession } = useSession();
+    const { isLocked, hostUrl, lockedHostname, username: lockedUsername, hasPassword, password: lockedPassword } = useLockedHost();
     const navigate = useNavigate();
     const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
 
-        const redirectToOnboarding = (reason: string, host?: HostConfig) => {
+        const redirectToOnboarding = (reason: string) => {
             console.log('[StartupGuard] → onboarding:', reason);
             if (cancelled) return;
-            const prefill: OnboardingPrefill | undefined = host
-                ? { serverUrl: host.baseUrl, authType: host.authType, username: host.username, hostId: host.id }
-                : undefined;
-            navigate('/onboarding', { replace: true, state: prefill ? { prefill } : undefined });
+            navigate('/onboarding', { replace: true });
+        };
+
+        const redirectToLogin = (reason: string, host?: HostConfig) => {
+            console.log('[StartupGuard] → login:', reason);
+            if (cancelled) return;
+            if (host) {
+                const prefill: LoginPrefill = { hostId: host.id };
+                navigate('/login', { replace: true, state: { prefill } });
+            } else {
+                navigate('/login', { replace: true });
+            }
         };
 
         const checkConfig = async () => {
             try {
+                // ── Locked-host auto-login (all three env vars set) ───────────────
+                if (isLocked && lockedHostname && lockedUsername && hasPassword && lockedPassword) {
+                    if (session) {
+                        // Already have a session — proceed immediately
+                        if (!cancelled) setIsReady(true);
+                        return;
+                    }
+                    console.log('[StartupGuard] locked mode — attempting auto-login for', lockedHostname);
+                    try {
+                        authService.setCredentials(lockedHostname, {
+                            url: hostUrl!,
+                            username: lockedUsername,
+                            password: lockedPassword,
+                            email: lockedUsername,
+                            api_key: '',
+                        });
+                        await authService.forceReauth(lockedHostname);
+
+                        let hardwareInfo;
+                        try { hardwareInfo = await devopsService.config.getHardwareInfo(lockedHostname); } catch { /* non-fatal */ }
+
+                        authService.currentHostname = lockedHostname;
+                        const token = authService.getToken(lockedHostname);
+                        const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
+
+                        if (!cancelled) {
+                            setSession({
+                                serverUrl: hostUrl!,
+                                hostname: lockedHostname,
+                                username: lockedUsername,
+                                authType: 'credentials',
+                                hostId: `locked:${lockedHostname}`,
+                                connectedAt: new Date().toISOString(),
+                                tokenPayload,
+                                hardwareInfo,
+                            });
+                            setIsReady(true);
+                        }
+                    } catch (error) {
+                        console.error('[StartupGuard] locked auto-login failed:', error);
+                        redirectToLogin('locked auto-login failed');
+                    }
+                    return;
+                }
+
+                // ── Locked-host without password — go straight to login ───────────
+                if (isLocked) {
+                    if (session) {
+                        if (!cancelled) setIsReady(true);
+                        return;
+                    }
+                    redirectToLogin('locked mode — no auto-login credentials');
+                    return;
+                }
+
+                // ── Normal multi-host flow ────────────────────────────────────────
                 const hosts = await config.get<HostConfig[]>('hosts');
 
                 if (!Array.isArray(hosts) || hosts.length === 0) {
@@ -58,7 +125,7 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('[StartupGuard] checking host', host.hostname, 'keepLoggedIn=', host.keepLoggedIn);
 
                 if (host.keepLoggedIn === false) {
-                    redirectToOnboarding('keepLoggedIn is false', host);
+                    redirectToLogin('keepLoggedIn is false', host);
                     return;
                 }
 
@@ -69,7 +136,7 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                 const secret = await config.getSecret(secretKey);
 
                 if (!secret) {
-                    redirectToOnboarding('secret missing', host);
+                    redirectToLogin('secret missing', host);
                     return;
                 }
 
@@ -82,10 +149,8 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                 });
 
                 if (!cancelled) {
-                    // Set session data for the connected host
                     authService.currentHostname = host.hostname;
 
-                    // Try to get and decode the token
                     const token = authService.getToken(host.hostname);
                     const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
 
@@ -108,7 +173,8 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             } catch (error) {
                 console.error('[StartupGuard] error:', error);
-                redirectToOnboarding('exception');
+                if (isLocked) redirectToLogin('exception in locked mode');
+                else redirectToOnboarding('exception');
             }
         };
 

@@ -1,16 +1,18 @@
-import React from "react";
+import React, { useMemo } from "react";
 import classNames from "classnames";
 import StatTile from "./StatTile";
 import type { StatTileProps } from "./StatTile";
 import { CustomIcon } from "./CustomIcon";
 import { type IconName } from "../icons/registry";
 import type { ThemeColor } from "../theme";
+import { getColorPaletteNames } from "../theme";
 
 export interface StatGoalItem {
   value: number;
   label: string;
   icon: IconName;
-  color: ThemeColor;
+  /** Omit to auto-assign from the theme palette. */
+  color?: ThemeColor;
   tooltip?: string;
 }
 
@@ -60,12 +62,17 @@ const CircularProgress: React.FC<{
 };
 
 const StatGoalTile: React.FC<StatGoalTileProps> = ({ goals, ...props }) => {
+  const resolvedGoals = useMemo(() => {
+    const palette = getColorPaletteNames(goals.length);
+    return goals.map((g, i) => ({ ...g, color: (g.color ?? palette[i]) as ThemeColor }));
+  }, [goals]);
+
   return (
     <StatTile
       {...props}
       body={
         <div className="flex flex-col h-full justify-center">
-          {goals.map((goal, idx) => (
+          {resolvedGoals.map((goal, idx) => (
             <React.Fragment key={idx}>
               <div className="flex items-center gap-4 py-3 first:pt-0 last:pb-0" title={goal.tooltip}>
                 <CircularProgress value={goal.value} color={goal.color} icon={goal.icon} />

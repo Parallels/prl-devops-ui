@@ -8,7 +8,7 @@ import notificationService from '../mocks/NotificationService';
 import { GLOBAL_NOTIFICATION_CHANNEL } from '../constants';
 
 export const CollapsiblePanelDemo: React.FC = () => {
-    const [collapsiblePanelVariant, setCollapsiblePanelVariant] = useState<'card' | 'plain'>('card');
+    const [collapsiblePanelVariant, setCollapsiblePanelVariant] = useState<'elevated' | 'glass'>('elevated');
     const [collapsiblePanelTone, setCollapsiblePanelTone] = useState<PanelTone>('neutral');
     const [collapsiblePanelExpanded, setCollapsiblePanelExpanded] = useState(true);
     const [collapsiblePanelDisabled, setCollapsiblePanelDisabled] = useState(false);
@@ -40,12 +40,12 @@ export const CollapsiblePanelDemo: React.FC = () => {
                             <MultiToggle
                                 fullWidth
                                 options={[
-                                    { label: 'Card', value: 'card' },
-                                    { label: 'Plain', value: 'plain' },
+                                    { label: 'Elevated', value: 'elevated' },
+                                    { label: 'Glass', value: 'glass' },
                                 ]}
                                 value={collapsiblePanelVariant}
                                 size="sm"
-                                onChange={(value) => setCollapsiblePanelVariant(value as 'card' | 'plain')}
+                                onChange={(value) => setCollapsiblePanelVariant(value as 'elevated' | 'glass')}
                             />
                         </label>
                         <label className="flex flex-col gap-2">

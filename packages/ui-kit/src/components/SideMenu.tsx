@@ -1,24 +1,52 @@
-import { Link, useLocation } from "react-router-dom";
-import React, { useMemo, useState } from "react";
-import CustomIcon from "./CustomIcon";
-import { type IconName } from "../icons/registry";
-import { ThemeColor } from "../theme";
+import { Link, useLocation } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
+import CustomIcon from './CustomIcon';
+import { type IconName } from '../icons/registry';
+import { ThemeColor } from '../theme';
 
-export type SideMenuItemType = "link" | "group" | "divider";
+export type SideMenuItemType = 'link' | 'group' | 'divider';
 
-export interface SideMenuGuardClaim { type: 'claim'; claim: string }
-export interface SideMenuGuardAnyClaim { type: 'anyClaim'; claims: string[] }
-export interface SideMenuGuardAllClaims { type: 'allClaims'; claims: string[] }
-export interface SideMenuGuardRole { type: 'role'; role: string }
-export interface SideMenuGuardAnyRole { type: 'anyRole'; roles: string[] }
-export interface SideMenuGuardModule { type: 'module'; module: string }
-export interface SideMenuGuardAnyModule { type: 'anyModule'; modules: string[] }
-export interface SideMenuGuardCustom { type: 'custom'; fn: () => boolean }
+export interface SideMenuGuardClaim {
+  type: 'claim';
+  claim: string;
+}
+export interface SideMenuGuardAnyClaim {
+  type: 'anyClaim';
+  claims: string[];
+}
+export interface SideMenuGuardAllClaims {
+  type: 'allClaims';
+  claims: string[];
+}
+export interface SideMenuGuardRole {
+  type: 'role';
+  role: string;
+}
+export interface SideMenuGuardAnyRole {
+  type: 'anyRole';
+  roles: string[];
+}
+export interface SideMenuGuardModule {
+  type: 'module';
+  module: string;
+}
+export interface SideMenuGuardAnyModule {
+  type: 'anyModule';
+  modules: string[];
+}
+export interface SideMenuGuardCustom {
+  type: 'custom';
+  fn: () => boolean;
+}
 
 export type SideMenuItemGuard =
-  | SideMenuGuardClaim | SideMenuGuardAnyClaim | SideMenuGuardAllClaims
-  | SideMenuGuardRole | SideMenuGuardAnyRole
-  | SideMenuGuardModule | SideMenuGuardAnyModule
+  | SideMenuGuardClaim
+  | SideMenuGuardAnyClaim
+  | SideMenuGuardAllClaims
+  | SideMenuGuardRole
+  | SideMenuGuardAnyRole
+  | SideMenuGuardModule
+  | SideMenuGuardAnyModule
   | SideMenuGuardCustom;
 
 export interface SideMenuItemBase {
@@ -29,9 +57,14 @@ export interface SideMenuItemBase {
   guards?: SideMenuItemGuard[];
 }
 
+export interface SideMenuSettings {
+  /** When true, the menu is collapsed */
+  collapsed?: boolean;
+}
+
 export interface SideMenuItemLink extends SideMenuItemBase {
   color?: ThemeColor;
-  type?: "link";
+  type?: 'link';
   label: string;
   path: string;
   icon?: IconName;
@@ -41,14 +74,14 @@ export interface SideMenuItemLink extends SideMenuItemBase {
 }
 
 export interface SideMenuItemGroup extends SideMenuItemBase {
-  type: "group";
+  type: 'group';
   label: string;
   /** When true, renders a divider line immediately before the group header. */
   hasDivider?: boolean;
 }
 
 export interface SideMenuItemDivider extends SideMenuItemBase {
-  type: "divider";
+  type: 'divider';
   groupName?: string;
 }
 
@@ -88,7 +121,6 @@ export interface SideMenuProps {
    */
   moduleViewOptions?: readonly string[];
 }
-
 
 const getSideMenuColorTokens = (color: ThemeColor) => {
   switch (color) {
@@ -323,7 +355,7 @@ export const SideMenu = ({
   logoIcon,
   logoText,
   items,
-  className = "",
+  className = '',
   collapsed = false,
   onToggleCollapse,
   mobileOpen = false,
@@ -341,7 +373,7 @@ export const SideMenu = ({
   const toggleCollapse = onToggleCollapse || (() => setInternalCollapsed(!internalCollapsed));
 
   const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/";
+    if (path === '/') return location.pathname === '/';
     return location.pathname.startsWith(path);
   };
 
@@ -393,27 +425,25 @@ export const SideMenu = ({
   // Mobile Overlay Classes
   const mobileClasses = `
     fixed inset-y-0 left-0 z-[60] w-64 bg-white/90 dark:bg-neutral-900/95 backdrop-blur-xl transition-transform duration-300 ease-in-out md:hidden
-    ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+    ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
   `;
 
   // Desktop Classes
+  // NOTE: backdrop-blur is intentionally NOT on this element — it would create a CSS stacking
+  // context that scopes child z-indices, preventing the logo from escaping the overlay.
+  // The blur + background are applied via an inner absolute layer instead.
   const desktopClasses = `
-    hidden md:flex flex-col flex-shrink-0 ${fullHeight ? "h-full" : "sticky top-16 h-[calc(100vh-64px)]"}
-    transition-all duration-300 backdrop-blur-2xl bg-white/70 dark:bg-neutral-900/90 border-r border-white/20 dark:border-neutral-700/60
+    hidden md:flex flex-col flex-shrink-0 relative ${fullHeight ? 'h-full' : 'sticky top-16 h-[calc(100vh-64px)]'}
+    transition-all duration-300
     shadow-[10px_0_30px_-10px_rgba(0,0,0,0.1)] dark:shadow-[10px_0_30px_-10px_rgba(0,0,0,0.4)] overflow-hidden
-    ${isCollapsed ? "w-[68px]" : "w-64"}
+    ${isCollapsed ? 'w-[68px]' : 'w-64'}
   `;
 
   const logoSection = (logoIcon || logoText) && (
-    <div className={`flex h-15 items-center bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 px-4 py-4 ${isCollapsed ? "justify-center" : ""}`}>
-      {logoIcon && (
-        <div className="flex-shrink-0">{logoIcon}</div>
-      )}
+    <div className={`relative z-50 flex h-15 items-center bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 px-4 py-4 ${isCollapsed ? 'justify-center' : ''}`}>
+      {logoIcon && <div className="flex-shrink-0">{logoIcon}</div>}
       {logoText && (
-        <div
-          className={`overflow-hidden transition-all duration-300 ${isCollapsed ? "w-0 opacity-0 ml-0" : "w-auto opacity-100 ml-3"
-            }`}
-        >
+        <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 ml-0' : 'w-auto opacity-100 ml-3'}`}>
           <div className="whitespace-nowrap">{logoText}</div>
         </div>
       )}
@@ -422,6 +452,9 @@ export const SideMenu = ({
 
   const renderContent = (isMobile: boolean) => (
     <>
+      {/* Glass background — kept on a separate layer so the outer wrapper doesn't
+          create a stacking context. This lets child elements use root-level z-indices. */}
+      {!isMobile && <div className="absolute inset-0 backdrop-blur-2xl bg-white/70 dark:bg-neutral-900/90 pointer-events-none" />}
       {/* Dither Noise Overlay */}
       <div
         className="absolute inset-0 opacity-[0.4] pointer-events-none mix-blend-overlay"
@@ -435,12 +468,8 @@ export const SideMenu = ({
 
         {/* Title + Mobile Close */}
         {(title || isMobile) && (
-          <div className={`px-6 pt-4 pb-2 flex items-center ${isCollapsed && !isMobile ? "justify-center px-3" : "justify-between"}`}>
-            {title && !(isCollapsed && !isMobile) && (
-              <h2 className="text-xs font-semibold text-gray-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">
-                {title}
-              </h2>
-            )}
+          <div className={`px-6 pt-4 pb-2 flex items-center ${isCollapsed && !isMobile ? 'justify-center px-3' : 'justify-between'}`}>
+            {title && !(isCollapsed && !isMobile) && <h2 className="text-xs font-semibold text-gray-400 dark:text-neutral-500 uppercase tracking-wider whitespace-nowrap">{title}</h2>}
             {/* Mobile Close Button */}
             {isMobile && (
               <button
@@ -454,31 +483,21 @@ export const SideMenu = ({
         )}
 
         {/* Navigation Items */}
-        <div className="flex-1 px-3 py-1 overflow-y-auto w-full">
+        <div className="flex-1 px-3 py-1 overflow-y-auto w-full [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700 hover:[&::-webkit-scrollbar-thumb]:bg-neutral-300 dark:hover:[&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-track]:bg-transparent">
           <nav className="space-y-1 w-full">
             {visibleItems.map((item, index) => {
               // Divider
-              if (item.type === "divider") {
-                return (
-                  <div
-                    key={`divider-${index}`}
-                    className={`my-2 border-t border-gray-200/60 dark:border-neutral-700/60 ${isCollapsed && !isMobile ? "mx-1" : "mx-0"
-                      }`}
-                  />
-                );
+              if (item.type === 'divider') {
+                return <div key={`divider-${index}`} className={`my-2 border-t border-gray-200/60 dark:border-neutral-700/60 ${isCollapsed && !isMobile ? 'mx-1' : 'mx-0'}`} />;
               }
 
               // Group Header
-              if (item.type === "group") {
+              if (item.type === 'group') {
                 if (isCollapsed && !isMobile) return null;
                 return (
                   <React.Fragment key={`group-${index}-${item.label}`}>
-                    {item.hasDivider && (
-                      <div className={`my-2 border-t border-gray-200/60 ${isCollapsed && !isMobile ? "mx-1" : "mx-0"}`} />
-                    )}
-                    <div className={`px-3 py-1 mb-1 text-xs font-semibold text-gray-400 dark:text-neutral-500 uppercase tracking-wider ${index === 0 ? 'mt-1' : 'mt-4'}`}>
-                      {item.label}
-                    </div>
+                    {item.hasDivider && <div className={`my-2 border-t border-gray-200/60 ${isCollapsed && !isMobile ? 'mx-1' : 'mx-0'}`} />}
+                    <div className={`px-3 py-1 mb-1 text-xs font-semibold text-gray-400 dark:text-neutral-500 uppercase tracking-wider ${index === 0 ? 'mt-1' : 'mt-4'}`}>{item.label}</div>
                   </React.Fragment>
                 );
               }
@@ -495,32 +514,20 @@ export const SideMenu = ({
                   to={linkItem.path}
                   onClick={() => mobileOpen && onCloseMobile?.()}
                   title={isCollapsed && !isMobile ? linkItem.label : undefined}
-                  className={`relative group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${active
-                    ? `${tokens.bg} ${tokens.text} shadow-sm`
-                    : `text-gray-600 dark:text-neutral-400 ${tokens.hoverBg} ${tokens.hoverText}`
-                    } ${isCollapsed && !isMobile ? "justify-center" : ""}`}
+                  className={`relative group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 ${
+                    active ? `${tokens.bg} ${tokens.text} shadow-sm` : `text-gray-600 dark:text-neutral-400 ${tokens.hoverBg} ${tokens.hoverText}`
+                  } ${isCollapsed && !isMobile ? 'justify-center' : ''}`}
                 >
                   {linkItem.icon && (
-                    <div className={`flex items-center justify-center relative flex-shrink-0 ${isCollapsed && !isMobile ? "" : "mr-3"}`}>
-                      <CustomIcon
-                        icon={linkItem.icon}
-                        className={`h-5 w-5 transition-colors duration-150 ${active ? tokens.iconActive : `text-gray-400 dark:text-neutral-500 ${tokens.iconHover}`}`}
-                      />
+                    <div className={`flex items-center justify-center relative flex-shrink-0 ${isCollapsed && !isMobile ? '' : 'mr-3'}`}>
+                      <CustomIcon icon={linkItem.icon} className={`h-5 w-5 transition-colors duration-150 ${active ? tokens.iconActive : `text-gray-400 dark:text-neutral-500 ${tokens.iconHover}`}`} />
                       {/* Badge in collapsed mode: small dot over the icon */}
-                      {isCollapsed && !isMobile && linkItem.badge && (
-                        <span className="absolute -top-1 -right-1">{linkItem.badge}</span>
-                      )}
+                      {isCollapsed && !isMobile && linkItem.badge && <span className="absolute -top-1 -right-1">{linkItem.badge}</span>}
                     </div>
                   )}
-                  {!(isCollapsed && !isMobile) && (
-                    <span className="whitespace-nowrap overflow-hidden text-ellipsis flex-1">
-                      {linkItem.label}
-                    </span>
-                  )}
+                  {!(isCollapsed && !isMobile) && <span className="whitespace-nowrap overflow-hidden text-ellipsis flex-1">{linkItem.label}</span>}
                   {/* Badge in expanded mode: right-aligned next to label */}
-                  {!(isCollapsed && !isMobile) && linkItem.badge && (
-                    <span className="ml-auto flex-shrink-0 pl-2">{linkItem.badge}</span>
-                  )}
+                  {!(isCollapsed && !isMobile) && linkItem.badge && <span className="ml-auto flex-shrink-0 pl-2">{linkItem.badge}</span>}
                 </Link>
               );
             })}
@@ -528,47 +535,34 @@ export const SideMenu = ({
         </div>
 
         {/* Collapse Toggle (desktop only) */}
-        {
-          !isMobile && (
-            <div className="flex-shrink-0 border-t border-gray-200/60 dark:border-neutral-700/60 px-3 py-3">
-              <button
-                onClick={toggleCollapse}
-                className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg text-gray-500 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-700/50 hover:text-gray-700 dark:hover:text-neutral-200 transition-colors ${isCollapsed ? "justify-center" : ""
-                  }`}
-                title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                <CustomIcon
-                  icon={isCollapsed ? "ChevronRight" : "ChevronLeft"}
-                  className="w-4 h-4 flex-shrink-0"
-                />
-                {!isCollapsed && <span className="ml-3 whitespace-nowrap">Collapse</span>}
-              </button>
-            </div>
-          )
-        }
-      </div >
+        {!isMobile && (
+          <div className="flex-shrink-0 border-t border-gray-200/60 dark:border-neutral-700/60 px-3 py-3">
+            <button
+              onClick={toggleCollapse}
+              className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg text-gray-500 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-700/50 hover:text-gray-700 dark:hover:text-neutral-200 transition-colors ${
+                isCollapsed ? 'justify-center' : ''
+              }`}
+              title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              <CustomIcon icon={isCollapsed ? 'ChevronRight' : 'ChevronLeft'} className="w-4 h-4 flex-shrink-0" />
+              {!isCollapsed && <span className="ml-3 whitespace-nowrap">Collapse</span>}
+            </button>
+          </div>
+        )}
+      </div>
     </>
   );
 
   return (
     <>
       {/* Mobile Backdrop */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm md:hidden"
-          onClick={onCloseMobile}
-        />
-      )}
+      {mobileOpen && <div className="fixed inset-0 z-50 bg-black/20 backdrop-blur-sm md:hidden" onClick={onCloseMobile} />}
 
       {/* Mobile Sidebar */}
-      <aside className={`${mobileClasses} ${className}`}>
-        {renderContent(true)}
-      </aside>
+      <aside className={`${mobileClasses} ${className}`}>{renderContent(true)}</aside>
 
       {/* Desktop Sidebar */}
-      <aside className={`${desktopClasses} ${className}`}>
-        {renderContent(false)}
-      </aside>
+      <aside className={`${desktopClasses} ${className}`}>{renderContent(false)}</aside>
     </>
   );
 };

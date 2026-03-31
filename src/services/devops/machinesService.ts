@@ -388,6 +388,36 @@ class MachinesService {
       throw error;
     }
   }
+
+  /**
+   * Create/download a virtual machine asynchronously on a specific orchestrator host.
+   *
+   * Endpoint: POST /api/v1/orchestrator/hosts/{hostId}/machines/async
+   */
+  async createVirtualMachineFromCatalogAsyncOnHost(
+    hostname: string | undefined,
+    hostId: string,
+    request: CreateMachineAsyncRequest,
+  ): Promise<void> {
+    try {
+      const targetHost = hostname || authService.currentHostname;
+      if (!targetHost) {
+        throw new Error('No hostname provided and no active session found');
+      }
+
+      await apiService.post<void>(
+        targetHost,
+        `/api/v1/orchestrator/hosts/${hostId}/machines/async`,
+        request,
+        { errorPrefix: 'Failed to start VM download from catalog on host', expectNoContent: true },
+      );
+    } catch (error) {
+      console.error('Failed to create VM asynchronously from catalog on host:', error);
+      throw error;
+    }
+  }
+
+  
 }
 
 // Export singleton instance

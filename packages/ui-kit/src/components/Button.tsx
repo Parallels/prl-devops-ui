@@ -2,9 +2,10 @@ import React, { type ButtonHTMLAttributes, type ReactNode, forwardRef } from "re
 import classNames from "classnames";
 import { type IconSize } from "../types/Icon";
 import { useIconRenderer } from "../contexts/IconContext";
-import { getButtonColorClasses, type ThemeColor } from "../theme/Theme";
+import { getButtonColorClasses, getButtonBaseClasses, getButtonHoverClasses, getButtonActiveClasses, getButtonActiveHoverClasses, type ThemeColor } from "../theme/Theme";
 import { iconAccentHover, iconAccentRing } from "../theme/ButtonTypes";
-import Tooltip, { type TooltipPosition } from "./Tooltip";
+import TooltipWrapper from "./TooltipWrapper";
+import type { TooltipPosition } from "./Tooltip";
 
 export type ButtonColor = ThemeColor;
 export type ButtonVariant = "solid" | "soft" | "outline" | "ghost" | "link" | "clear" | "icon";
@@ -24,6 +25,8 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   iconOnly?: boolean;
   accent?: boolean;
   accentColor?: ThemeColor;
+  /** When true, renders in a persistent lighter "on" state with hover suppressed. accentColor overrides the active color. */
+  active?: boolean;
   className?: string;
   children?: ReactNode;
   /** When set, a styled tooltip is shown on hover. */
@@ -94,6 +97,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       iconOnly = false,
       accent = false,
       accentColor,
+      active = false,
       className,
       children,
       disabled,
@@ -106,7 +110,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const renderIcon = useIconRenderer();
     const sizeConfig = sizeStyles[size] ?? sizeStyles.md;
-    const colorClasses = getButtonColorClasses(variant, color);
+    const baseColorClasses = getButtonColorClasses(variant, color);
     const isIconMode = iconOnly || variant === "icon";
     const accentTone = accentColor ?? color;
     const accentRingClass = iconAccentRing[accentTone] ?? iconAccentRing.blue;
@@ -119,6 +123,22 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             accentHoverClass
           )
         : null;
+
+    const isEffectivelyDisabled = (disabled ?? false) || loading;
+    // active: persistent lighter "on" state, no hover; accentColor overrides the active color
+    // accentColor on enabled non-active: replaces only the hover classes
+    const colorClasses = (() => {
+      if (active) {
+        const activeColor = accentColor ?? color;
+        const activeBase = getButtonActiveClasses(variant, activeColor);
+        return isEffectivelyDisabled
+          ? activeBase
+          : classNames(activeBase, getButtonActiveHoverClasses(variant, activeColor));
+      }
+      if (!isIconMode && accentColor && !isEffectivelyDisabled)
+        return classNames(getButtonBaseClasses(variant, color), getButtonHoverClasses(variant, accentColor));
+      return baseColorClasses;
+    })();
 
     const computedClassName = classNames(
       baseClasses,
@@ -165,9 +185,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     if (tooltip) {
       return (
-        <Tooltip text={tooltip} position={tooltipPosition} wrapperClassName={fullWidth ? "w-full" : undefined}>
+        <TooltipWrapper text={tooltip} position={tooltipPosition}>
           {button}
-        </Tooltip>
+        </TooltipWrapper>
       );
     }
 

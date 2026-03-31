@@ -27,3 +27,8 @@ export interface JobsDeepLinkState {
     /** Job ID to highlight in the list */
     selectJobId?: string;
 }
+
+export interface CatalogsDeepLinkState {
+    /** Pre-select the download target in the Download VM modal */
+    downloadTarget?: 'host' | 'orchestrator';
+}

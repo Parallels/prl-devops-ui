@@ -78,7 +78,7 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         >
           {showShimmerOverlay && (
             <span
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+              className="absolute inset-0 bg-linear-to-r from-transparent via-white/40 to-transparent"
               style={{
                 animation: `progress-shimmer ${duration} linear infinite`,
                 animationDirection: direction,

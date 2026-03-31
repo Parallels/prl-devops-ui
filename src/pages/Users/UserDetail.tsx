@@ -1,16 +1,7 @@
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
-import {
-  Combobox,
-  FormField,
-  FormLayout,
-  FormSection,
-  IconButton,
-  Input,
-  Pill,
-  Toggle,
-} from '@prl/ui-kit';
+import { AccessMatrix, type AccessMatrixPermission, FormField, FormLayout, Input, Panel, Section, TagPicker, Tabs, Toggle, TagPanel } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
-import { DevOpsUser } from '@/interfaces/devops';
+import { ClaimGroupResponse, DevOpsClaim, DevOpsUser, DevOpsRole } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
@@ -21,358 +12,347 @@ export interface UserDetailRef {
 
 export interface UserDetailProps {
   user: DevOpsUser;
-  isNew?: boolean;
-  availableRoles?: string[];
-  availableClaims?: string[];
+  availableRoles?: DevOpsRole[];
+  availableClaims?: DevOpsClaim[];
   onSave: (updated: DevOpsUser) => void;
   onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(
-  ({ user, isNew = false, availableRoles = [], availableClaims = [], onSave, onDirtyChange }, ref) => {
-    const { session } = useSession();
-    const { themeColor } = useSystemSettings();
-    const hostname = session?.hostname ?? '';
+export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ user, availableRoles = [], availableClaims = [], onSave, onDirtyChange }, ref) => {
+  const { session } = useSession();
+  const { themeColor } = useSystemSettings();
+  const hostname = session?.hostname ?? '';
 
-    // Profile fields
-    const [name, setName] = useState(user.name ?? '');
-    const [email, setEmail] = useState(user.email ?? '');
-    const [username, setUsername] = useState(user.username ?? '');
-    const [password, setPassword] = useState('');
+  // Profile fields
+  const [name, setName] = useState(user.name ?? '');
+  const [email, setEmail] = useState(user.email ?? '');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-    // Claims local state — batched until save
-    const [localClaims, setLocalClaims] = useState<string[]>(user.claims ?? []);
+  // Roles + Claims local state — batched until save
+  const [localRoles, setLocalRoles] = useState<string[]>(user.roles ?? []);
+  const [localClaims, setLocalClaims] = useState<string[]>(user.claims ?? []);
 
-    // Combobox picker values + remount keys (force-clear internal filter state after selection)
-    const [rolePickerValue, setRolePickerValue] = useState('');
-    const [claimPickerValue, setClaimPickerValue] = useState('');
-    const [roleComboboxKey, setRoleComboboxKey] = useState(0);
-    const [claimComboboxKey, setClaimComboboxKey] = useState(0);
-    const [canUpdate, setCanUpdate] = useState(false);
-    const [isSuperUser, setIsSuperUser] = useState(false);
-    const { hasClaim, hasRole } = useSession();
+  const [canUpdate, setCanUpdate] = useState(false);
+  const [isSuperUser, setIsSuperUser] = useState(false);
+  const { hasClaim, hasRole } = useSession();
 
-    const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-    // Reset all form state when the selected user changes
-    useEffect(() => {
-      setName(user.name ?? '');
-      setEmail(user.email ?? '');
-      setUsername(user.username ?? '');
-      setPassword('');
-      setLocalClaims(user.claims ?? []);
-      setRolePickerValue('');
-      setClaimPickerValue('');
-      setRoleComboboxKey((k) => k + 1);
-      setClaimComboboxKey((k) => k + 1);
-      setCanUpdate(hasClaim('UPDATE_USER'));
-      setIsSuperUser(hasRole('SUPER_USER'));
-    }, [user.id]);
+  // Access Matrix tab
+  const [activeTab, setActiveTab] = useState('general');
+  const [matrixGroups, setMatrixGroups] = useState<ClaimGroupResponse[]>([]);
+  const [matrixLoading, setMatrixLoading] = useState(false);
+  const [matrixError, setMatrixError] = useState<string | null>(null);
 
-    // Dirty tracking — includes profile fields and claims diff
-    const isDirty = useMemo(() => {
-      if (isNew) return name !== '' || email !== '' || username !== '' || password !== '';
-      const profileDirty =
-        name !== (user.name ?? '') ||
-        email !== (user.email ?? '') ||
-        password !== '';
-      const originalClaims = user.claims ?? [];
-      const claimsDirty =
-        localClaims.length !== originalClaims.length ||
-        localClaims.some((c) => !originalClaims.includes(c));
-      return profileDirty || claimsDirty;
-    }, [isNew, name, email, username, password, user.name, user.email, localClaims, user.claims]);
+  // Reset all form state when the selected user changes
+  useEffect(() => {
+    setName(user.name ?? '');
+    setEmail(user.email ?? '');
+    setPassword('');
+    setConfirmPassword('');
+    setLocalRoles(user.roles ?? []);
+    setLocalClaims(user.claims ?? []);
+    setCanUpdate(hasClaim('UPDATE_USER'));
+    setIsSuperUser(hasRole('SUPER_USER'));
+    setActiveTab('general');
+    setMatrixGroups([]);
+    setMatrixError(null);
+  }, [user.id]);
 
-    useEffect(() => {
-      onDirtyChange?.(isDirty);
-    }, [isDirty, onDirtyChange]);
+  // Lazy-load grouped claims when the Access Matrix tab is first opened
+  useEffect(() => {
+    if (activeTab !== 'access-matrix') return;
+    let cancelled = false;
+    setMatrixLoading(true);
+    setMatrixError(null);
+    devopsService.claims
+      .getGroupedClaims(hostname)
+      .then((groups) => {
+        if (!cancelled) setMatrixGroups(groups);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setMatrixError((err as Error)?.message ?? 'Failed to load access matrix');
+      })
+      .finally(() => {
+        if (!cancelled) setMatrixLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, hostname]);
 
-    // ── Save ──────────────────────────────────────────────────────────────────
+  const passwordMismatch = password !== '' && confirmPassword !== '' && password !== confirmPassword;
+  const passwordValid = password === '' || (password !== '' && password === confirmPassword);
 
-    const handleSave = useCallback(async () => {
-      if (saving) return;
-      setSaving(true);
-      try {
-        if (isNew) {
-          const created = await devopsService.users.createUser(hostname, {
-            name,
-            email,
-            password,
-            username,
-          });
-          if (!created?.id) throw new Error('Failed to create user: invalid server response');
-          onSave(created);
-        } else {
-          if (!user.id) return;
+  // Dirty tracking
+  const isDirty = useMemo(() => {
+    const profileDirty = name !== (user.name ?? '') || email !== (user.email ?? '') || password !== '';
+    const originalRoles = user.roles ?? [];
+    const rolesDirty = localRoles.length !== originalRoles.length || localRoles.some((r) => !originalRoles.includes(r));
+    const originalClaims = user.claims ?? [];
+    const claimsDirty = localClaims.length !== originalClaims.length || localClaims.some((c) => !originalClaims.includes(c));
+    return profileDirty || rolesDirty || claimsDirty;
+  }, [name, email, password, user.name, user.email, localRoles, user.roles, localClaims, user.claims]);
 
-          // 1. Update profile fields
-          const request: { name?: string; email?: string; password?: string } = { name, email };
-          if (password) request.password = password;
-          const updated = await devopsService.users.updateUser(hostname, user.id, request);
+  useEffect(() => {
+    onDirtyChange?.(isDirty && passwordValid);
+  }, [isDirty, passwordValid, onDirtyChange]);
 
-          // 2. Sync claim changes (batched)
-          const originalClaims = user.claims ?? [];
-          const toAdd = localClaims.filter((c) => !originalClaims.includes(c));
-          const toRemove = originalClaims.filter((c) => !localClaims.includes(c));
-          for (const claim of toAdd) {
-            await devopsService.users.addUserClaim(hostname, user.id, claim);
-          }
-          for (const claim of toRemove) {
-            await devopsService.users.removeUserClaim(hostname, user.id, claim);
-          }
+  // ── Save ──────────────────────────────────────────────────────────────────
 
-          setPassword('');
-          onSave({ ...updated, claims: localClaims });
-        }
-      } finally {
-        setSaving(false);
+  const handleSave = useCallback(async () => {
+    if (saving || !user.id || !passwordValid) return;
+    setSaving(true);
+    try {
+      const request: { name?: string; email?: string; password?: string } = { name, email };
+      if (password) request.password = password;
+      const updated = await devopsService.users.updateUser(hostname, user.id, request);
+
+      // Sync role changes (batched)
+      const originalRoles = user.roles ?? [];
+      const rolesToAdd = localRoles.filter((r) => !originalRoles.includes(r));
+      const rolesToRemove = originalRoles.filter((r) => !localRoles.includes(r));
+      for (const role of rolesToAdd) {
+        await devopsService.users.addUserRole(hostname, user.id, role);
       }
-    }, [saving, isNew, hostname, name, email, password, username, user.id, user.claims, localClaims, onSave]);
+      for (const role of rolesToRemove) {
+        await devopsService.users.removeUserRole(hostname, user.id, role);
+      }
 
-    // ── Reset ─────────────────────────────────────────────────────────────────
+      // Sync claim changes (batched)
+      const originalClaims = user.claims ?? [];
+      const toAdd = localClaims.filter((c) => !originalClaims.includes(c));
+      const toRemove = originalClaims.filter((c) => !localClaims.includes(c));
+      for (const claim of toAdd) {
+        await devopsService.users.addUserClaim(hostname, user.id, claim);
+      }
+      for (const claim of toRemove) {
+        await devopsService.users.removeUserClaim(hostname, user.id, claim);
+      }
 
-    const handleReset = useCallback(() => {
-      setName(user.name ?? '');
-      setEmail(user.email ?? '');
-      setUsername(user.username ?? '');
       setPassword('');
-      setLocalClaims(user.claims ?? []);
-      setRolePickerValue('');
-      setClaimPickerValue('');
-      setRoleComboboxKey((k) => k + 1);
-      setClaimComboboxKey((k) => k + 1);
-    }, [user.name, user.email, user.username, user.claims]);
+      setConfirmPassword('');
+      onSave({ ...updated, roles: localRoles, claims: localClaims });
+    } finally {
+      setSaving(false);
+    }
+  }, [saving, hostname, name, email, password, passwordValid, user.id, user.roles, localRoles, user.claims, localClaims, onSave]);
 
-    useImperativeHandle(ref, () => ({ save: handleSave, reset: handleReset }), [handleSave, handleReset]);
+  // ── Reset ─────────────────────────────────────────────────────────────────
 
-    // ── Roles (immediate) ─────────────────────────────────────────────────────
+  const handleReset = useCallback(() => {
+    setName(user.name ?? '');
+    setEmail(user.email ?? '');
+    setPassword('');
+    setConfirmPassword('');
+    setLocalRoles(user.roles ?? []);
+    setLocalClaims(user.claims ?? []);
+  }, [user.name, user.email, user.roles, user.claims]);
 
-    const unassignedRoles = useMemo(
-      () => availableRoles.filter((r) => !(user.roles ?? []).includes(r)),
-      [availableRoles, user.roles],
-    );
+  useImperativeHandle(ref, () => ({ save: handleSave, reset: handleReset }), [handleSave, handleReset]);
 
-    const handleRolePickerChange = useCallback(
-      (value: string) => {
-        setRolePickerValue(value);
-        if (!value || !unassignedRoles.includes(value)) return;
-        // Auto-add when exact match (user selected from dropdown)
-        setRolePickerValue('');
-        setRoleComboboxKey((k) => k + 1); // force remount to clear internal filter state
-        if (!user.id) return;
-        devopsService.users.addUserRole(hostname, user.id, value)
-          .then(() => onSave({ ...user, roles: [...(user.roles ?? []), value] }))
-          .catch((err) => console.error('Failed to add role:', err));
-      },
-      [hostname, user, unassignedRoles, onSave],
-    );
+  // ── Roles (batched until save) ────────────────────────────────────────────
 
-    const handleRemoveRole = useCallback(
-      (roleName: string) => {
-        if (!user.id) return;
-        devopsService.users.removeUserRole(hostname, user.id, roleName)
-          .then(() => onSave({ ...user, roles: (user.roles ?? []).filter((r) => r !== roleName) }))
-          .catch((err) => console.error('Failed to remove role:', err));
-      },
-      [hostname, user, onSave],
-    );
+  const roleItems = useMemo(() => availableRoles.map((r) => ({ id: r.id, label: r.name })), [availableRoles]);
 
-    // ── Claims (batched until save) ────────────────────────────────────────────
+  const handleRolesChange = useCallback((newRoles: string[]) => {
+    setLocalRoles(newRoles);
+  }, []);
 
-    const unassignedClaims = useMemo(
-      () => availableClaims.filter((c) => !localClaims.includes(c)),
-      [availableClaims, localClaims],
-    );
+  // ── Claims (batched until save) ────────────────────────────────────────────
 
-    const handleClaimPickerChange = useCallback(
-      (value: string) => {
-        setClaimPickerValue(value);
-        if (!value || !unassignedClaims.includes(value)) return;
-        // Auto-add to local state when exact match
-        setLocalClaims((prev) => [...prev, value]);
-        setClaimPickerValue('');
-        setClaimComboboxKey((k) => k + 1); // force remount to clear internal filter state
-      },
-      [unassignedClaims],
-    );
+  // Split effective claims into direct and inherited for display
+  const effectiveClaims = user.effective_claims ?? [];
+  const inheritedClaims = effectiveClaims.filter((c) => c.is_inherited);
 
-    const handleRemoveClaim = useCallback((claimName: string) => {
-      setLocalClaims((prev) => prev.filter((c) => c !== claimName));
-    }, []);
+  const claimItems = useMemo(() => availableClaims.map((c) => ({ id: c.id || c.name, label: c.name })), [availableClaims]);
 
-    // ── Render ────────────────────────────────────────────────────────────────
+  // Resolve role display name from availableRoles for the inherited badge
+  const resolveRoleName = useCallback((roleId: string) => availableRoles.find((r) => r.id === roleId)?.name ?? roleId, [availableRoles]);
 
-    return (
-      <div className="p-6 space-y-6">
-        {/* Profile */}
-        <FormSection title="Profile">
-          <FormLayout columns={2}>
-            <FormField label="Name">
-              <Input disabled={!canUpdate} value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" />
+  // Build AccessMatrixPermission[] from grouped claims + user's effective claims
+  const matrixPermissions = useMemo((): AccessMatrixPermission[] => {
+    if (matrixGroups.length === 0) return [];
+    const effectiveIds = new Set((user.effective_claims ?? []).map((c) => c.id));
+    const result: AccessMatrixPermission[] = [];
+    for (const group of matrixGroups) {
+      for (const resource of group.resources) {
+        for (const claim of resource.claims) {
+          result.push({
+            group: group.group,
+            resource: resource.resource,
+            action: claim.action ?? claim.name,
+            enabled: effectiveIds.has(claim.id),
+          });
+        }
+      }
+    }
+    return result;
+  }, [matrixGroups, user.effective_claims]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
+  const generalPanel = (
+    <div className="p-6 space-y-6">
+      {/* Profile */}
+      <Panel variant="glass" backgroundColor="white" padding="xs">
+        <Section title="Profile" noPadding />
+        <FormLayout columns={2}>
+          <FormField label="Name">
+            <Input tone={themeColor} disabled={!canUpdate} value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" />
+          </FormField>
+          <FormField label="Email">
+            <Input tone={themeColor} disabled={!canUpdate} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" type="email" />
+          </FormField>
+          <FormField label="Username">
+            <Input tone={themeColor} value={user.username ?? ''} disabled placeholder="Username" />
+          </FormField>
+        </FormLayout>
+      </Panel>
+
+      {/* Security */}
+      <Panel variant="glass" backgroundColor="white" padding="xs">
+        <Section title="Security" noPadding />
+        <FormLayout columns={2}>
+          <FormField label="Password" error={passwordMismatch ? 'Passwords do not match' : undefined}>
+            <Input
+              type="password"
+              disabled={!canUpdate}
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (!e.target.value) setConfirmPassword('');
+              }}
+              placeholder="Leave blank to keep current"
+            />
+          </FormField>
+          {password !== '' && (
+            <FormField label="Confirm Password" error={passwordMismatch ? 'Passwords do not match' : undefined}>
+              <Input type="password" disabled={!canUpdate} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter new password" />
             </FormField>
-            <FormField label="Email">
-              <Input disabled={!canUpdate} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" type="email" />
-            </FormField>
-            <FormField label="Username">
-              <Input
-                value={isNew ? username : (user.username ?? '')}
-                onChange={isNew ? (e) => setUsername(e.target.value) : undefined}
-                disabled={!isNew}
-                placeholder="Username"
-              />
-            </FormField>
-          </FormLayout>
-        </FormSection>
+          )}
+          <FormField label="Super User">
+            <Toggle checked={user.isSuperUser ?? false} disabled={!canUpdate || !isSuperUser} label={user.isSuperUser ? 'Yes' : 'No'} color={themeColor} />
+          </FormField>
+        </FormLayout>
+      </Panel>
 
-        {/* Security */}
-        <FormSection title="Security">
-          <FormLayout columns={2}>
-            <FormField label="Password">
-              <Input
-                type="password"
-                disabled={!canUpdate}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={isNew ? 'Password (required)' : 'Leave blank to keep current'}
-              />
-            </FormField>
-            {!isNew && (
-              <FormField label="Super User">
-                <Toggle
-                  checked={user.isSuperUser ?? false}
-                  disabled={!canUpdate || !isSuperUser}
-                  label={user.isSuperUser ? 'Yes' : 'No'}
-                  color={themeColor}
-                />
-              </FormField>
-            )}
-          </FormLayout>
-        </FormSection>
+      {/* Roles — immediate API */}
+      <Panel variant="glass" backgroundColor="white" padding="xs">
+        <Section title="Roles" noPadding />
+        <TagPicker
+          key={`roles-${user.id}`}
+          color={themeColor}
+          items={roleItems}
+          value={localRoles}
+          onChange={handleRolesChange}
+          disabled={!canUpdate || !isSuperUser}
+          placeholder="Search and add roles…"
+          emptyMessage="No roles available"
+          highlightNew
+        />
+      </Panel>
 
-        {/* Roles — existing users only, immediate API */}
-        {!isNew && (
-          <FormSection title="Roles">
-            <div className="space-y-3">
-              {/* Role picker — top */}
-              {unassignedRoles.length > 0 ? (
-                <Combobox
-                  key={roleComboboxKey}
-                  value={rolePickerValue}
-                  onChange={handleRolePickerChange}
-                  options={unassignedRoles}
-                  disabled={!canUpdate || !isSuperUser}
-                  placeholder="Search and add a role…"
-                  emptyMessage="No roles available"
-                />
-              ) : (
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  {(user.roles ?? []).length > 0 ? 'All available roles are assigned' : 'No roles defined in the system'}
-                </p>
-              )}
-              {/* Assigned roles */}
-              {(user.roles ?? []).length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {(user.roles ?? []).map((role) => (
-                    <Pill key={role} tone="blue" variant="soft" size="sm" className="flex items-center gap-1 pr-1">
-                      <span>{role}</span>
-                      <IconButton
-                        icon="Close"
-                        size="xs"
-                        variant="ghost"
-                        color="blue"
-                        rounded="full"
-                        customSizeClass="h-4 w-4"
-                        disabled={!canUpdate || !isSuperUser}
-                        aria-label={`Remove role ${role}`}
-                        onClick={() => handleRemoveRole(role)}
-                      />
-                    </Pill>
-                  ))}
-                </div>
-              )}
-              {(user.roles ?? []).length === 0 && unassignedRoles.length > 0 && (
-                <p className="text-xs text-gray-400 dark:text-gray-500">No roles assigned — pick one above</p>
-              )}
-            </div>
-          </FormSection>
-        )}
+      {/* Direct Claims — editable */}
+      <Panel variant="glass" backgroundColor="white" padding="xs">
+        <Section title="Direct Claims" noPadding />
+        <div className="space-y-3">
+          <TagPicker
+            key={`claims-${user.id}`}
+            color={themeColor}
+            items={claimItems}
+            value={localClaims}
+            onChange={setLocalClaims}
+            disabled={!canUpdate}
+            placeholder="Search and add claims…"
+            emptyMessage="No claims available"
+            highlightNew
+          />
+          {(() => {
+            const originalClaims = user.claims ?? [];
+            const added = localClaims.filter((c) => !originalClaims.includes(c));
+            const removed = originalClaims.filter((c) => !localClaims.includes(c));
+            if (added.length === 0 && removed.length === 0) return null;
+            return (
+              <div className="flex flex-wrap gap-1.5 text-xs">
+                {added.length > 0 && <span className="text-emerald-600 dark:text-emerald-400">+{added.length} pending</span>}
+                {removed.length > 0 && <span className="text-rose-600 dark:text-rose-400">−{removed.length} pending removal</span>}
+                <span className="text-gray-400 dark:text-gray-500 italic">· applied on save</span>
+              </div>
+            );
+          })()}
+        </div>
+      </Panel>
 
-        {/* Claims — existing users only, batched until save */}
-        {!isNew && (
-          <FormSection title="Claims">
-            <div className="space-y-3">
-              {/* Claim picker — top */}
-              {unassignedClaims.length > 0 ? (
-                <Combobox
-                  key={claimComboboxKey}
-                  value={claimPickerValue}
-                  onChange={handleClaimPickerChange}
-                  options={unassignedClaims}
-                  placeholder="Search and add a claim…"
-                  emptyMessage="No claims available"
-                />
-              ) : (
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  {localClaims.length > 0 ? 'All available claims are assigned' : 'No claims defined in the system'}
-                </p>
-              )}
-              {/* Claims list — saved (violet) + pending additions (emerald) */}
-              {localClaims.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {localClaims.map((claim) => {
-                    const isPending = !(user.claims ?? []).includes(claim);
-                    return (
-                      <Pill
-                        key={claim}
-                        tone={isPending ? 'green' : 'violet'}
-                        variant="soft"
-                        size="sm"
-                        className="flex items-center gap-1 pr-1"
-                      >
-                        <span>{claim}</span>
-                        <IconButton
-                          icon="Close"
-                          size="xs"
-                          variant="ghost"
-                          color={isPending ? 'green' : 'blue'}
-                          rounded="full"
-                          customSizeClass="h-4 w-4"
-                          aria-label={`Remove claim ${claim}`}
-                          onClick={() => handleRemoveClaim(claim)}
-                        />
-                      </Pill>
-                    );
-                  })}
-                </div>
-              )}
-              {localClaims.length === 0 && unassignedClaims.length > 0 && (
-                <p className="text-xs text-gray-400 dark:text-gray-500">No claims assigned — pick one above</p>
-              )}
-              {/* Pending-change summary */}
-              {(() => {
-                const originalClaims = user.claims ?? [];
-                const added = localClaims.filter((c) => !originalClaims.includes(c));
-                const removed = originalClaims.filter((c) => !localClaims.includes(c));
-                if (added.length === 0 && removed.length === 0) return null;
-                return (
-                  <div className="flex flex-wrap gap-1.5 text-xs">
-                    {added.length > 0 && (
-                      <span className="text-emerald-600 dark:text-emerald-400">+{added.length} pending</span>
-                    )}
-                    {removed.length > 0 && (
-                      <span className="text-rose-600 dark:text-rose-400">−{removed.length} pending removal</span>
-                    )}
-                    <span className="text-gray-400 dark:text-gray-500 italic">· applied on save</span>
-                  </div>
-                );
-              })()}
-            </div>
-          </FormSection>
-        )}
-      </div>
-    );
-  },
-);
+      {/* Inherited Claims — read-only */}
+      {inheritedClaims.length > 0 && (
+        <Panel variant="glass" backgroundColor="white" padding="xs">
+          <Section title="Inherited Claims" noPadding />
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">These claims are inherited from assigned roles and cannot be removed here.</p>
+          <div className="flex flex-wrap gap-2">
+            <TagPanel
+              tags={inheritedClaims.map((c) => ({
+                label: c.name,
+                tone: themeColor,
+                variant: 'soft',
+                children: (
+                  <>
+                    <span className="text-gray-500 dark:text-gray-400 pr-2">{c.name}</span>
+                    {c.source_role && <span className={`text-xs text-${themeColor}-500 dark:text-${themeColor}-400 font-medium`}>via {resolveRoleName(c.source_role)}</span>}
+                  </>
+                ),
+              }))}
+              tagLimit={5}
+            />
+          </div>
+        </Panel>
+      )}
+    </div>
+  );
+
+  const accessMatrixPanel = (
+    <div className="h-full flex flex-col p-1">
+      {user.isSuperUser && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
+          This user is a Super User and has unrestricted access regardless of assigned claims.
+        </div>
+      )}
+      {matrixLoading ? (
+        <div className="flex items-center justify-center py-16">
+          <svg className="h-6 w-6 animate-spin text-neutral-400" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+        </div>
+      ) : matrixError ? (
+        <p className="py-8 text-center text-sm text-rose-500 dark:text-rose-400">{matrixError}</p>
+      ) : matrixPermissions.length === 0 ? (
+        <p className="py-8 text-center text-sm text-neutral-400 dark:text-neutral-500">No access data available.</p>
+      ) : (
+        <div className="flex-1 min-h-0">
+          <AccessMatrix variant="flat" tone={themeColor} permissions={matrixPermissions} limit={20} hoverable noBorders fullHeight />
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <Tabs
+      variant="underline"
+      color={themeColor}
+      size="sm"
+      value={activeTab}
+      onChange={(id) => setActiveTab(id)}
+      panelIdPrefix={`user-detail-${user.id}`}
+      scrollFade
+      items={[
+        { id: 'general', label: 'General', panel: generalPanel },
+        { id: 'access-matrix', label: 'Access Matrix', panel: accessMatrixPanel },
+      ]}
+    />
+  );
+});
 
 UserDetail.displayName = 'UserDetail';
 

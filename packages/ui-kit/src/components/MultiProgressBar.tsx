@@ -1,13 +1,15 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import classNames from 'classnames';
+import { getColorPalette } from '../theme';
 
 export interface MultiProgressBarSeries {
     key: string;
     label: string;
     labelClassName?: string;
     value: number;
-    color: string; // Tailwind bg color class e.g., 'bg-rose-500'
+    /** Tailwind bg color class e.g., 'bg-rose-500'. Omit to auto-assign from the theme palette. */
+    color?: string;
     /** Custom formatted value to display in legend, if omitted `value` is used */
     displayValue?: React.ReactNode;
 }
@@ -43,15 +45,20 @@ const MultiProgressBar: React.FC<MultiProgressBarProps> = ({
     const [tooltip, setTooltip] = useState<TooltipState | null>(null);
     const barRef = useRef<HTMLDivElement>(null);
 
+    const resolvedSeries = useMemo(() => {
+        const palette = getColorPalette(series.length, 'bg');
+        return series.map((s, i) => ({ ...s, color: s.color ?? palette[i] }));
+    }, [series]);
+
     const defaultTotal = total || 1;
-    const totalValue = series.reduce((acc, curr) => acc + (curr.value > 0 ? curr.value : 0), 0);
+    const totalValue = resolvedSeries.reduce((acc, curr) => acc + (curr.value > 0 ? curr.value : 0), 0);
     const normalizationFactor = totalValue > defaultTotal ? defaultTotal / totalValue : 1;
 
     const labelClasses = labelClassName || 'text-sm font-semibold text-neutral-800 dark:text-neutral-200';
     const secondaryLabelClasses = secondaryLabelClassName || 'text-xs text-neutral-500 dark:text-neutral-400 mt-0.5';
 
     let cumulativePct = 0;
-    const segments = series
+    const segments = resolvedSeries
         .filter(s => s.value > 0)
         .map(s => {
             const pct = Math.min(100, ((s.value * normalizationFactor) / defaultTotal) * 100);
@@ -148,7 +155,7 @@ const MultiProgressBar: React.FC<MultiProgressBarProps> = ({
 
             {/* Legend */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1">
-                {series.map(s => {
+                {resolvedSeries.map(s => {
                     const isActive = hoveredKey === s.key;
                     const isDimmed = hoveredKey !== null && !isActive;
 

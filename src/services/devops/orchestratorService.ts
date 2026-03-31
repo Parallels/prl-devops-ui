@@ -1,9 +1,5 @@
 import { apiService } from '../api';
-import {
-  DevOpsRemoteHost,
-  AddOrchestratorHostRequest,
-  UpdateOrchestratorHostRequest
-} from '../../interfaces/devops';
+import { DevOpsRemoteHost, AddOrchestratorHostRequest, DeployOrchestratorHostRequest, UpdateOrchestratorHostRequest } from '../../interfaces/devops';
 import { OrchestratorResource } from '@/interfaces/Orchestrator';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 
@@ -14,18 +10,14 @@ import { VirtualMachine } from '@/interfaces/VirtualMachine';
 class OrchestratorService {
   /**
    * Get all orchestrator hosts
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @returns Array of orchestrator hosts
    * @throws ApiError
    */
   async getOrchestratorHosts(hostname: string): Promise<DevOpsRemoteHost[]> {
     try {
-      const hosts = await apiService.get<DevOpsRemoteHost[]>(
-        hostname,
-        '/api/v1/orchestrator/hosts',
-        { errorPrefix: 'Failed to get orchestrator hosts' }
-      );
+      const hosts = await apiService.get<DevOpsRemoteHost[]>(hostname, '/api/v1/orchestrator/hosts', { errorPrefix: 'Failed to get orchestrator hosts' });
 
       return hosts || [];
     } catch (error) {
@@ -36,27 +28,19 @@ class OrchestratorService {
 
   /**
    * Add a new orchestrator host
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @param request - Host configuration request
    * @returns true if successful
    * @throws ApiError
    */
-  async addOrchestratorHost(
-    hostname: string,
-    request: AddOrchestratorHostRequest
-  ): Promise<boolean> {
+  async addOrchestratorHost(hostname: string, request: AddOrchestratorHostRequest): Promise<boolean> {
     try {
       if (!request) {
         throw new Error('Request is required');
       }
 
-      await apiService.post(
-        hostname,
-        '/api/v1/orchestrator/hosts',
-        request,
-        { errorPrefix: 'Failed to add orchestrator host' }
-      );
+      await apiService.post(hostname, '/api/v1/orchestrator/hosts', request, { errorPrefix: 'Failed to add orchestrator host' });
 
       return true;
     } catch (error) {
@@ -67,29 +51,20 @@ class OrchestratorService {
 
   /**
    * Update an orchestrator host
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @param hostId - Host ID to update
    * @param request - Host update request
    * @returns true if successful
    * @throws ApiError
    */
-  async updateOrchestratorHost(
-    hostname: string,
-    hostId: string,
-    request: UpdateOrchestratorHostRequest
-  ): Promise<boolean> {
+  async updateOrchestratorHost(hostname: string, hostId: string, request: UpdateOrchestratorHostRequest): Promise<boolean> {
     try {
       if (!request) {
         throw new Error('Request is required');
       }
 
-      await apiService.put(
-        hostname,
-        `/api/v1/orchestrator/hosts/${hostId}`,
-        request,
-        { errorPrefix: `Failed to update orchestrator host ${hostId}` }
-      );
+      await apiService.put(hostname, `/api/v1/orchestrator/hosts/${hostId}`, request, { errorPrefix: `Failed to update orchestrator host ${hostId}` });
 
       return true;
     } catch (error) {
@@ -100,7 +75,7 @@ class OrchestratorService {
 
   /**
    * Enable an orchestrator host
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @param hostId - Host ID to enable
    * @returns true if successful
@@ -108,12 +83,7 @@ class OrchestratorService {
    */
   async enableOrchestratorHost(hostname: string, hostId: string): Promise<boolean> {
     try {
-      await apiService.put(
-        hostname,
-        `/api/v1/orchestrator/hosts/${hostId}/enable`,
-        undefined,
-        { errorPrefix: `Failed to enable orchestrator host ${hostId}` }
-      );
+      await apiService.put(hostname, `/api/v1/orchestrator/hosts/${hostId}/enable`, undefined, { errorPrefix: `Failed to enable orchestrator host ${hostId}` });
 
       return true;
     } catch (error) {
@@ -124,7 +94,7 @@ class OrchestratorService {
 
   /**
    * Disable an orchestrator host
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @param hostId - Host ID to disable
    * @returns true if successful
@@ -132,12 +102,7 @@ class OrchestratorService {
    */
   async disableOrchestratorHost(hostname: string, hostId: string): Promise<boolean> {
     try {
-      await apiService.put(
-        hostname,
-        `/api/v1/orchestrator/hosts/${hostId}/disable`,
-        undefined,
-        { errorPrefix: `Failed to disable orchestrator host ${hostId}` }
-      );
+      await apiService.put(hostname, `/api/v1/orchestrator/hosts/${hostId}/disable`, undefined, { errorPrefix: `Failed to disable orchestrator host ${hostId}` });
 
       return true;
     } catch (error) {
@@ -148,7 +113,7 @@ class OrchestratorService {
 
   /**
    * Remove an orchestrator host
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @param hostId - Host ID to remove
    * @returns true if successful
@@ -156,11 +121,7 @@ class OrchestratorService {
    */
   async removeOrchestratorHost(hostname: string, hostId: string): Promise<boolean> {
     try {
-      await apiService.delete(
-        hostname,
-        `/api/v1/orchestrator/hosts/${hostId}`,
-        { errorPrefix: `Failed to remove orchestrator host ${hostId}` }
-      );
+      await apiService.delete(hostname, `/api/v1/orchestrator/hosts/${hostId}`, { errorPrefix: `Failed to remove orchestrator host ${hostId}` });
 
       return true;
     } catch (error) {
@@ -171,18 +132,14 @@ class OrchestratorService {
 
   /**
    * Get orchestrator resources
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @returns Array of orchestrator resources
    * @throws ApiError
    */
   async getOrchestratorResources(hostname: string): Promise<OrchestratorResource[]> {
     try {
-      const resources = await apiService.get<OrchestratorResource[]>(
-        hostname,
-        '/api/v1/orchestrator/overview/resources',
-        { errorPrefix: 'Failed to get orchestrator resources' }
-      );
+      const resources = await apiService.get<OrchestratorResource[]>(hostname, '/api/v1/orchestrator/overview/resources', { errorPrefix: 'Failed to get orchestrator resources' });
 
       return resources || [];
     } catch (error) {
@@ -192,19 +149,47 @@ class OrchestratorService {
   }
 
   /**
+   * Deploy an orchestrator host via SSH (sync operation)
+   *
+   * @param hostname - The hostname identifier for the target server
+   * @param request - SSH deploy configuration
+   * @throws ApiError
+   */
+  async deployOrchestratorHost(hostname: string, request: DeployOrchestratorHostRequest): Promise<void> {
+    try {
+      await apiService.post(hostname, '/api/v1/orchestrator/hosts/deploy', request, { errorPrefix: 'Failed to deploy orchestrator host' });
+    } catch (error) {
+      console.error('Failed to deploy orchestrator host:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deploy an orchestrator host via SSH  (async operation)
+   *
+   * @param hostname - The hostname identifier for the target server
+   * @param request - SSH deploy configuration
+   * @throws ApiError
+   */
+  async deployOrchestratorHostAsync(hostname: string, request: DeployOrchestratorHostRequest): Promise<void> {
+    try {
+      await apiService.post(hostname, '/api/v1/orchestrator/hosts/deploy/async', request, { errorPrefix: 'Failed to deploy orchestrator host' });
+    } catch (error) {
+      console.error('Failed to deploy orchestrator host:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get orchestrator vms
-   * 
+   *
    * @param hostname - The hostname identifier for the target server
    * @returns Array of orchestrator resources
    * @throws ApiError
    */
   async getOrchestratorVMs(hostname: string, hostId: string): Promise<VirtualMachine[]> {
     try {
-      const virtualMachines = await apiService.get<VirtualMachine[]>(
-        hostname,
-        `/api/v1/orchestrator/hosts/${hostId}/machines`,
-        { errorPrefix: 'Failed to get orchestrator machines' }
-      );
+      const virtualMachines = await apiService.get<VirtualMachine[]>(hostname, `/api/v1/orchestrator/hosts/${hostId}/machines`, { errorPrefix: 'Failed to get orchestrator machines' });
 
       return virtualMachines || [];
     } catch (error) {

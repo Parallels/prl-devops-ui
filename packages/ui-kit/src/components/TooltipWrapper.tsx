@@ -4,7 +4,7 @@ import classNames from 'classnames';
 import type { TooltipPosition } from './Tooltip';
 
 export interface TooltipWrapperProps {
-  /** Tooltip text. When omitted the child is rendered as-is. */
+  /** Tooltip text. When omitted no tooltip is shown but the child is rendered unchanged. */
   text?: string;
   /** Delay in ms before the tooltip appears. Defaults to 500. */
   delay?: number;
@@ -25,6 +25,10 @@ const VIEWPORT_PADDING = 8; // px to keep away from viewport edges
  * Includes edge collision detection: when the tooltip would overflow the
  * viewport, it is shifted inward and its caret is repositioned to still point
  * at the trigger element.
+ *
+ * The component always renders a Fragment so that switching `text` between
+ * undefined and a string value never causes the child element to unmount —
+ * important when the child holds a ref (e.g. for truncation detection).
  */
 const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
   text,
@@ -48,6 +52,15 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
+
+  // Hide immediately when text is removed while tooltip is showing.
+  useEffect(() => {
+    if (!text && visible) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      setVisible(false);
+      setFinalLeft(null);
+    }
+  }, [text, visible]);
 
   // After the tooltip renders, measure it and clamp within the viewport.
   // The `finalLeft !== null` guard prevents re-running after we've already adjusted.
@@ -79,18 +92,20 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
 
   const show = useCallback(
     (e: React.MouseEvent) => {
-      const rect = (e.currentTarget as Element).getBoundingClientRect();
-      setTriggerCenter({
-        top: position === 'top' ? rect.top : rect.bottom,
-        left: rect.left + rect.width / 2,
-      });
-      // Reset collision state for this new show cycle
-      setFinalLeft(null);
-      setCaretOffset('50%');
-      timerRef.current = setTimeout(() => setVisible(true), delay);
+      // No text → no tooltip; still forward the original handler.
+      if (text) {
+        const rect = (e.currentTarget as Element).getBoundingClientRect();
+        setTriggerCenter({
+          top: position === 'top' ? rect.top : rect.bottom,
+          left: rect.left + rect.width / 2,
+        });
+        setFinalLeft(null);
+        setCaretOffset('50%');
+        timerRef.current = setTimeout(() => setVisible(true), delay);
+      }
       children.props.onMouseEnter?.(e);
     },
-    [delay, position, children.props],
+    [text, delay, position, children.props],
   );
 
   const hide = useCallback(
@@ -107,12 +122,11 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
     [children.props],
   );
 
-  if (!text) return children;
-
   const isTop = position === 'top';
-  // Render at triggerCenter.left initially (invisible until collision check runs)
   const renderLeft = finalLeft ?? triggerCenter.left;
 
+  // Always render a Fragment so the child element is never unmounted when
+  // `text` changes — this keeps refs and ResizeObserver stable.
   const child = React.cloneElement(children, {
     onMouseEnter: show,
     onMouseLeave: hide,
@@ -121,7 +135,7 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
   return (
     <>
       {child}
-      {visible &&
+      {visible && text &&
         createPortal(
           <div
             ref={tooltipRef}

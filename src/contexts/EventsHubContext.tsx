@@ -5,12 +5,19 @@ import { WebSocketState, type WebSocketMessage } from '../types/WebSocket';
 import { authService } from '../services/authService';
 
 export const EVENTS_HUB_SERVER_ID = 'events-hub';
-const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy,job_manager';
-// Keep a larger in-memory buffer so consumers using queue cursors can catch up
-// during short spikes without losing intermediate events.
-const DEFAULT_LIMIT = 2000;
+const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy,job_manager,auth';
+
+const IS_DEVELOPMENT = (import.meta.env.VITE_IS_DEVELOPMENT ?? '').toLowerCase() === 'true';
+
+// In development keep a large rolling history so the Events debug view works.
+// In production use a tiny sliding window — enough for drainUnseenMessages
+// consumers to drain on each render tick without accumulating history.
+const DEFAULT_LIMIT = IS_DEVELOPMENT ? 2000 : 20;
+// system_logs is always kept at full capacity regardless of environment:
+// consumers need the full log buffer to display host/system log streams.
+const SYSTEM_LOGS_LIMIT = 1000;
 const HOST_STATS_LIMIT = 60; // ~1 min of data at 1-second intervals
-const HOST_LOGS_LIMIT = 100;
+const HOST_LOGS_LIMIT = 1000;
 const REVERSE_PROXY_LIMIT = 100;
 
 export interface HostLogEntry {
@@ -25,8 +32,11 @@ export interface HostStatsPoint {
     ts: number;
     cpu_system_seconds: number;
     cpu_user_seconds: number;
+    cpu_percent: number;
     goroutines: number;
+    goroutines_smoothed: number;
     memory_bytes: number;
+    memory_alloc_bytes: number;
 }
 
 const SUBSCRIBED_TYPES = WS_EVENT_TYPES.split(',').map((s) => s.trim());
@@ -58,6 +68,7 @@ export interface ReverseProxyRouteBody {
     traffic_type?: undefined;
     reverse_proxy_host_id: string;
     target_vm_id?: string;
+    internal_ip_address?: string;
 }
 
 export type ReverseProxyBody = ReverseProxyHttpBody | ReverseProxyTcpBody | ReverseProxyRouteBody;
@@ -71,6 +82,40 @@ export interface ReverseProxyEventEntry {
     message: string;
     /** The parsed body of the event */
     body: ReverseProxyBody;
+}
+
+// ---------------------------------------------------------------------------
+// Reverse proxy service + host state (current snapshot, not rolling history)
+// ---------------------------------------------------------------------------
+
+export interface ReverseProxyStateChangedBody {
+    enabled: boolean;
+    state: 'started' | 'stopped';
+}
+
+export type ReverseProxyHostStateValue = 'starting' | 'started' | 'stopped' | 'ip_changed' | 'error';
+
+export interface ReverseProxyHostStateChangedBody {
+    reverse_proxy_host_id: string;
+    state: ReverseProxyHostStateValue;
+    old_ip?: string;
+    new_ip?: string;
+    error_message?: string;
+}
+
+export interface ReverseProxyServiceStatus {
+    enabled: boolean;
+    state: 'started' | 'stopped';
+    ts: number;
+}
+
+export interface ReverseProxyHostStatus {
+    id: string;
+    state: ReverseProxyHostStateValue;
+    old_ip?: string;
+    new_ip?: string;
+    error_message?: string;
+    ts: number;
 }
 
 export interface EventsHubMessage {
@@ -96,7 +141,10 @@ type Action =
 
 function initialContainers(): ContainersState {
     return Object.fromEntries(
-        [...SUBSCRIBED_TYPES, '_other'].map((k) => [k, { messages: [], limit: DEFAULT_LIMIT }])
+        [...SUBSCRIBED_TYPES, '_other'].map((k) => [
+            k,
+            { messages: [], limit: k === 'system_logs' ? SYSTEM_LOGS_LIMIT : DEFAULT_LIMIT },
+        ])
     );
 }
 
@@ -132,18 +180,22 @@ function hostStatsReducer(state: HostStatsState, action: HostStatsAction): HostS
 type HostLogsState = Record<string, HostLogEntry[]>;
 type HostLogsAction =
     | { type: 'ADD_LOG'; hostId: string; entry: HostLogEntry }
+    | { type: 'CLEAR_HOST'; hostId: string }
     | { type: 'CLEAR_ALL' };
 
 function hostLogsReducer(state: HostLogsState, action: HostLogsAction): HostLogsState {
     switch (action.type) {
         case 'ADD_LOG': {
             const prev = state[action.hostId] ?? [];
+            if (prev.some((e) => e.id === action.entry.id)) return state;
             const next = [...prev, action.entry];
             return {
                 ...state,
                 [action.hostId]: next.length > HOST_LOGS_LIMIT ? next.slice(-HOST_LOGS_LIMIT) : next,
             };
         }
+        case 'CLEAR_HOST':
+            return { ...state, [action.hostId]: [] };
         case 'CLEAR_ALL':
             return {};
     }
@@ -163,6 +215,7 @@ function reverseProxyReducer(state: ReverseProxyState, action: ReverseProxyActio
     switch (action.type) {
         case 'ADD_RP_EVENT': {
             const prev = state[action.hostId] ?? [];
+            if (prev.some((e) => e.id === action.entry.id)) return state;
             const next = [...prev, action.entry];
             return {
                 ...state,
@@ -174,19 +227,9 @@ function reverseProxyReducer(state: ReverseProxyState, action: ReverseProxyActio
     }
 }
 
-function hasMessageId(state: ContainersState, id: string): boolean {
-    for (const container of Object.values(state)) {
-        if (container.messages.some((message) => message.id === id)) return true;
-    }
-    return false;
-}
-
 function containersReducer(state: ContainersState, action: Action): ContainersState {
     switch (action.type) {
         case 'ADD': {
-            // Guard against duplicate deliveries (e.g. reconnect replay or
-            // duplicate raw listeners) so Events view doesn't render duplicates.
-            if (hasMessageId(state, action.msg.id)) return state;
 
             const knownKey = action.key in state ? action.key : '_other';
             const container = state[knownKey];
@@ -235,26 +278,41 @@ interface EventsHubContextType {
     connectionState: WebSocketState;
     /** Per-host rolling buffers of HOST_STATS_UPDATE data points (newest last). */
     hostStats: Record<string, HostStatsPoint[]>;
-    /** Per-host rolling buffers of the last 100 HOST_LOGS_UPDATE lines (oldest first). */
+    /** Per-host rolling buffers of the last 1000 HOST_LOGS_UPDATE lines (oldest first). */
     hostLogs: Record<string, HostLogEntry[]>;
+    /** Clear the log buffer for a specific host. */
+    clearHostLogs: (hostId: string) => void;
     /** Per-reverse-proxy-host rolling buffers of the last 100 reverse proxy events (oldest first). */
     reverseProxyEvents: Record<string, ReverseProxyEventEntry[]>;
+    /** Current service-level reverse proxy state (from REVERSE_PROXY_STATE_CHANGED). */
+    rpServiceStatus: ReverseProxyServiceStatus | null;
+    /** Latest known state per reverse proxy host ID (from REVERSE_PROXY_HOST_STATE_CHANGED). */
+    rpHostStatuses: Record<string, ReverseProxyHostStatus>;
 }
 
 const EventsHubContext = createContext<EventsHubContextType | null>(null);
 
 export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { session, isConnected: isSessionConnected } = useSession();
+    const { session, isConnected: isSessionConnected, clearSession } = useSession();
     const { connect, disconnect, service } = useWebSocketContext();
     const [containers, dispatch] = useReducer(containersReducer, undefined, initialContainers);
     const [hostStats, dispatchHostStats] = useReducer(hostStatsReducer, {});
     const [hostLogs, dispatchHostLogs] = useReducer(hostLogsReducer, {});
     const [reverseProxyEvents, dispatchReverseProxy] = useReducer(reverseProxyReducer, {});
+    const [rpServiceStatus, setRpServiceStatus] = useState<ReverseProxyServiceStatus | null>(null);
+    const [rpHostStatuses, setRpHostStatuses] = useState<Record<string, ReverseProxyHostStatus>>({});
     const [connectionState, setConnectionState] = useState<WebSocketState>(WebSocketState.CLOSED);
+
+    // O(1) dedup guard — capped at 5000 entries to avoid its own memory growth.
+    const seenIdsRef = useRef<Set<string>>(new Set());
 
     // Always-current hostname for the subscribeRaw closure (avoids stale closure)
     const hostnameRef = useRef<string>('');
     hostnameRef.current = session?.hostname ?? '';
+
+    // Always-current session for auth event handling (avoids stale closure)
+    const sessionRef = useRef(session);
+    sessionRef.current = session;
 
     // -----------------------------------------------------------------------
     // Async helper: obtain a **fresh** token and build the WS URL.
@@ -277,6 +335,9 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             dispatchHostStats({ type: 'CLEAR_ALL' });
             dispatchHostLogs({ type: 'CLEAR_ALL' });
             dispatchReverseProxy({ type: 'CLEAR_ALL' });
+            setRpServiceStatus(null);
+            setRpHostStatuses({});
+            seenIdsRef.current.clear();
         }
         prevHostnameRef.current = newHostname;
     }, [session?.hostname]);
@@ -291,6 +352,9 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             dispatchHostStats({ type: 'CLEAR_ALL' });
             dispatchHostLogs({ type: 'CLEAR_ALL' });
             dispatchReverseProxy({ type: 'CLEAR_ALL' });
+            setRpServiceStatus(null);
+            setRpHostStatuses({});
+            seenIdsRef.current.clear();
             return;
         }
 
@@ -327,6 +391,20 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 raw: msg,
             };
 
+            // O(1) dedup — skip messages we've already processed.
+            if (seenIdsRef.current.has(entry.id)) return;
+            seenIdsRef.current.add(entry.id);
+            if (seenIdsRef.current.size > 5000) {
+                // Evict the oldest 1000 entries to keep the sliding window intact
+                // instead of wiping all dedup history at once.
+                const iter = seenIdsRef.current.values();
+                for (let i = 0; i < 1000; i++) {
+                    const n = iter.next();
+                    if (n.done) break;
+                    seenIdsRef.current.delete(n.value);
+                }
+            }
+
             // HOST_STATS_UPDATE messages are high-frequency (1/s per host).
             // Route them into the per-host stats store and skip the general
             // containers to avoid flooding the orchestrator container.
@@ -340,8 +418,11 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                             ts: entry.receivedAt,
                             cpu_system_seconds: body.stats.cpu_system_seconds ?? 0,
                             cpu_user_seconds: body.stats.cpu_user_seconds ?? 0,
+                            cpu_percent: body.stats.cpu_percent ?? 0,
                             goroutines: body.stats.goroutines ?? 0,
+                            goroutines_smoothed: body.stats.goroutines_smoothed ?? body.stats.goroutines ?? 0,
                             memory_bytes: body.stats.memory_bytes ?? 0,
+                            memory_alloc_bytes: body.stats.memory_alloc_bytes ?? body.stats.memory_bytes ?? 0,
                         },
                     });
                 }
@@ -389,9 +470,31 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 // fall through to general container dispatch
             }
 
-            // Direct reverse_proxy event — also feed the per-host RP buffer,
-            // then fall through so the general container receives it.
+            // Direct reverse_proxy event — track current service/host state,
+            // feed the per-host RP buffer, then fall through to the general container.
             if (msg.event_type === 'reverse_proxy') {
+                if (msg.message === 'REVERSE_PROXY_STATE_CHANGED') {
+                    const body = msg.body as ReverseProxyStateChangedBody | undefined;
+                    if (body) {
+                        setRpServiceStatus({ enabled: body.enabled, state: body.state, ts: entry.receivedAt });
+                    }
+                }
+                if (msg.message === 'REVERSE_PROXY_HOST_STATE_CHANGED') {
+                    const body = msg.body as ReverseProxyHostStateChangedBody | undefined;
+                    if (body?.reverse_proxy_host_id) {
+                        setRpHostStatuses((prev) => ({
+                            ...prev,
+                            [body.reverse_proxy_host_id]: {
+                                id: body.reverse_proxy_host_id,
+                                state: body.state,
+                                old_ip: body.old_ip,
+                                new_ip: body.new_ip,
+                                error_message: body.error_message,
+                                ts: entry.receivedAt,
+                            },
+                        }));
+                    }
+                }
                 const body = msg.body as ReverseProxyBody | undefined;
                 const hostId = body?.reverse_proxy_host_id;
                 if (hostId && body) {
@@ -409,10 +512,52 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 // fall through to general container dispatch
             }
 
+            // ── Auth events — session management ────────────────────────────────
+            // These are handled here (centrally) so the app reacts to backend
+            // mutations that affect the current logged-in user without any page
+            // needing to subscribe individually.  The message is still dispatched
+            // into the 'auth' container below so event history remains intact.
+            if (msg.event_type === 'auth') {
+                const s = sessionRef.current;
+                const uid = s?.tokenPayload?.uid;
+                const roles = s?.tokenPayload?.roles ?? [];
+                const hostname = s?.hostname ?? '';
+                const serverUrl = s?.serverUrl;
+
+                switch (msg.message) {
+                    case 'USER_UPDATED': {
+                        const body = msg.body as { user_id?: string } | undefined;
+                        if (uid && body?.user_id === uid) {
+                            console.log('[EventsHub] USER_UPDATED for current user — refreshing session token');
+                            void authService.refreshSession(hostname, serverUrl);
+                        }
+                        break;
+                    }
+                    case 'USER_REMOVED': {
+                        const body = msg.body as { user_id?: string } | undefined;
+                        if (uid && body?.user_id === uid) {
+                            console.log('[EventsHub] USER_REMOVED for current user — logging out');
+                            authService.logout(hostname);
+                            clearSession();
+                        }
+                        break;
+                    }
+                    case 'ROLE_CLAIM_ADDED':
+                    case 'ROLE_CLAIM_REMOVED': {
+                        const body = msg.body as { role_id?: string } | undefined;
+                        if (body?.role_id && roles.includes(body.role_id)) {
+                            console.log(`[EventsHub] ${msg.message} on role "${body.role_id}" held by current user — refreshing session token`);
+                            void authService.refreshSession(hostname, serverUrl);
+                        }
+                        break;
+                    }
+                }
+            }
+
             dispatch({ type: 'ADD', key: msg.event_type ?? '_other', msg: entry });
         });
         return unsub;
-    }, [service]);
+    }, [service, clearSession]);
 
     // -----------------------------------------------------------------------
     // Stable derived values
@@ -445,6 +590,10 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         dispatch({ type: 'CLEAR_ALL' });
     }, []);
 
+    const clearHostLogs = useCallback((hostId: string) => {
+        dispatchHostLogs({ type: 'CLEAR_HOST', hostId });
+    }, []);
+
     const value = useMemo<EventsHubContextType>(() => ({
         containerMessages,
         allMessages,
@@ -459,8 +608,11 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         connectionState,
         hostStats,
         hostLogs,
+        clearHostLogs,
         reverseProxyEvents,
-    }), [containerMessages, allMessages, containerLimits, setContainerLimit, clearContainer, clearAllContainers, connectionState, hostStats, hostLogs, reverseProxyEvents]);
+        rpServiceStatus,
+        rpHostStatuses,
+    }), [containerMessages, allMessages, containerLimits, setContainerLimit, clearContainer, clearAllContainers, connectionState, hostStats, hostLogs, clearHostLogs, reverseProxyEvents, rpServiceStatus, rpHostStatuses]);
 
     return (
         <EventsHubContext.Provider value={value}>

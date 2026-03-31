@@ -1,5 +1,5 @@
 import { useNavigate, type NavigateFunction } from 'react-router-dom';
-import type { VmsDeepLinkState, HostsDeepLinkState, JobsDeepLinkState } from '@/types/deepLink';
+import type { VmsDeepLinkState, HostsDeepLinkState, JobsDeepLinkState, CatalogsDeepLinkState } from '@/types/deepLink';
 
 /**
  * Central navigation helper.
@@ -55,7 +55,10 @@ export function useNavigateTo() {
 
     return {
         toVm(vmId: string, groupId?: string) {
-            const state: VmsDeepLinkState = { selectVmId: vmId, selectGroupId: groupId };
+            const state: VmsDeepLinkState = {
+                selectVmId: vmId,
+                selectGroupId: groupId,
+            };
             navigate('/vms', { state });
         },
 
@@ -67,6 +70,11 @@ export function useNavigateTo() {
         toJob(jobId: string) {
             const state: JobsDeepLinkState = { selectJobId: jobId };
             navigate('/jobs', { state });
+        },
+
+        toCatalogs(downloadTarget?: 'host' | 'orchestrator') {
+            const state: CatalogsDeepLinkState = { downloadTarget };
+            navigate('/catalogs', { state });
         },
 
         toRecord(recordType: string, recordId: string) {

@@ -9,12 +9,6 @@
     ],
     "module": "ESNext",
     "skipLibCheck": true,
-    "baseUrl": "./src",
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
@@ -25,7 +19,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "declaration": true
+    "declaration": true,
+    "types": ["node"],
+    "ignoreDeprecations": "6.0"
   },
   "include": [
     "src"

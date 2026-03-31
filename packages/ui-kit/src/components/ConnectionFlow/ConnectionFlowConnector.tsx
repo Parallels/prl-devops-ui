@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getTreeColorTokens, NEUTRAL_TOKENS } from '../TreeView/toneColors';
 import type { TreeTone } from '../TreeView/types';
 import type { ConnectionState, ConnectionFlowConnectorConfig } from './types';
@@ -108,6 +108,13 @@ export interface ConnectionFlowConnectorProps {
      * Default: false
      */
     animateCompleted?: boolean;
+    /**
+     * When true, the connector stretches to fill available flex space instead of using a
+     * fixed pixel width. The SVG geometry is recalculated from the measured container width
+     * so rings stay at correct positions and the middle icon stays at the exact midpoint.
+     * Default: false
+     */
+    fullWidth?: boolean;
 }
 
 const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
@@ -136,8 +143,27 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
     rightAnchorTones = [],
     rightAnchorStates = [],
     animateCompleted = false,
+    fullWidth = false,
 }) => {
     const isDark = useIsDark();
+
+    // ── Full-width mode: measure the actual rendered container width ───────────
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [measuredWidth, setMeasuredWidth] = useState(width);
+
+    useLayoutEffect(() => {
+        if (!fullWidth) { setMeasuredWidth(width); return; }
+        const el = containerRef.current;
+        if (!el) return;
+        const ro = new ResizeObserver(() => {
+            const w = el.offsetWidth;
+            if (w > 0) setMeasuredWidth(w);
+        });
+        ro.observe(el);
+        const initial = el.offsetWidth;
+        if (initial > 0) setMeasuredWidth(initial);
+        return () => ro.disconnect();
+    }, [fullWidth, width]);
     const ci = isDark ? 1 : 0;
     const bw = BORDER_WIDTH[borderSize];
     const ringR = 5.5;
@@ -173,8 +199,11 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
     // Keep legacy name for multi-source code that uses `my` throughout
     const my = sy;
 
+    // Effective width: measured container width when fullWidth, otherwise the fixed prop
+    const w = fullWidth ? measuredWidth : width;
+
     // Fan-out: control-point X for bezier curves from source to each target lane
-    const fanOutCx = width / 2;
+    const fanOutCx = w / 2;
 
     // Global dot animation timing (px/s)
     const DOT_VELOCITY = 35;
@@ -185,20 +214,21 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
     const srcArc = (y: number) =>
         `M 0 ${y - ringR} A ${ringR} ${ringR} 0 0 1 0 ${y + ringR}`;
     // Target left-facing: opens leftward (sweep=0) — uses target anchor Y
-    const dstArc = `M ${width} ${ty - ringR} A ${ringR} ${ringR} 0 0 0 ${width} ${ty + ringR}`;
+    const dstArc = `M ${w} ${ty - ringR} A ${ringR} ${ringR} 0 0 0 ${w} ${ty + ringR}`;
 
     // Trunk X — middle of the connector gap
-    const trunkX = width / 2;
+    const trunkX = w / 2;
     // In multi-source, the vertical trunk on the left spans from first to last anchor
     return (
         <div
-            className="relative z-10 flex items-start justify-center shrink-0 -mx-[1px]"
-            style={{ width, height: svgH }}
+            ref={containerRef}
+            className={`relative z-10 flex items-start justify-center -mx-[1px]${fullWidth ? ' flex-1 min-w-0' : ' shrink-0'}`}
+            style={fullWidth ? { height: svgH } : { width: w, height: svgH }}
         >
             <svg
-                width={width}
+                width={w}
                 height={svgH}
-                viewBox={`0 0 ${width} ${svgH}`}
+                viewBox={`0 0 ${w} ${svgH}`}
                 overflow="visible"
                 style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
             >
@@ -226,8 +256,8 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                             {/* Feed line from trunk to right ring — straight or bezier */}
                             <path
                                 d={sy === ty
-                                    ? `M ${trunkX} ${sy} L ${width - ringR} ${ty}`
-                                    : `M ${trunkX} ${sy} C ${(trunkX + width) / 2} ${sy}, ${(trunkX + width) / 2} ${ty}, ${width - ringR} ${ty}`
+                                    ? `M ${trunkX} ${sy} L ${w - ringR} ${ty}`
+                                    : `M ${trunkX} ${sy} C ${(trunkX + w) / 2} ${sy}, ${(trunkX + w) / 2} ${ty}, ${w - ringR} ${ty}`
                                 }
                                 stroke={lineColor}
                                 strokeWidth={2}
@@ -243,8 +273,8 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                                 <path
                                     key={`hline-target-${idx}`}
                                     d={ry === sy
-                                        ? `M ${ringR} ${sy} L ${width - ringR} ${ry}`
-                                        : `M ${ringR} ${sy} C ${fanOutCx} ${sy}, ${fanOutCx} ${ry}, ${width - ringR} ${ry}`
+                                        ? `M ${ringR} ${sy} L ${w - ringR} ${ry}`
+                                        : `M ${ringR} ${sy} C ${fanOutCx} ${sy}, ${fanOutCx} ${ry}, ${w - ringR} ${ry}`
                                     }
                                     stroke={lineColor}
                                     strokeWidth={idx === 0 ? 2 : 1.5}
@@ -258,8 +288,8 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                     ) : (
                         <path
                             d={sy === ty
-                                ? `M ${ringR} ${sy} L ${width - ringR} ${ty}`
-                                : `M ${ringR} ${sy} C ${width / 2} ${sy}, ${width / 2} ${ty}, ${width - ringR} ${ty}`
+                                ? `M ${ringR} ${sy} L ${w - ringR} ${ty}`
+                                : `M ${ringR} ${sy} C ${w / 2} ${sy}, ${w / 2} ${ty}, ${w - ringR} ${ty}`
                             }
                             stroke={lineColor}
                             strokeWidth={2}
@@ -322,7 +352,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                         const fill = laneTone ? tok.connFill[ci] : NEUTRAL_TOKENS.connFill[ci];
                         const border = laneTone ? tok.connBorder[ci] : NEUTRAL_TOKENS.connBorder[ci];
                         const dot = laneTone ? tok.connDot[ci] : NEUTRAL_TOKENS.connDot[ci];
-                        const arc = `M ${width} ${ry - ringR} A ${ringR} ${ringR} 0 0 0 ${width} ${ry + ringR}`;
+                        const arc = `M ${w} ${ry - ringR} A ${ringR} ${ringR} 0 0 0 ${w} ${ry + ringR}`;
                         return (
                             <g key={`dst-${idx}`}>
                                 {halfRing ? (
@@ -332,11 +362,11 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                                     </>
                                 ) : (
                                     <>
-                                        <circle cx={width} cy={ry} r={ringR} fill={fill} />
-                                        <circle cx={width} cy={ry} r={ringR} stroke={border} strokeWidth={bw} fill="none" />
+                                        <circle cx={w} cy={ry} r={ringR} fill={fill} />
+                                        <circle cx={w} cy={ry} r={ringR} stroke={border} strokeWidth={bw} fill="none" />
                                     </>
                                 )}
-                                <circle cx={width} cy={ry} r="2" fill={dot} />
+                                <circle cx={w} cy={ry} r="2" fill={dot} />
                             </g>
                         );
                     })
@@ -349,11 +379,11 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                             </>
                         ) : (
                             <>
-                                <circle cx={width} cy={ty} r={ringR} fill={dstFill} />
-                                <circle cx={width} cy={ty} r={ringR} stroke={dstBorder} strokeWidth={bw} fill="none" />
+                                <circle cx={w} cy={ty} r={ringR} fill={dstFill} />
+                                <circle cx={w} cy={ty} r={ringR} stroke={dstBorder} strokeWidth={bw} fill="none" />
                             </>
                         )}
-                        <circle cx={width} cy={ty} r="2" fill={dstDot} />
+                        <circle cx={w} cy={ty} r="2" fill={dstDot} />
                     </g>
                 )}
 
@@ -367,7 +397,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                             if (!laneActive) return null;
 
                             // Approximate arc length: horizontal span + half the vertical delta (bezier correction)
-                            const actualLen = (width - 2 * ringR) + Math.abs(ry - sy) * 0.5;
+                            const actualLen = (w - 2 * ringR) + Math.abs(ry - sy) * 0.5;
                             const numDots = Math.max(1, Math.ceil(actualLen / dotSpacing));
                             const virtualLen = numDots * dotSpacing;
                             const pathDur = numDots * DOT_GAP;
@@ -375,8 +405,8 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
 
                             // Same bezier as the visual line; append a short L for overflow fade-out
                             const pathData = ry === sy
-                                ? `M ${ringR} ${sy} L ${width - ringR + overflow} ${sy}`
-                                : `M ${ringR} ${sy} C ${fanOutCx} ${sy}, ${fanOutCx} ${ry}, ${width - ringR} ${ry} L ${width - ringR + overflow} ${ry}`;
+                                ? `M ${ringR} ${sy} L ${w - ringR + overflow} ${sy}`
+                                : `M ${ringR} ${sy} C ${fanOutCx} ${sy}, ${fanOutCx} ${ry}, ${w - ringR} ${ry} L ${w - ringR + overflow} ${ry}`;
 
                             const fadeOutEnd = actualLen / virtualLen;
                             const fadeOutStart = Math.max(0, fadeOutEnd - 10 / virtualLen);
@@ -411,7 +441,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                         leftAnchors!.map((ay, idx) => {
                             // Approximate length: branch segment + feed segment
                             const branchLen = trunkX + Math.abs(ay - sy) * 0.5;
-                            const feedH = width - trunkX - ringR;
+                            const feedH = w - trunkX - ringR;
                             const feedV = sy !== ty ? Math.abs(ty - sy) * 0.5 : 0;
                             const actualLen = branchLen + feedH + feedV;
 
@@ -421,8 +451,8 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                             const overflow = Math.max(0, virtualLen - actualLen);
 
                             // Branch bezier mirrors visual path; feed bezier matches feed line
-                            const cx = (trunkX + width) / 2;
-                            const feedEndX = width - ringR + overflow;
+                            const cx = (trunkX + w) / 2;
+                            const feedEndX = w - ringR + overflow;
                             const branchSeg = ay === sy
                                 ? `M 0 ${ay} L ${trunkX} ${sy}`
                                 : `M 0 ${ay} C ${trunkX / 2} ${ay}, ${trunkX / 2} ${sy}, ${trunkX} ${sy}`;
@@ -452,7 +482,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                             ));
                         })
                     ) : (() => {
-                        const actualLen = width - 2 * ringR;
+                        const actualLen = w - 2 * ringR;
                         const simpleNumDots = Math.max(1, Math.ceil(actualLen / dotSpacing));
                         const virtualLen = simpleNumDots * dotSpacing;
                         const simpleDur = simpleNumDots * DOT_GAP;
@@ -467,7 +497,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                         // along the same bezier path as the visible line so dots track it exactly.
                         const isAngled = Math.abs(ty - sy) > 1;
                         const motionPath = isAngled
-                            ? `M ${ringR} ${sy} C ${width / 2} ${sy}, ${width / 2} ${ty}, ${width - ringR + overflow} ${ty}`
+                            ? `M ${ringR} ${sy} C ${w / 2} ${sy}, ${w / 2} ${ty}, ${w - ringR + overflow} ${ty}`
                             : undefined;
 
                         return Array.from({ length: simpleNumDots }, (_, i) => (
@@ -483,7 +513,7 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
                                     />
                                 ) : (
                                     <animate attributeName="cx"
-                                        values={`${ringR};${width - ringR + overflow}`} keyTimes="0;1"
+                                        values={`${ringR};${w - ringR + overflow}`} keyTimes="0;1"
                                         dur={`${simpleDur}s`} begin={`${(-i * DOT_GAP).toFixed(3)}s`}
                                         repeatCount="indefinite" />
                                 )}
@@ -499,9 +529,18 @@ const ConnectionFlowConnector: React.FC<ConnectionFlowConnectorProps> = ({
 
             {/* Optional middle icon (single-source only) */}
             {!isMultiSource && middleIcon && (
-                <div className="relative z-20 flex items-center justify-center bg-white dark:bg-neutral-900 rounded-full p-0.5 mt-auto mb-auto">
-                    {middleIcon}
-                </div>
+                fullWidth ? (
+                    <div
+                        className="absolute z-20 flex items-center justify-center bg-white dark:bg-neutral-900 rounded-full p-0.5"
+                        style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
+                    >
+                        {middleIcon}
+                    </div>
+                ) : (
+                    <div className="relative z-20 flex items-center justify-center bg-white dark:bg-neutral-900 rounded-full p-0.5 mt-auto mb-auto">
+                        {middleIcon}
+                    </div>
+                )
             )}
         </div>
     );

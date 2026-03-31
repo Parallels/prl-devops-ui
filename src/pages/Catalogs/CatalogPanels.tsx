@@ -154,6 +154,7 @@ export const CatalogSourcePanel: React.FC<CatalogSourcePanelProps> = ({
 
   return (
     <CatalogManifestList
+      sourceId={source.id}
       items={filteredItems}
       query={query}
       loading={loading}

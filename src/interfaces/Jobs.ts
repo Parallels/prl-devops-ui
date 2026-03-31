@@ -22,6 +22,15 @@ export interface Job {
     updated_at: string;
 }
 
+/**
+ * Envelope for job events forwarded from a remote orchestrator host.
+ * body.host_id is present → forwarded; body is a plain Job → local.
+ */
+export interface HostJobEvent {
+  host_id: string;
+  event: Job;
+}
+
 export interface JobStep {
     name: string;
     display_name?: string;

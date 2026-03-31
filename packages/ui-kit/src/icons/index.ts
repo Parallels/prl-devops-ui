@@ -115,5 +115,23 @@ export * from './components/Artifactory';
 export * from './components/Azure';
 export * from './components/Minio';
 export * from './components/Aws';
-
-
+export * from './components/Orchestrator';
+export * from './components/Podman';
+export * from './components/PodmanDesktop';
+export * from './components/Group';
+export * from './components/Database';
+export * from './components/Pin';
+export * from './components/RemoteHost';
+export * from './components/Login';
+export * from './components/Logout';
+export * from './components/Snapshot';
+export * from './components/Revert';
+export * from './components/CleanBrush';
+export * from './components/Pull';
+export * from './components/Push';
+export * from './components/CatalogVersion';
+export * from './components/File';
+export * from './components/Revoke';
+export * from './components/Taint';
+export * from './components/Unlock';
+export * from './components/Check';

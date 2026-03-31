@@ -2,22 +2,39 @@ import { forwardRef, type InputHTMLAttributes, type ReactNode, useCallback, useI
 import classNames from "classnames";
 import { type ThemeColor, getToggleColorClasses } from "../theme/Theme";
 import { useIconRenderer } from "../contexts/IconContext";
+import TooltipWrapper from "./TooltipWrapper";
+import type { TooltipPosition } from "./Tooltip";
 
 export type ToggleSize = "sm" | "md" | "lg";
 export type ToggleAlign = "left" | "right";
 export type ToggleDescriptionPlacement = "inline" | "stacked";
+export type TogglePadding = "none" | "xs" | "sm" | "md" | "lg" | "xl";
+
+const paddingStyles: Record<TogglePadding, string> = {
+  none: "",
+  xs:   "p-0.5",
+  sm:   "p-1",
+  md:   "p-1.5",
+  lg:   "p-2",
+  xl:   "p-3",
+};
 
 export interface ToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "color" | "children"> {
   label?: ReactNode;
   description?: ReactNode;
   descriptionPlacement?: ToggleDescriptionPlacement;
   size?: ToggleSize;
+  padding?: TogglePadding;
   color?: ThemeColor;
   alignLabel?: ToggleAlign;
   iconOn?: string | React.ReactElement;
   iconOff?: string | React.ReactElement;
   fullWidth?: boolean;
   className?: string;
+  /** When set, a styled tooltip is shown on hover. */
+  tooltip?: string;
+  /** Position of the tooltip relative to the toggle. Defaults to 'top'. */
+  tooltipPosition?: TooltipPosition;
 }
 
 const sizeTokens: Record<
@@ -75,6 +92,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
       description,
       descriptionPlacement = "stacked",
       size = "md",
+      padding = "sm",
       color = "blue",
       alignLabel = "right",
       iconOn,
@@ -83,6 +101,8 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
       className,
       disabled,
       onChange,
+      tooltip,
+      tooltipPosition,
       ...inputProps
     },
     forwardedRef
@@ -138,12 +158,13 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
         </span>
       ) : null;
 
-    return (
+    const toggle = (
       <label
         className={classNames(
           "group flex select-none items-center",
           alignLabel === "left" ? "flex-row-reverse" : "flex-row",
           sizeStyles.gap,
+          paddingStyles[padding],
           fullWidth && "w-full",
           disabled && "cursor-not-allowed opacity-60",
           inputProps.readOnly && !disabled && "cursor-default",
@@ -221,6 +242,16 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
         {labelBlock}
       </label>
     );
+
+    if (tooltip) {
+      return (
+        <TooltipWrapper text={tooltip} position={tooltipPosition}>
+          {toggle}
+        </TooltipWrapper>
+      );
+    }
+
+    return toggle;
   }
 );
 
