@@ -134,3 +134,4 @@ export * from './components/File';
 export * from './components/Revoke';
 export * from './components/Taint';
 export * from './components/Unlock';
+export * from './components/Check';

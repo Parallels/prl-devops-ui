@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@prl/ui-kit';
+import { Button, IconButton } from '@prl/ui-kit';
 import { useSystemStats } from '@/contexts/SystemStatsContext';
 import { useSession } from '@/contexts/SessionContext';
 import { useConfig } from '@/contexts/ConfigContext';
@@ -267,17 +267,15 @@ export const Home: React.FC = () => {
         </div>
         {isLayoutEditMode ? (
           <div className="flex items-center gap-2">
-            <Button variant="outline" accent={true} accentColor="rose" color="slate" size="sm" onClick={cancelLayoutEdit}>
+            <Button leadingIcon="Close" variant="outline" color="red" size="sm" onClick={cancelLayoutEdit}>
               Cancel
             </Button>
-            <Button variant="solid" color="emerald" size="sm" onClick={saveLayoutEdit}>
+            <Button leadingIcon="Check" variant="solid" color="emerald" size="sm" onClick={saveLayoutEdit}>
               Save Layout
             </Button>
           </div>
         ) : (
-          <Button variant="solid" color={themeColor} size="sm" leadingIcon="Edit" onClick={startLayoutEdit}>
-            Edit Layout
-          </Button>
+          <IconButton icon="Edit" tooltip="Edit Layout" variant="ghost" color={themeColor} size="sm" onClick={startLayoutEdit}/>
         )}
         {hasModule('notifications') && (
           <div className="flex gap-2">
