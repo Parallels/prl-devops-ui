@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, ConfirmModal, CustomIcon, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, Pill, SplitView, SplitViewPanelHeaderProps, TagPicker, type SplitViewItem } from '@prl/ui-kit';
+import { Button, CustomIcon, DeleteConfirmModal, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, Pill, SplitView, SplitViewPanelHeaderProps, TagPicker, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { DevOpsClaim, DevOpsRole } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
@@ -74,8 +74,9 @@ export const Roles: React.FC = () => {
         setRoles((prev) => prev.filter((r) => r.id !== role.id));
         setRoleToDelete(null);
         if (selectedId === role.id) setSelectedId(undefined);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to delete role:', err);
+        setSaveResult({ type: 'error', message: err?.message ?? 'Failed to delete role.' });
       } finally {
         setDeleting(false);
       }
@@ -213,10 +214,10 @@ export const Roles: React.FC = () => {
         icon="Roles"
         actions={
           <ModalActions>
-            <Button variant="outline" color="theme" size="sm" onClick={handleModalClose} disabled={modalSaving}>
-              Cancel
+            <Button variant="solid" color="rose" size="sm" onClick={handleModalClose} disabled={modalSaving}>
+              Discard
             </Button>
-            <Button variant="soft" color={themeColor} size="sm" loading={modalSaving} disabled={!modalName.trim()} onClick={() => void handleModalCreate()}>
+            <Button variant="solid" color="emerald" size="sm" loading={modalSaving} disabled={!modalName.trim()} onClick={() => void handleModalCreate()}>
               Create
             </Button>
           </ModalActions>
@@ -249,17 +250,20 @@ export const Roles: React.FC = () => {
       </Modal>
 
       {/* Delete Confirm Modal */}
-      <ConfirmModal
+      <DeleteConfirmModal
         isOpen={!!roleToDelete}
         onClose={() => setRoleToDelete(null)}
         onConfirm={() => roleToDelete && void handleDelete(roleToDelete)}
         title="Delete Role"
-        description={`Are you sure you want to delete the role "${roleToDelete?.name ?? 'this role'}"? This action cannot be undone.`}
-        confirmLabel={deleting ? 'Deleting...' : 'Delete'}
-        confirmColor="danger"
-        confirmVariant="solid"
+        icon="Trash"
+        confirmLabel={deleting ? 'Deleting…' : 'Delete'}
         isConfirmDisabled={deleting}
-      />
+        confirmValue={roleToDelete?.name ?? ''}
+        confirmValueLabel="role name"
+        size="md"
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">This action is irreversible. The role will be permanently deleted.</p>
+      </DeleteConfirmModal>
 
       {/* Save Result Notification */}
       <NotificationModal

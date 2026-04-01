@@ -23,6 +23,14 @@ function ProxyHostLabel({ host }: { host: ReverseProxyHost }) {
     (hasTcp && !!host.tcp_route?.target_vm_id && host.tcp_route?.target_vm_details?.state?.toLowerCase() === 'stopped') ||
     (!hasTcp && (host.http_routes ?? []).some((r) => r.target_vm_id && r.target_vm_details?.state?.toLowerCase() === 'stopped'));
 
+  const isUnhealthyCounter = useMemo(() => {
+    let count = 0;
+    if (!hasTcp) {
+      count += (host.http_routes ?? []).filter((r) => r.target_vm_id && r.target_vm_details?.state?.toLowerCase() === 'stopped').length;
+    }
+    return count;
+  }, [host, hasTcp]);
+  
   return (
     <div className="flex flex-col gap-1 min-w-0 flex-1 w-full">
       <span className="font-medium truncate text-neutral-800 dark:text-neutral-200">
@@ -47,7 +55,7 @@ function ProxyHostLabel({ host }: { host: ReverseProxyHost }) {
         )}
         {isUnhealthy && (
           <Pill size="sm" tone="rose" variant="soft">
-            Unhealthy
+          {httpCount > 0 ? `${isUnhealthyCounter} Unhealthy` : 'Unhealthy'}
           </Pill>
         )}
       </div>

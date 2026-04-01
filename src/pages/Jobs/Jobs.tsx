@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Button, CustomIcon, EmptyState, IconButton, Pill, SplitView, SplitViewPanelHeaderProps, type SplitViewItem } from '@prl/ui-kit';
+import { CustomIcon, EmptyState, IconButton, Pill, SplitView, SplitViewPanelHeaderProps, type SplitViewItem } from '@prl/ui-kit';
 import { useLocation } from 'react-router-dom';
 import { useJobs } from '@/contexts/JobsContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
@@ -33,7 +33,14 @@ export const Jobs: React.FC = () => {
         label: 'Jobs',
         subtitle: `${jobs.length} job${jobs.length !== 1 ? 's' : ''}`,
         icon: 'Jobs',
-        panel: <JobsPanel jobs={jobs} activeCount={activeCount} loading={loading} error={error} onRetry={() => void refresh()} deepLinkState={deepLinkState} />,
+        panel: <JobsPanel
+          jobs={jobs}
+          activeCount={activeCount}
+          loading={loading}
+          error={error}
+          onRetry={() => void refresh()}
+          deepLinkState={deepLinkState}
+        />,
       },
     ],
     [jobs, activeCount, loading, error, refresh, deepLinkState],
@@ -66,9 +73,7 @@ export const Jobs: React.FC = () => {
       ),
       actions: (
         <div className="flex items-center gap-3">
-          <Button variant="soft" color={themeColor} leadingIcon="Trash" size="sm" onClick={() => void handleCleanUp()} aria-label="Clean Up" loading={cleaning}>
-            Clean Up
-          </Button>
+          <IconButton tooltip='Clean Up' variant="ghost" color="red" icon="Trash" size="sm" onClick={() => void handleCleanUp()} aria-label="Clean Up" loading={cleaning} />
         </div>
       ),
     }),
@@ -90,8 +95,24 @@ export const Jobs: React.FC = () => {
           color={themeColor}
           autoHideList
           panelScrollable={false}
-          emptyState={<EmptyState disableBorder icon="Jobs" title="No Jobs" subtitle="We couldn't find any jobs to display." tone="neutral" />}
-          panelEmptyState={<EmptyState disableBorder icon="Jobs" title="There are no jobs" subtitle="We couldn't find any jobs to display." tone="neutral" />}
+          emptyState={
+            <EmptyState
+              disableBorder
+              icon="Jobs"
+              title="No Jobs"
+              subtitle="We couldn't find any jobs to display."
+              tone="neutral"
+            />
+          }
+          panelEmptyState={
+            <EmptyState
+              disableBorder
+              icon="Jobs"
+              title="There are no jobs"
+              subtitle="We couldn't find any jobs to display."
+              tone="neutral"
+            />
+          }
           listActions={<IconButton icon="Refresh" variant="ghost" color={themeColor} size="xs" onClick={() => void refresh()} aria-label="Refresh" />}
         />
       </div>

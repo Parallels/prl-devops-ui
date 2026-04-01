@@ -248,6 +248,7 @@ const RouteConfigBody: React.FC<RouteConfigBodyProps> = ({ route, canUpdate, ava
                   <div className="w-28">
                     <FormField label="Port" required>
                       <Input
+                        fullHeight
                         tone={themeColor}
                         placeholder="3000"
                         value={formPort}

@@ -680,7 +680,7 @@ const SplitView: React.FC<SplitViewProps> = ({
         {isCollapsed ? (
           /* ---- Collapsed: just an expand button ---- */
           <div className="flex items-center justify-center pt-3">
-            <IconButton tooltip='Expand View' icon="ChevronRight" variant="ghost" color={color} size="xs" onClick={toggleCollapsed} aria-label="Expand list" />
+            <IconButton tooltip='Expand View' icon="ArrowChevronRight" variant="ghost" color={color} size="xs" onClick={toggleCollapsed} aria-label="Expand list" />
           </div>
         ) : (
           <>
@@ -690,7 +690,7 @@ const SplitView: React.FC<SplitViewProps> = ({
                 {listTitle && <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{listTitle}</h3>}
                 <div className="flex items-center gap-1 ml-auto">
                   {listActions}
-                  {collapsible && <IconButton tooltip='Collapse View' icon="ChevronLeft" variant="ghost" color={color} size="xs" onClick={toggleCollapsed} aria-label="Collapse list" />}
+                  {collapsible && <IconButton tooltip='Collapse View' icon="ArrowChevronLeft" variant="ghost" color={color} size="xs" onClick={toggleCollapsed} aria-label="Collapse list" />}
                 </div>
               </div>
             )}

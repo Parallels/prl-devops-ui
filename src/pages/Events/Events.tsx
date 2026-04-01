@@ -127,13 +127,13 @@ const EventRow = React.memo(function EventRow({
                 className="w-full flex items-center gap-2 px-2 py-0.5 text-left hover:bg-neutral-50 dark:hover:bg-white/5 rounded"
             >
                 {/* Timestamp */}
-                <span className="shrink-0 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 w-[84px]">
+                <span className="shrink-0 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 w-21">
                     {formatTime(msg.receivedAt)}
                 </span>
 
                 {/* Type badge */}
                 <span className={classNames(
-                    'shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide w-[88px] justify-center',
+                    'shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide w-22 justify-center',
                     typeBadge(msg.raw.event_type)
                 )}>
                     {msg.raw.event_type || '?'}
@@ -146,7 +146,7 @@ const EventRow = React.memo(function EventRow({
 
                 {/* Chevron */}
                 <CustomIcon
-                    icon="ChevronRight"
+                    icon="ArrowChevronRight"
                     className={classNames(
                         'h-3 w-3 text-neutral-400 dark:text-neutral-600 shrink-0 transition-transform duration-150',
                         expanded && 'rotate-90'
@@ -156,9 +156,9 @@ const EventRow = React.memo(function EventRow({
 
             {/* Expanded JSON */}
             {expanded && (
-                <div className="ml-[120px] mr-2 mb-1 px-3 py-2 rounded bg-neutral-950 dark:bg-black/40 border border-neutral-800 overflow-x-auto">
+                <div className="ml-30 mr-2 mb-1 px-3 py-2 rounded bg-neutral-950 dark:bg-black/40 border border-neutral-800 overflow-x-auto">
                     <pre
-                        className="text-[11px] font-mono leading-relaxed whitespace-pre-wrap break-words text-neutral-200"
+                        className="text-[11px] font-mono leading-relaxed whitespace-pre-wrap wrap-break-word text-neutral-200"
                         dangerouslySetInnerHTML={{ __html: highlighted }}
                     />
                 </div>
@@ -215,7 +215,7 @@ const ReverseProxyGroup: React.FC<{
     );
 
     return (
-        <div className="border-b border-amber-200 dark:border-amber-500/20 bg-amber-50/40 dark:bg-amber-500/5 flex-shrink-0">
+        <div className="border-b border-amber-200 dark:border-amber-500/20 bg-amber-50/40 dark:bg-amber-500/5 shrink-0">
             {/* Service state row */}
             <div className="px-3 py-1.5 flex items-center gap-3 flex-wrap">
                 <span className="text-[10px] font-mono font-semibold text-amber-600 dark:text-amber-500 uppercase tracking-wide shrink-0">
@@ -250,10 +250,10 @@ const ReverseProxyGroup: React.FC<{
                     {hosts.map((h) => (
                         <div key={h.id} className="px-3 py-0.5 flex items-center gap-2 text-[10px] font-mono border-b border-amber-100/50 dark:border-amber-500/5 last:border-0">
                             <span className={classNames('h-1.5 w-1.5 rounded-full shrink-0', RP_STATE_DOT[h.state] ?? 'bg-neutral-400')} />
-                            <span className="text-neutral-500 dark:text-neutral-400 shrink-0 w-[72px] truncate" title={h.id}>
+                            <span className="text-neutral-500 dark:text-neutral-400 shrink-0 w-18 truncate" title={h.id}>
                                 {h.id.length > 8 ? `${h.id.slice(0, 8)}…` : h.id}
                             </span>
-                            <span className={classNames('shrink-0 w-[64px]', RP_STATE_COLOR[h.state] ?? '')}>{h.state}</span>
+                            <span className={classNames('shrink-0 w-16', RP_STATE_COLOR[h.state] ?? '')}>{h.state}</span>
                             {h.state === 'ip_changed' && (h.old_ip || h.new_ip) && (
                                 <span className="text-sky-600 dark:text-sky-400 truncate">
                                     {h.old_ip && `${h.old_ip} → `}{h.new_ip}
@@ -397,11 +397,11 @@ export const Events: React.FC = () => {
         <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-neutral-950">
 
             {/* ── Toolbar ─────────────────────────────────────────────── */}
-            <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 flex-shrink-0 flex-wrap">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-neutral-200 dark:border-neutral-800 shrink-0 flex-wrap">
                 <CustomIcon icon="Log" className="h-4 w-4 text-neutral-400 dark:text-neutral-500 shrink-0" />
 
                 {/* Search */}
-                <div className="relative flex-1 min-w-[120px]">
+                <div className="relative flex-1 min-w-30">
                     <CustomIcon icon="Search" className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 pointer-events-none" />
                     <input
                         type="text"
@@ -424,7 +424,7 @@ export const Events: React.FC = () => {
                 </div>
 
                 {/* Event type filter — multi-select picker */}
-                <div className="w-[180px] shrink-0">
+                <div className="w-45 shrink-0">
                     <Picker
                         items={filterPickerItems}
                         multi
@@ -495,7 +495,7 @@ export const Events: React.FC = () => {
             </div>
 
             {/* ── Footer ──────────────────────────────────────────────── */}
-            <div className="flex items-center justify-between px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 flex-shrink-0">
+            <div className="flex items-center justify-between px-3 py-1.5 border-t border-neutral-200 dark:border-neutral-800 text-[10px] font-mono text-neutral-400 dark:text-neutral-600 shrink-0">
                 <span>
                     {filtered.length.toLocaleString()} / {deferredMessages.length.toLocaleString()} events
                     {hiddenCount > 0 && <span className="ml-1 text-amber-500 dark:text-amber-400">(showing last {MAX_DISPLAY.toLocaleString()})</span>}

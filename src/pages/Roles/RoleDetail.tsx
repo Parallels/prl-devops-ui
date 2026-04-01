@@ -119,10 +119,10 @@ export const RoleDetail: React.FC<RoleDetailProps> = ({ role, hostname, availabl
                 <span className="text-xs text-rose-600 dark:text-rose-400">{saveError}</span>
               )}
               <div className="flex shrink-0 items-center gap-2">
-                <Button variant="ghost" color="slate" size="sm" disabled={busy} onClick={handleDiscard}>
+                <Button variant="soft" color="red" size="sm" disabled={busy} onClick={handleDiscard}>
                   Discard
                 </Button>
-                <Button variant="solid" color={themeColor} size="sm" loading={busy} onClick={() => void handleSave()}>
+                <Button variant="solid" color="emerald" size="sm" loading={busy} onClick={() => void handleSave()}>
                   Save
                 </Button>
               </div>

@@ -6,7 +6,6 @@ import { OverviewTab } from './tabs/OverviewTab';
 import { PerformanceTab } from './tabs/PerformanceTab';
 import { CacheTab } from './tabs/CacheTab';
 import { LogsTab } from './tabs/LogsTab';
-import { SettingsTab } from './tabs/SettingsTab';
 import { ReverseProxy } from '@/pages/ReverseProxy/ReverseProxy';
 
 export interface HostDetailPanelProps {

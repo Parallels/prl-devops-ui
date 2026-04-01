@@ -265,7 +265,10 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
         label: 'VMs',
         path: '/vms',
         icon: 'VirtualMachine',
-        guards: [{ type: 'claim', claim: Claims.LIST_VM }],
+        guards: [
+          { type: 'claim', claim: Claims.LIST_VM },
+          { type: 'anyModule', modules: ['orchestrator','host']},
+        ],
         badge: !isVmRoute ? <HighlightBadge menuItemId="vms" /> : undefined,
       },
       {
@@ -325,7 +328,16 @@ const MainLayoutContent: React.FC<MainLayoutProps> = ({ children }) => {
           { type: 'module', module: 'api' },
         ],
       },
-      { groupName: 'management', slug: 'cache', label: 'Cache', path: '/cache', icon: 'Cache', guards: [{ type: 'anyModule', modules: ['api', 'cache'] }] },
+      {
+        groupName: 'management',
+        slug: 'cache',
+        label: 'Cache',
+        path: '/cache',
+        icon: 'Cache',
+        guards: [
+          { type: 'module', module: 'cache' }
+        ]
+      },
       {
         groupName: 'management',
         slug: 'jobs',

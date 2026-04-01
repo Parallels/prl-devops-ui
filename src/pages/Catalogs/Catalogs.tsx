@@ -86,6 +86,8 @@ export const Catalogs: React.FC = () => {
   const [uploadLoading, setUploadLoading] = useState(false);
   const [activeItem, setActiveItem] = useState<string | null>(null)
 
+  const hasLocalCatalogs = hasModule(Modules.CATALOG);
+  const hasCatalogManagers = hasModule(Modules.CATALOG_MANAGERS);
   const hasHostModule = hasModule(Modules.HOST);
   const hasOrchestratorModule = hasModule(Modules.ORCHESTRATOR);
 
@@ -95,7 +97,7 @@ export const Catalogs: React.FC = () => {
   const hasUpdateManagerOwn = hasClaim(Claims.CATALOG_MANAGER_UPDATE_OWN);
   const hasPushCatalogClaim = hasClaim(Claims.PUSH_CATALOG_MANIFEST);
 
-  const canCreateCatalog = hasCreateCatalog || hasCreateCatalogOwn;
+  const canCreateCatalogManager = hasCatalogManagers && (hasCreateCatalog || hasCreateCatalogOwn);
 
   const canEditManager = useCallback(
     (manager: CatalogManager): boolean => {
@@ -120,13 +122,20 @@ export const Catalogs: React.FC = () => {
     setSourcesError(null);
 
     const nextSources: CatalogSource[] = [];
-    if (hasModule('catalog')) {
+    if (hasLocalCatalogs) {
       nextSources.push({
         id: 'local',
         type: 'local',
         title: 'Local Catalogs',
         subtitle: hostname,
       });
+    }
+
+    if (!hasCatalogManagers) {
+      setAllManagers([]);
+      setSources(nextSources);
+      setLoadingSources(false);
+      return;
     }
 
     try {
@@ -151,7 +160,7 @@ export const Catalogs: React.FC = () => {
       setSources(nextSources);
       setLoadingSources(false);
     }
-  }, [hasModule, hostname]);
+  }, [hasCatalogManagers, hasLocalCatalogs, hostname]);
 
   useEffect(() => {
     void fetchCatalogContext();
@@ -171,21 +180,23 @@ export const Catalogs: React.FC = () => {
   }, [selectedCatalogItem, selectedSourceId, sources]);
 
   const openAddCatalogModal = useCallback(() => {
+    if (!hasCatalogManagers) return;
     setEditingManager(null);
     setManagerForm(defaultManagerForm);
     setManagerFormSnapshot(normalizeForDirtyCheck(defaultManagerForm));
     setManagerFormError(null);
     setIsManagerModalOpen(true);
-  }, []);
+  }, [hasCatalogManagers]);
 
   const openEditManagerModal = useCallback((manager: CatalogManager) => {
+    if (!hasCatalogManagers) return;
     const form = managerToForm(manager);
     setEditingManager(manager);
     setManagerForm(form);
     setManagerFormSnapshot(normalizeForDirtyCheck(form));
     setManagerFormError(null);
     setIsManagerModalOpen(true);
-  }, []);
+  }, [hasCatalogManagers]);
 
   const closeManagerModal = useCallback(() => {
     setIsManagerModalOpen(false);
@@ -198,6 +209,11 @@ export const Catalogs: React.FC = () => {
   const showAdvancedFlags = isEditMode ? hasUpdateManager : hasCreateCatalog;
 
   const handleSaveManager = useCallback(async () => {
+    if (!hasCatalogManagers) {
+      setManagerFormError('Catalog managers are not available on this host.');
+      return;
+    }
+
     const payload = toManagerRequest(managerForm);
 
     if (!payload.name) {
@@ -246,10 +262,14 @@ export const Catalogs: React.FC = () => {
     } finally {
       setSavingManager(false);
     }
-  }, [closeManagerModal, editingManager, fetchCatalogContext, hostname, managerForm]);
+  }, [closeManagerModal, editingManager, fetchCatalogContext, hasCatalogManagers, hostname, managerForm]);
 
   const handleDeleteManager = useCallback(
     async (manager: CatalogManager) => {
+      if (!hasCatalogManagers) {
+        setManagerToDelete(null);
+        return;
+      }
       setDeletingManager(true);
       try {
         const success = await devopsService.catalogManagers.deleteCatalogManager(hostname, manager.id);
@@ -262,7 +282,7 @@ export const Catalogs: React.FC = () => {
         setDeletingManager(false);
       }
     },
-    [fetchCatalogContext, hostname],
+    [fetchCatalogContext, hasCatalogManagers, hostname],
   );
 
   const handleDeleteCatalog = useCallback(async () => {
@@ -273,6 +293,11 @@ export const Catalogs: React.FC = () => {
       const { source, manifestId, version } = catalogToDelete;
 
       if (source.type === 'manager' && source.managerId) {
+        if (!hasCatalogManagers) {
+          setCatalogToDelete(null);
+          setSelectedCatalogItem(null);
+          return;
+        }
         await devopsService.catalogManagers.removeCatalogManifest(hostname, source.managerId, manifestId, version);
       } else {
         await devopsService.catalog.removeCatalogManifest(hostname, manifestId, version);
@@ -286,7 +311,7 @@ export const Catalogs: React.FC = () => {
     } finally {
       setDeletingCatalog(false);
     }
-  }, [catalogToDelete, hostname]);
+  }, [catalogToDelete, hasCatalogManagers, hostname]);
 
   const openDownloadVmModal = useCallback(
     (item: CatalogDownloadTarget) => {
@@ -378,6 +403,9 @@ export const Catalogs: React.FC = () => {
       try {
         const activeSource = sources.find((src) => src.id === selectedSourceId);
         if (activeSource?.type === 'manager' && activeSource.managerId) {
+          if (!hasCatalogManagers) {
+            throw new Error('Catalog managers are not available on this host.');
+          }
           await devopsService.catalogManagers.pushCatalogAsync(hostname, activeSource.managerId, data);
         } else {
           await devopsService.catalog.pushCatalogAsync(hostname, data);
@@ -390,7 +418,7 @@ export const Catalogs: React.FC = () => {
         setUploadLoading(false);
       }
     },
-    [hostname, sources, selectedSourceId],
+    [hasCatalogManagers, hostname, sources, selectedSourceId],
   );
 
   const items = useMemo<SplitViewItem[]>(
@@ -399,7 +427,7 @@ export const Catalogs: React.FC = () => {
         const manager = source.type === 'manager' ? allManagers.find((entry) => entry.id === source.managerId) : undefined;
 
         const actions =
-          source.type === 'manager' && manager ? (
+          hasCatalogManagers && source.type === 'manager' && manager ? (
             <div className="flex items-center gap-1">
               {canEditManager(manager) && (
                 <IconButton
@@ -453,7 +481,7 @@ export const Catalogs: React.FC = () => {
           ),
         };
       }),
-    [allManagers, canDeleteManager, canEditManager, catalogReloadToken, hostname, openDownloadVmModal, openEditManagerModal, query, setSourceStats, sources],
+    [allManagers, canDeleteManager, canEditManager, catalogReloadToken, hasCatalogManagers, hostname, openDownloadVmModal, openEditManagerModal, query, selectedCatalogItem, sources, themeColor],
   );
 
   const panelEmptyState = () => (
@@ -464,11 +492,11 @@ export const Catalogs: React.FC = () => {
       subtitle="No local or external catalog sources are currently available."
       tone="neutral"
       fullWidth
-      onAction={() => void openAddCatalogModal()}
-      actionLabel="Add Catalog"
-      actionColor={themeColor}
-      actionLeadingIcon="Add"
-      actionVariant='solid'
+      onAction={canCreateCatalogManager ? () => void openAddCatalogModal() : undefined}
+      actionLabel={canCreateCatalogManager ? 'Add Catalog' : undefined}
+      actionColor={canCreateCatalogManager ? themeColor : undefined}
+      actionLeadingIcon={canCreateCatalogManager ? 'Add' : undefined}
+      actionVariant={canCreateCatalogManager ? 'solid' : undefined}
     />
   );
 
@@ -491,7 +519,7 @@ export const Catalogs: React.FC = () => {
         error={sourcesError ?? undefined}
         onRetry={() => void fetchCatalogContext()}
         listTitle={`Catalogs (${items.length})`}
-        listActions={canCreateCatalog ? <IconButton icon="Add" size="sm" variant="ghost" color={themeColor} onClick={openAddCatalogModal} /> : undefined}
+        listActions={canCreateCatalogManager ? <IconButton icon="Add" size="sm" variant="ghost" color={themeColor} onClick={openAddCatalogModal} /> : undefined}
         searchPlaceholder="Search sources"
         color={themeColor}
         panelHeaderProps={(activeItem) => {
@@ -519,7 +547,7 @@ export const Catalogs: React.FC = () => {
               content:
                 'Catalogs are used to store and manage catalog metadata for download of virtual machines golden images for each user. [See documentation](https://parallels.github.io/prl-devops-service/docs/devops/catalog/overview/)',
             },
-            actions: hasPushCatalogClaim && hasModule('host') ? (
+            actions: hasPushCatalogClaim && hasHostModule ? (
               <IconButton
                 tooltip='Upload Catalog Image'
                 icon="Push"
@@ -584,25 +612,29 @@ export const Catalogs: React.FC = () => {
         )}
       </SidePanel>
 
-      <CatalogManagerEditorModal
-        isOpen={isManagerModalOpen}
-        isEditMode={isEditMode}
-        showAdvancedFlags={showAdvancedFlags}
-        savingManager={savingManager}
-        isFormDirty={isFormDirty}
-        managerForm={managerForm}
-        managerFormError={managerFormError}
-        onClose={closeManagerModal}
-        onSave={() => void handleSaveManager()}
-        onFormChange={setManagerForm}
-      />
+      {hasCatalogManagers && (
+        <CatalogManagerEditorModal
+          isOpen={isManagerModalOpen}
+          isEditMode={isEditMode}
+          showAdvancedFlags={showAdvancedFlags}
+          savingManager={savingManager}
+          isFormDirty={isFormDirty}
+          managerForm={managerForm}
+          managerFormError={managerFormError}
+          onClose={closeManagerModal}
+          onSave={() => void handleSaveManager()}
+          onFormChange={setManagerForm}
+        />
+      )}
 
-      <DeleteCatalogManagerModal
-        manager={managerToDelete}
-        deleting={deletingManager}
-        onClose={() => setManagerToDelete(null)}
-        onConfirm={() => managerToDelete && void handleDeleteManager(managerToDelete)}
-      />
+      {hasCatalogManagers && (
+        <DeleteCatalogManagerModal
+          manager={managerToDelete}
+          deleting={deletingManager}
+          onClose={() => setManagerToDelete(null)}
+          onConfirm={() => managerToDelete && void handleDeleteManager(managerToDelete)}
+        />
+      )}
 
       <DeleteConfirmModal
         isOpen={!!catalogToDelete}

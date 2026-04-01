@@ -3,6 +3,7 @@ import classNames from 'classnames';
 import { getTreeColorTokens } from './toneColors';
 import type { TreeItemCardProps } from './types';
 import TooltipWrapper from '../TooltipWrapper';
+import { IconButton } from '../..';
 
 // ── TreeItemCard ─────────────────────────────────────────────────────────────
 //
@@ -113,7 +114,7 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
 
                 {/* Header row — bg-transparent when pulsing so the layer behind shows through */}
                 <div className={classNames(
-                    'relative flex items-stretch gap-3 p-3 flex-1',
+                    'relative flex items-stretch gap-1.5 p-3 flex-1',
                     activePulse ? 'bg-transparent' : tokens.bg,
                 )}>
 
@@ -162,48 +163,36 @@ const TreeItemCard: React.FC<TreeItemCardProps> = ({
 
                     {/* Hover actions */}
                     {hoverActions && (
-                        <div className="flex items-center gap-0.5 opacity-0 group-hover/tree-card:opacity-100 transition-opacity duration-150 shrink-0 self-start mt-1">
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover/tree-card:opacity-100 transition-opacity duration-150 shrink-0 self-start">
                             {hoverActions}
                         </div>
                     )}
 
                     {/* Always-visible actions */}
                     {actions && (
-                        <div className="flex items-center gap-0.5 shrink-0 self-start mt-1">
+                        <div className="flex items-center gap-0.5 shrink-0 self-start">
                             {actions}
                         </div>
                     )}
 
                     {/* Drag handle */}
                     {dragHandle && (
-                        <div className="flex items-center shrink-0 self-start mt-1">
+                        <div className="flex items-center shrink-0 self-start">
                             {dragHandle}
                         </div>
                     )}
 
                     {/* Expand toggle */}
                     {canExpand && (
-                        <div className="flex items-center shrink-0 self-start mt-1">
-                            <button
-                                type="button"
-                                onClick={handleToggle}
-                                className="p-1 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
-                                aria-label={isExpanded ? 'Collapse' : 'Expand'}
-                                aria-expanded={isExpanded}
-                            >
-                                <svg
-                                    className={classNames(
-                                        'w-4 h-4 transition-transform duration-200',
-                                        tokens.labelText,
-                                        isExpanded && 'rotate-180',
-                                    )}
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
+                        <div className="flex items-center shrink-0 self-start">
+                          <IconButton
+                              icon={isExpanded ? 'ArrowDown' : 'ArrowChevronRight'}
+                              onClick={handleToggle}
+                              tooltip={isExpanded ? 'Collapse' : 'Expand'}
+                              variant="ghost"
+                              size="xs"
+                              color="slate"
+                            />
                         </div>
                     )}
                 </div>

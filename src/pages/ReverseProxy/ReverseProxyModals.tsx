@@ -289,7 +289,7 @@ const RouteCard: React.FC<RouteCardProps> = ({ index, route, availableVms, error
           {/* Request headers */}
           <details className="group">
             <summary className="cursor-pointer text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 select-none list-none flex items-center gap-1">
-              <CustomIcon icon="ChevronRight" className="w-3 h-3 group-open:rotate-90 transition-transform" />
+              <CustomIcon icon="ArrowChevronRight" className="w-3 h-3 group-open:rotate-90 transition-transform" />
               Request Headers {route.requestHeaders.length > 0 && `(${route.requestHeaders.length})`}
             </summary>
             <div className="mt-2 space-y-2 pl-4">
@@ -321,7 +321,7 @@ const RouteCard: React.FC<RouteCardProps> = ({ index, route, availableVms, error
           {/* Response headers */}
           <details className="group">
             <summary className="cursor-pointer text-xs font-medium text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 select-none list-none flex items-center gap-1">
-              <CustomIcon icon="ChevronRight" className="w-3 h-3 group-open:rotate-90 transition-transform" />
+              <CustomIcon icon="ArrowChevronRight" className="w-3 h-3 group-open:rotate-90 transition-transform" />
               Response Headers {route.responseHeaders.length > 0 && `(${route.responseHeaders.length})`}
             </summary>
             <div className="mt-2 space-y-2 pl-4">
@@ -1103,7 +1103,7 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
               variant="solid"
               color={routeMode === 'tcp' ? 'violet' : themeColor}
               size="sm"
-              trailingIcon="ChevronRight"
+              trailingIcon="ArrowChevronRight"
               onClick={() => {
                 setStep(0);
                 setPhase('wizard');

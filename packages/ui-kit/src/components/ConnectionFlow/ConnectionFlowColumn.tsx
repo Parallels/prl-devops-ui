@@ -189,7 +189,7 @@ const ConnectionFlowColumn: React.FC<ConnectionFlowColumnProps> = ({
     return (
         <div
             ref={columnRef}
-            className={classNames("flex flex-col relative", itemWidth ? "flex-shrink-0" : "flex-1 min-w-0")}
+            className={classNames("flex flex-col relative", itemWidth ? "shrink-0" : "flex-1 min-w-0")}
             style={itemWidth ? { width: itemWidth } : undefined}
         >
             {/* Parent card — full width */}

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, SearchBar, SplitView, normalizeStringToUpper, type SplitViewItem } from '@prl/ui-kit';
+import { CustomIcon, DeleteConfirmModal, EmptyState, IconButton, SearchBar, SplitView, normalizeStringToUpper, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { DevOpsApiKey } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
@@ -131,7 +131,14 @@ export const ApiKeys: React.FC = () => {
         icon: 'KeyManagement',
         panel: (
           <div className="flex-1 min-h-0 w-full h-full">
-            <ApiKeysPanel onCreate={() => setShowCreateModal(true)} keys={filteredKeys} loading={loading} canCreate={canCreate} canDelete={canDelete} onDelete={setKeyToDelete} />
+            <ApiKeysPanel
+              onCreate={() => setShowCreateModal(true)}
+              keys={filteredKeys}
+              loading={loading}
+              canCreate={canCreate}
+              canDelete={canDelete}
+              onDelete={setKeyToDelete}
+            />
           </div>
         ),
       },
@@ -153,9 +160,7 @@ export const ApiKeys: React.FC = () => {
       actions: (
         <>
           {canCreate && (
-            <Button variant="soft" color={themeColor} size="sm" leadingIcon="Add" onClick={() => setShowCreateModal(true)}>
-              New API Key
-            </Button>
+            <IconButton tooltip='New Api Key' variant="ghost" color={themeColor} size="sm" icon="Add" onClick={() => setShowCreateModal(true)} />
           )}
           <IconButton icon="Refresh" variant="ghost" color={themeColor} size="xs" onClick={() => void fetchKeys()} aria-label="Refresh" />
         </>
@@ -179,12 +184,46 @@ export const ApiKeys: React.FC = () => {
           color={themeColor}
           autoHideList
           panelScrollable={false}
-          emptyState={<EmptyState disableBorder icon="Key" title="No API Keys" subtitle="We couldn't find any API keys to display." tone="neutral" />}
-          panelEmptyState={<EmptyState disableBorder icon="Key" title="There are no API keys" subtitle="We couldn't find any API keys to display." tone="neutral" />}
+          emptyState={
+            <EmptyState
+              disableBorder
+              fullWidth
+              fullHeight
+              icon="Key"
+              title="No API Keys"
+              subtitle="We couldn't find any API keys to display."
+              tone="neutral"
+              onAction={() => void setShowCreateModal(true)}
+              actionLabel="Add API Key"
+              actionColor={themeColor}
+              actionLeadingIcon="Add"
+              actionVariant='solid'
+            />
+          }
+          panelEmptyState={
+            <EmptyState
+              disableBorder
+              icon="Key"
+              title="There are no API keys"
+              subtitle="We couldn't find any API keys to display."
+              tone="neutral"
+              onAction={() => void setShowCreateModal(true)}
+              actionLabel="Add API Key"
+              actionColor={themeColor}
+              actionLeadingIcon="Add"
+              actionVariant='solid'
+            />
+          }
         />
       </div>
 
-      <CreateApiKeyModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} onCreate={handleCreate} saving={creating} themeColor={themeColor} />
+      <CreateApiKeyModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreate={handleCreate}
+        saving={creating}
+        themeColor={themeColor}
+      />
 
       <DeleteConfirmModal
         isOpen={!!keyToDelete}

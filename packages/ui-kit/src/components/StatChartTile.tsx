@@ -100,7 +100,7 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
                 data.length <= 1 && "invisible",
               )}
             >
-              <CustomIcon icon="ChevronLeft" size="sm" />
+              <CustomIcon icon="ArrowChevronLeft" size="sm" />
             </button>
 
             <span className="font-bold text-neutral-900 dark:text-white flex-1 text-center">{currentDataset.label}</span>
@@ -114,12 +114,12 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
                 data.length <= 1 && "invisible",
               )}
             >
-              <CustomIcon icon="ChevronRight" size="sm" />
+              <CustomIcon icon="ArrowChevronRight" size="sm" />
             </button>
           </div>
 
           {/* Chart Area */}
-          <div className="relative flex-1 flex items-center justify-center min-h-[220px]">
+          <div className="relative flex-1 flex items-center justify-center min-h-55">
             <svg className="transform -rotate-90 w-48 h-48 overflow-visible" viewBox={`0 0 ${size} ${size}`}>
               {/* Background Circle (Optional, maybe not needed if full 100%) */}
               <circle className="text-neutral-100 dark:text-neutral-800" strokeWidth={strokeWidth} stroke="currentColor" fill="none" r={radius} cx={size / 2} cy={size / 2} />
@@ -200,7 +200,7 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
             </svg>
 
             {/* Center Text */}
-            <div className="absolute flex flex-col items-center justify-center text-center max-w-[120px]">
+            <div className="absolute flex flex-col items-center justify-center text-center max-w-30">
               <span className="text-4xl font-bold text-neutral-900 dark:text-white leading-none mb-1">{total}</span>
               <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-tight">{currentDataset.centerLabel}</span>
             </div>

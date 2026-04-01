@@ -1,4 +1,4 @@
-import { Button, ChevronRight, formatMB, InfoRow, MultiProgressBar, Pill, SectionCard, Table, type Column } from '@prl/ui-kit';
+import { ArrowChevronRight, Button, formatMB, InfoRow, MultiProgressBar, Pill, SectionCard, Table, type Column } from '@prl/ui-kit';
 import { useNavigate } from 'react-router-dom';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
@@ -110,7 +110,7 @@ export function OverviewTab({ host }: { host: DevOpsRemoteHost }) {
             color="slate"
             onClick={() => navigate('/vms')}
           >
-            View All <ChevronRight className="w-3 h-3" />
+            View All <ArrowChevronRight className="w-3 h-3" />
           </Button>
         }
       >

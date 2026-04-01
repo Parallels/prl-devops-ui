@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from '
 import { useLocation } from 'react-router-dom';
 import {
   ApplyConfirmModal,
-  Button,
   CustomIcon,
   DeleteConfirmModal,
   EmptyState,
@@ -12,9 +11,6 @@ import {
   NotificationModal,
   Pill,
   SplitView,
-  Run,
-  Pause,
-  Trash,
   TooltipWrapper,
   type SplitViewItem,
   type ThemeColor,
