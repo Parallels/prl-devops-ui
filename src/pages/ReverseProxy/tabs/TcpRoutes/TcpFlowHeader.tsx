@@ -1,6 +1,6 @@
 import React from 'react';
 import classNames from 'classnames';
-import { Button, ConnectionFlow, Pill, ReverseProxyFrom, ReverseProxyTo, VirtualMachine as VirtualMachineIcon } from '@prl/ui-kit';
+import { ConnectionFlow, IconButton, Pill, ReverseProxyFrom, ReverseProxyTo, VirtualMachine as VirtualMachineIcon } from '@prl/ui-kit';
 import type { ReverseProxyHost, ReverseProxyHostTcpRoute } from '@/interfaces/ReverseProxy';
 import type { VirtualMachine } from '@/interfaces/VirtualMachine';
 import type { VmHealth } from './types';
@@ -84,9 +84,15 @@ const TcpFlowHeader: React.FC<TcpFlowHeaderProps> = ({ proxyHost, tcpRoute, prox
 
   const targetActions = canStartOrResume ? (
     <div className="mt-2 flex items-center justify-end w-full">
-      <Button variant="solid" color={localVmHealth === 'stopped' ? 'success' : 'warning'} size="xs" loading={actionLoading} onClick={() => void onVmAction()}>
-        {localVmHealth === 'stopped' ? 'Start VM' : 'Resume VM'}
-      </Button>
+      <IconButton
+        icon={localVmHealth === 'stopped' ? 'Run' : 'Refresh'}
+        tooltip={localVmHealth === 'stopped' ? 'Start VM' : 'Resume VM'}
+        variant="soft"
+        color={localVmHealth === 'stopped' ? 'success' : 'warning'}
+        size="xs"
+        loading={actionLoading}
+        onClick={() => void onVmAction()}
+      />
     </div>
   ) : undefined;
 

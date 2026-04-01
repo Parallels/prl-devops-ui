@@ -71,7 +71,7 @@ export const TcpRouteTab: React.FC<TcpRouteTabProps> = ({
         <div className="p-4 space-y-5">
             {hasHttpRoutes && (
                 <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-                    <CustomIcon icon="Info" className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                    <CustomIcon icon="Info" className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-800 dark:text-amber-300">
                         Saving a TCP route will <strong>remove all existing HTTP routes</strong> on this host.
                         The two routing modes are mutually exclusive.
@@ -81,7 +81,7 @@ export const TcpRouteTab: React.FC<TcpRouteTabProps> = ({
 
             {tcpRoute ? (
                 <div className={`flex items-center gap-2 p-3 rounded-lg border ${statusColor()}`}>
-                    <CustomIcon icon="Script" className="w-4 h-4 text-sky-600 dark:text-sky-400 flex-shrink-0" />
+                    <CustomIcon icon="Script" className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0" />
                     <div className="flex-1 min-w-0">
                         <p className="text-xs font-medium text-sky-800 dark:text-sky-300">TCP route active</p>
                         <p className="text-xs text-sky-600 dark:text-sky-400 font-mono truncate">
@@ -94,7 +94,7 @@ export const TcpRouteTab: React.FC<TcpRouteTabProps> = ({
                 </div>
             ) : (
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700">
-                    <CustomIcon icon="Info" className="w-4 h-4 text-neutral-400 flex-shrink-0" />
+                    <CustomIcon icon="Info" className="w-4 h-4 text-neutral-400 shrink-0" />
                     <p className="text-xs text-neutral-500 dark:text-neutral-400">No TCP route configured.</p>
                 </div>
             )}

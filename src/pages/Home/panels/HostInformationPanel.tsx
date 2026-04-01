@@ -4,6 +4,7 @@ import { HostHardwareInfo } from '@/interfaces/devops';
 const MODULE_COLORS: Record<string, ThemeColor> = {
   host: 'blue',
   catalog: 'emerald',
+  catalog_managers: 'teal',
   orchestrator: 'violet',
   api: 'sky',
   reverse_proxy: 'amber',

@@ -121,6 +121,9 @@ export const Modules = {
     /** Catalog / artifact registry */
     CATALOG: 'catalog',
 
+    /** External catalog manager endpoints */
+    CATALOG_MANAGERS: 'catalog_managers',
+
     /** API Key Management */
     API: 'api',
 

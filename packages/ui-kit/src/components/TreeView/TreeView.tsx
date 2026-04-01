@@ -5,6 +5,7 @@ import TreeFlowSvg, { INDENT_PX } from './TreeFlowSvg';
 import Loader from '../Loader';
 import EmptyState from '../EmptyState';
 import type { TreeItemData, TreeTone, TreeViewProps } from './types';
+import IconButton from '../IconButton';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -201,20 +202,14 @@ const TreeItemRow: React.FC<TreeItemRowProps> = ({
                     actions={item.actions}
                     hoverActions={item.hoverActions}
                     dragHandle={reorderable ? (
-                        <span
-                            className="inline-flex cursor-grab items-center rounded p-1 text-neutral-400 transition-colors hover:bg-black/5 hover:text-neutral-600 active:cursor-grabbing dark:hover:bg-white/10 dark:hover:text-neutral-300"
-                            title="Drag to reorder"
-                            aria-hidden
-                        >
-                            <svg viewBox="0 0 20 20" className="h-4 w-4" fill="currentColor">
-                                <circle cx="6" cy="5" r="1.1" />
-                                <circle cx="6" cy="10" r="1.1" />
-                                <circle cx="6" cy="15" r="1.1" />
-                                <circle cx="12" cy="5" r="1.1" />
-                                <circle cx="12" cy="10" r="1.1" />
-                                <circle cx="12" cy="15" r="1.1" />
-                            </svg>
-                        </span>
+                      <IconButton
+                        size='xs'
+                        variant="ghost"
+                        color="neutral"
+                        icon="Drag"
+                        aria-label="Drag to reorder"
+                        tooltip='Drag to reorder'
+                      />
                     ) : undefined}
                     isDragging={isDragging}
                     index={index}

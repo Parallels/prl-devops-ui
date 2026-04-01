@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, ConfirmModal, CustomIcon, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, Pill, SplitView, SplitViewPanelHeaderProps, type SplitViewItem } from '@prl/ui-kit';
+import { Button, CustomIcon, DeleteConfirmModal, EmptyState, FormField, FormLayout, IconButton, Input, Modal, ModalActions, NotificationModal, Pill, SplitView, SplitViewPanelHeaderProps, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { DevOpsClaim } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
@@ -58,8 +58,9 @@ export const Claims: React.FC = () => {
         setClaims((prev) => prev.filter((c) => c.id !== claim.id));
         setClaimToDelete(null);
         if (selectedId === claim.id) setSelectedId(undefined);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to delete claim:', err);
+        setSaveResult({ type: 'error', message: err?.message ?? 'Failed to delete claim.' });
       } finally {
         setDeleting(false);
       }
@@ -179,10 +180,10 @@ export const Claims: React.FC = () => {
         icon="Claims"
         actions={
           <ModalActions>
-            <Button variant="outline" color="theme" size="sm" onClick={handleModalClose} disabled={modalSaving}>
-              Cancel
+            <Button variant="solid" color="rose" size="sm" onClick={handleModalClose} disabled={modalSaving}>
+              Discard
             </Button>
-            <Button variant="soft" color={themeColor} size="sm" loading={modalSaving} disabled={!modalName.trim()} onClick={() => void handleModalCreate()}>
+            <Button variant="solid" color="emerald" size="sm" loading={modalSaving} disabled={!modalName.trim()} onClick={() => void handleModalCreate()}>
               Create
             </Button>
           </ModalActions>
@@ -199,17 +200,20 @@ export const Claims: React.FC = () => {
       </Modal>
 
       {/* Delete Confirm Modal */}
-      <ConfirmModal
+      <DeleteConfirmModal
         isOpen={!!claimToDelete}
         onClose={() => setClaimToDelete(null)}
         onConfirm={() => claimToDelete && void handleDelete(claimToDelete)}
         title="Delete Claim"
-        description={`Are you sure you want to delete the claim "${claimToDelete?.name ?? 'this claim'}"? This action cannot be undone.`}
-        confirmLabel={deleting ? 'Deleting...' : 'Delete'}
-        confirmColor="danger"
-        confirmVariant="solid"
+        icon="Trash"
+        confirmLabel={deleting ? 'Deleting…' : 'Delete'}
         isConfirmDisabled={deleting}
-      />
+        confirmValue={claimToDelete?.name ?? ''}
+        confirmValueLabel="claim name"
+        size="md"
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">This action is irreversible. The claim will be permanently deleted.</p>
+      </DeleteConfirmModal>
 
       {/* Save Result Notification */}
       <NotificationModal

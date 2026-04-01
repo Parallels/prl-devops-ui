@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, ConfirmModal, EmptyState, FormField, FormLayout, getGravatarUrl, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, TagPicker, UserAvatar, type SplitViewItem } from '@prl/ui-kit';
+import { Button, ConfirmModal, DeleteConfirmModal, EmptyState, FormField, FormLayout, getGravatarUrl, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, TagPicker, UserAvatar, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { DevOpsClaim, DevOpsUser, DevOpsRole } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
@@ -39,7 +39,7 @@ export const Users: React.FC = () => {
 
   const { hasClaim } = useSession();
   const [canUpdate, setCanUpdate] = useState(false);
-  const [, setCanDelete] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
   const [canCreate, setCanCreate] = useState(false);
 
   const detailRef = useRef<UserDetailRef>(null);
@@ -95,8 +95,9 @@ export const Users: React.FC = () => {
         setUsers((prev) => prev.filter((u) => u.id !== user.id));
         setUserToDelete(null);
         if (selectedId === user.id) setSelectedId(undefined);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to delete user:', err);
+        setSaveResult({ type: 'error', message: err?.message ?? 'Failed to delete user.' });
       } finally {
         setDeleting(false);
       }
@@ -166,7 +167,7 @@ export const Users: React.FC = () => {
   }, []);
 
   const items: SplitViewItem[] = useMemo(
-    () =>
+    () => 
       users.map((user) => ({
         id: user.id ?? '',
         label: user.name ?? user.username ?? 'Unknown',
@@ -174,9 +175,9 @@ export const Users: React.FC = () => {
         icon: 'User' as const,
         badges: user.isSuperUser ? [{ label: 'Super User', tone: 'red' as const }] : undefined,
         panel: <UserDetail ref={detailRef} user={user} availableRoles={availableRoles} availableClaims={availableClaims} onSave={handleSave} onDirtyChange={setIsDirty} />,
-        actions: <>{canUpdate && <IconButton variant="ghost" size="xs" color="danger" icon="Trash" onClick={() => setUserToDelete(user)} />}</>,
+        actions: <>{canDelete && user.id !== session?.username && user.username !== 'root' && <IconButton variant="ghost" size="xs" color="danger" icon="Trash" onClick={() => setUserToDelete(user)} />}</>,
       })),
-    [users, handleSave, availableRoles, availableClaims, canUpdate],
+    [users, handleSave, availableRoles, availableClaims, canDelete],
   );
 
   const panelHeaderProps = useCallback(
@@ -200,10 +201,10 @@ export const Users: React.FC = () => {
         actions:
           isDirty && canUpdate ? (
             <>
-              <Button variant="outline" color="theme" size="sm" onClick={handleHeaderCancel}>
-                Cancel
+              <Button variant="soft" color="rose" size="sm" onClick={handleHeaderCancel}>
+                Discard
               </Button>
-              <Button variant="soft" color={themeColor} size="sm" loading={saving} onClick={() => void handleHeaderSave()}>
+              <Button variant="solid" color="emerald" size="sm" loading={saving} onClick={() => void handleHeaderSave()}>
                 Save
               </Button>
             </>
@@ -255,7 +256,7 @@ export const Users: React.FC = () => {
               subtitle="There are no user accounts in the system. Click the button below to create the first one."
               actionColor={themeColor}
               actionLeadingIcon="Add"
-              actionVariant="soft"
+              actionVariant="solid"
               actionLabel="Add User"
               onAction={canCreate ? handleAddNew : undefined}
             />
@@ -278,7 +279,7 @@ export const Users: React.FC = () => {
             <Button variant="outline" color="theme" size="sm" onClick={handleModalClose} disabled={modalSaving}>
               Cancel
             </Button>
-            <Button variant="soft" color={themeColor} size="sm" loading={modalSaving} disabled={!isModalValid} onClick={() => void handleModalCreate()}>
+            <Button variant="solid" color="emerald" size="sm" loading={modalSaving} disabled={!isModalValid} onClick={() => void handleModalCreate()}>
               Create
             </Button>
           </ModalActions>
@@ -352,17 +353,20 @@ export const Users: React.FC = () => {
       </Modal>
 
       {/* Delete Confirm Modal */}
-      <ConfirmModal
+      <DeleteConfirmModal
         isOpen={!!userToDelete}
         onClose={() => setUserToDelete(null)}
         onConfirm={() => userToDelete && void handleDelete(userToDelete)}
         title="Delete User"
-        description={`Are you sure you want to delete "${userToDelete?.name ?? userToDelete?.username ?? 'this user'}"? This action cannot be undone.`}
-        confirmLabel={deleting ? 'Deleting...' : 'Delete'}
-        confirmColor="danger"
-        confirmVariant="solid"
+        icon="Trash"
+        confirmLabel={deleting ? 'Deleting…' : 'Delete'}
         isConfirmDisabled={deleting}
-      />
+        confirmValue={userToDelete?.name ?? userToDelete?.username ?? ''}
+        confirmValueLabel="username"
+        size="md"
+      >
+        <p className="text-sm text-neutral-500 dark:text-neutral-400">This action is irreversible. The user account and all associated data will be permanently removed.</p>
+      </DeleteConfirmModal>
 
       {/* Cancel Confirm Modal */}
       <ConfirmModal

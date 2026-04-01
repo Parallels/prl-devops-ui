@@ -135,3 +135,6 @@ export * from './components/Revoke';
 export * from './components/Taint';
 export * from './components/Unlock';
 export * from './components/Check';
+export * from './components/ArrowChevronLeft';
+export * from './components/ArrowChevronRight';
+export * from './components/Drag';

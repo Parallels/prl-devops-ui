@@ -6,7 +6,6 @@ import { OverviewTab } from './tabs/OverviewTab';
 import { PerformanceTab } from './tabs/PerformanceTab';
 import { CacheTab } from './tabs/CacheTab';
 import { LogsTab } from './tabs/LogsTab';
-import { SettingsTab } from './tabs/SettingsTab';
 import { ReverseProxy } from '@/pages/ReverseProxy/ReverseProxy';
 
 export interface HostDetailPanelProps {
@@ -36,7 +35,7 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host }) => {
           },
         ]
       : []),
-    { id: 'settings', label: 'Settings', panel: <SettingsTab host={host} /> },
+    // { id: 'settings', label: 'Settings', panel: <SettingsTab host={host} /> },
     ...(isHealthy(host) && host.enabled ? [{ id: 'logs', label: 'Logs', panel: <LogsTab host={host} /> }] : []),
   ];
 

@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, memo, useMemo, useRef, useState } from '
 import { useLocation } from 'react-router-dom';
 import {
   ApplyConfirmModal,
-  Button,
   CustomIcon,
   DeleteConfirmModal,
   EmptyState,
@@ -12,9 +11,6 @@ import {
   NotificationModal,
   Pill,
   SplitView,
-  Run,
-  Pause,
-  Trash,
   TooltipWrapper,
   type SplitViewItem,
   type ThemeColor,
@@ -514,11 +510,24 @@ export const Hosts: React.FC = () => {
         autoExpand={false}
         minListWidth={220}
         searchPlaceholder="Search hosts..."
-        panelEmptyState={<EmptyState disableBorder icon="Host" title="Select a host" subtitle="Choose a host from the list to view its details." tone="neutral" />}
+        panelEmptyState={
+          <EmptyState
+            disableBorder
+            fullWidth
+            icon="Host"
+            title="No hosts found"
+            subtitle="No hosts are currently connected to the orchestrator. Add a host to get started."
+            tone="neutral"
+            onAction={() => void setShowAddModal(true)}
+            actionLabel="Add Catalog"
+            actionColor={themeColor}
+            actionLeadingIcon="Add"
+            actionVariant='solid'
+          />}
         listActions={
           <>
-            {canCreate && <IconButton variant="ghost" size="xs" color={themeColor} icon="Add" onClick={() => setShowAddModal(true)} aria-label="Add host" />}
-            <IconButton variant="ghost" size="xs" color={themeColor} icon="Restart" onClick={() => void fetchHosts()} aria-label="Refresh hosts" />
+            {canCreate && <IconButton tooltip='Add a new host' variant="ghost" size="xs" color={themeColor} icon="Add" onClick={() => setShowAddModal(true)} aria-label="Add host" />}
+            <IconButton tooltip='Refresh hosts' variant="ghost" size="xs" color={themeColor} icon="Restart" onClick={() => void fetchHosts()} aria-label="Refresh hosts" />
           </>
         }
         panelHeaderProps={(activeItem) => {
@@ -556,33 +565,27 @@ export const Hosts: React.FC = () => {
                   tags: (
                     <>
                       {host.enabled ? (
-                        <Button
+                        <IconButton
+                          icon="Pause"
                           tooltip="This will disable the Host"
-                          variant="solid"
+                          variant="ghost"
                           color="amber"
                           size="sm"
                           aria-label="Disable Host"
                           onClick={() => handleEnableDisableCallback(host)}
-                          leadingIcon={<Pause />}
-                        >
-                          Disable
-                        </Button>
+                        />
                       ) : (
-                        <Button
+                        <IconButton
+                          icon="Run"
                           tooltip="This will enable the Host"
-                          variant="solid"
+                          variant="ghost"
                           color="emerald"
                           size="sm"
                           aria-label="Enable Host"
                           onClick={() => handleEnableDisableCallback(host)}
-                          leadingIcon={<Run />}
-                        >
-                          Enable
-                        </Button>
+                        />
                       )}
-                      <Button tooltip="This will remove the Host" variant="solid" color="rose" size="sm" aria-label="Remove Host" onClick={() => handleRemoveCallback(host)} leadingIcon={<Trash />}>
-                        Remove
-                      </Button>
+                      <IconButton  tooltip="This will remove the Host" variant="ghost" color="rose" size="sm" aria-label="Remove Host" onClick={() => handleRemoveCallback(host)} icon="Trash" />
                     </>
                   ),
                 },
@@ -627,6 +630,11 @@ export const Hosts: React.FC = () => {
         title="Disable Host"
         icon="Pause"
         confirmLabel={disabling ? 'Disabling…' : 'Disable'}
+        confirmButtonProps={
+          {
+            color: "amber"
+          }
+        }
         isConfirmDisabled={disabling}
         confirmValue={keyToDisable?.description ?? keyToDisable?.host ?? ''}
         confirmValueLabel="host name"
@@ -645,6 +653,11 @@ export const Hosts: React.FC = () => {
         icon="Run"
         confirmLabel={enabling ? 'Enabling…' : 'Enable'}
         isConfirmDisabled={enabling}
+        confirmButtonProps={
+          {
+            color: "emerald"
+          }
+        }
         confirmValue={keyToEnable?.description ?? keyToEnable?.host ?? ''}
         confirmValueLabel="host name"
         size="md"

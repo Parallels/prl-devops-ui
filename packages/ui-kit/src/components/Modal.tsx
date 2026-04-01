@@ -334,10 +334,10 @@ const Modal: React.FC<ModalProps> = ({
         onKeyDown={handleContentKeyDown}
         {...rest}
       >
-        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-neutral-200/70 pl-4 pr-3 py-4 dark:border-neutral-700/60">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-neutral-200/70 pl-4 pr-3 py-4 dark:border-neutral-700/60">
           {onBack && (
             <div className="flex shrink-0 items-center self-center">
-              <IconButton icon="ChevronLeft" variant="ghost" color="slate" size="sm" tooltip={backTooltip} tooltipPosition="bottom" aria-label={backTooltip} onClick={onBack} />
+              <IconButton icon="ArrowChevronLeft" variant="ghost" color="slate" size="sm" tooltip={backTooltip} tooltipPosition="bottom" aria-label={backTooltip} onClick={onBack} />
             </div>
           )}
           <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -360,12 +360,12 @@ const Modal: React.FC<ModalProps> = ({
         </div>
 
         {tabsConfig && (
-          <div className="flex-shrink-0 border-b border-neutral-200/70 px-6 py-2 dark:border-neutral-700/60">
+          <div className="shrink-0 border-b border-neutral-200/70 px-6 py-2 dark:border-neutral-700/60">
             <Tabs {...tabsConfig} className={classNames("w-full overflow-x-auto", tabsConfig.className)} />
           </div>
         )}
 
-        {bodyHeader && <div className="flex-shrink-0 border-b border-neutral-200/70 bg-neutral-50 px-6 py-3 dark:border-neutral-700/60 dark:bg-neutral-800/60"> {bodyHeader}</div>}
+        {bodyHeader && <div className="shrink-0 border-b border-neutral-200/70 bg-neutral-50 px-6 py-3 dark:border-neutral-700/60 dark:bg-neutral-800/60"> {bodyHeader}</div>}
         <div className="relative flex flex-1 min-h-0 overflow-hidden bg-neutral-50 dark:bg-neutral-800/60">
           {loading && <Loader overlay title={loadingTitle} label={loadingLabel} className="z-30" />}
           <div
@@ -381,7 +381,7 @@ const Modal: React.FC<ModalProps> = ({
           </div>
         </div>
         {footerContent && (
-          <div className={classNames("flex flex-shrink-0 items-center  justify-end gap-3 bg-neutral-50 px-6 py-4 dark:bg-neutral-800/60", showFooterDividerClass)}>{footerContent}</div>
+          <div className={classNames("flex shrink-0 items-center  justify-end gap-3 bg-neutral-50 px-6 py-4 dark:bg-neutral-800/60", showFooterDividerClass)}>{footerContent}</div>
         )}
       </div>
     </div>

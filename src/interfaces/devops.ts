@@ -276,6 +276,7 @@ export interface DevOpsUpdateUserRequest {
   name?: string;
   email?: string;
   password?: string;
+  is_super_user?: boolean;
 }
 
 /**

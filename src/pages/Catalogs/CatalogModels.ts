@@ -89,7 +89,7 @@ export interface CatalogManagerFormData {
   password: string;
   api_key: string;
   global: boolean;
-  required_claims: string;
+  required_claims: string[];
 }
 
 export const defaultManagerForm: CatalogManagerFormData = {
@@ -102,7 +102,7 @@ export const defaultManagerForm: CatalogManagerFormData = {
   password: '',
   api_key: '',
   global: false,
-  required_claims: '',
+  required_claims: [],
 };
 
 const formatBytes = (size?: number): string => {
@@ -439,14 +439,8 @@ export const managerToForm = (manager: CatalogManager): CatalogManagerFormData =
   password: manager.password ?? '',
   api_key: manager.api_key ?? '',
   global: Boolean(manager.global),
-  required_claims: (manager.required_claims ?? []).join(', '),
+  required_claims: (manager.required_claims ?? []).map((c) => c.trim().toUpperCase()).filter(Boolean),
 });
-
-export const normalizeRequiredClaims = (value: string): string[] =>
-  value
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 
 export const toManagerRequest = (
   form: CatalogManagerFormData,
@@ -460,11 +454,11 @@ export const toManagerRequest = (
   password: form.authentication_method === 'credentials' ? form.password : '',
   api_key: form.authentication_method === 'api_key' ? form.api_key.trim() : '',
   global: form.global,
-  required_claims: normalizeRequiredClaims(form.required_claims),
+  required_claims: form.required_claims,
 });
 
 export const normalizeForDirtyCheck = (form: CatalogManagerFormData): string =>
   JSON.stringify({
     ...toManagerRequest(form),
-    required_claims: normalizeRequiredClaims(form.required_claims).sort(),
+    required_claims: [...form.required_claims].sort(),
   });

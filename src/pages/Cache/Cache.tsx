@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, Pill, SplitView, type SplitViewItem, type SplitViewPanelHeaderProps } from '@prl/ui-kit';
+import { CustomIcon, DeleteConfirmModal, EmptyState, IconButton, Pill, SplitView, type SplitViewItem, type SplitViewPanelHeaderProps } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
@@ -89,7 +89,7 @@ export const Cache: React.FC = () => {
   // Auto-select first item after load
   useEffect(() => {
     if (selectedId) return;
-    if (!isOrchestratorMode && isHostMode) {
+    if (isHostMode) {
       setSelectedId('local');
     } else if (isOrchestratorMode && hosts.length > 0) {
       setSelectedId(hosts[0].id);
@@ -132,11 +132,9 @@ export const Cache: React.FC = () => {
       actions: (
         <>
           {manifests.length > 0 && (
-            <Button variant="soft" color="rose" leadingIcon="Trash" size="sm" onClick={() => setShowClearAllModal(true)}>
-              Clear All
-            </Button>
+            <IconButton tooltip='Clear All' variant="ghost" color="rose" icon="Trash" size="sm" onClick={() => setShowClearAllModal(true)}/>
           )}
-          <IconButton icon="Refresh" variant="ghost" size="xs" onClick={() => void fetchCacheData()} disabled={cacheLoading} loading={cacheLoading} color={themeColor} />
+          <IconButton tooltip='Refresh' icon="Refresh" variant="ghost" size="xs" onClick={() => void fetchCacheData()} disabled={cacheLoading} loading={cacheLoading} color={themeColor} />
         </>
       ),
       headerDetails:
@@ -169,7 +167,15 @@ export const Cache: React.FC = () => {
   // ── Items ──────────────────────────────────────────────────────────────────
   const items = useMemo<SplitViewItem[]>(() => {
     const result: SplitViewItem[] = [];
-
+    if (isHostMode) {
+      result.push({
+        id: 'local',
+        tags: ['host'],
+        label: <CacheItemLabel label="Local Cache" />,
+        icon: 'Cache',
+        panel: <CachePanel hostname={hostname} data={cacheData} loading={cacheLoading} error={cacheError} onRefresh={() => void fetchCacheData()} />,
+      });
+    }
     if (isOrchestratorMode) {
       for (const host of hosts) {
         const hostName = host.description || host.host;
@@ -182,17 +188,6 @@ export const Cache: React.FC = () => {
         });
       }
     }
-
-    if (isHostMode) {
-      result.push({
-        id: 'local',
-        tags: ['host'],
-        label: <CacheItemLabel label="Local Cache" />,
-        icon: 'Cache',
-        panel: <CachePanel hostname={hostname} data={cacheData} loading={cacheLoading} error={cacheError} onRefresh={() => void fetchCacheData()} />,
-      });
-    }
-
     return result;
   }, [isOrchestratorMode, isHostMode, hosts, hostname, cacheData, cacheLoading, cacheError, fetchCacheData]);
 
@@ -216,8 +211,24 @@ export const Cache: React.FC = () => {
         minListWidth={220}
         panelHeaderProps={panelHeaderProps}
         panelScrollable={false}
-        emptyState={<EmptyState disableBorder icon="Cache" title="There are no cache sources" subtitle="We couldn't find any cache sources to display." tone="neutral" />}
-        panelEmptyState={<EmptyState disableBorder icon="Cache" title="There are no cache sources" subtitle="We couldn't find any cache sources to display." tone="neutral" />}
+        emptyState={
+          <EmptyState
+            disableBorder
+            icon="Cache"
+            title="There are no cache sources"
+            subtitle="We couldn't find any cache sources to display."
+            tone="neutral"
+          />
+        }
+        panelEmptyState={
+          <EmptyState
+            disableBorder
+            icon="Cache"
+            title="There are no cache sources"
+            subtitle="We couldn't find any cache sources to display."
+            tone="neutral"
+          />
+        }
       />
 
       <DeleteConfirmModal

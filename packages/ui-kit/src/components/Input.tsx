@@ -255,10 +255,11 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   onTrailingIconClick?: React.MouseEventHandler<HTMLButtonElement>;
   wrapperClassName?: string;
   unstyled?: boolean;
+  fullHeight?: boolean;
 }
 
 const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { size = 'md', tone = 'blue', variant = 'flat', validationStatus = 'none', leadingIcon, trailingIcon, onTrailingIconClick, className, wrapperClassName, disabled, unstyled = false, ...rest },
+  { size = 'md', tone = 'blue', variant = 'flat', validationStatus = 'none', leadingIcon, trailingIcon, onTrailingIconClick, className, wrapperClassName, disabled, unstyled = false, fullHeight = false, ...rest },
   ref: ForwardedRef<HTMLInputElement>,
 ) {
   const renderIcon = useIconRenderer();
@@ -307,6 +308,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const mergedInputClasses = classNames(
     isUnstyled ? unstyledClasses : baseInputClasses,
     !isUnstyled && (variant === 'underline' ? tokens.focusBorder : tokens.focusRing),
+    fullHeight && 'h-full',
   );
 
   const renderIconWrapper = (visual: IconRenderer, position: 'left' | 'right', onClick?: React.MouseEventHandler<HTMLButtonElement>) => {
@@ -346,7 +348,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   };
 
   return (
-    <span className={classNames('relative flex w-full items-center', disabled && 'opacity-70', wrapperClassName)}>
+    <span className={classNames('relative flex w-full items-center', disabled && 'opacity-70', fullHeight && 'h-full', wrapperClassName)}>
       {leadingIcon && renderIconWrapper(leadingIcon, 'left')}
       <input ref={ref} className={classNames(mergedInputClasses, statusClass)} disabled={disabled} aria-invalid={validationStatus === 'error' ? 'true' : rest['aria-invalid']} {...rest} />
       {trailingIcon && renderIconWrapper(trailingIcon, 'right', onTrailingIconClick)}
