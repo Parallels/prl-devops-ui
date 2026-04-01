@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import parallelsBars from '../../assets/images/parallels-bars-small.png';
-import { Alert, Button, FormField, FormLayout, Input, Modal, Panel, PasswordInput, Select, Toggle } from '../../controls';
+import { Alert, Button, FormField, FormLayout, Input, Modal, Panel, PasswordInput, Toggle } from '../../controls';
 import { useConfig } from '../../contexts/ConfigContext';
 import { useSession } from '../../contexts/SessionContext';
 import { useLockedHost } from '../../contexts/LockedHostContext';
@@ -11,6 +11,7 @@ import { getPasswordKey, getApiKeyKey } from '../../utils/secretKeys';
 import { decodeToken } from '../../utils/tokenUtils';
 import { devopsService } from '../../services/devops';
 import { HostHardwareInfo } from '../../interfaces/devops';
+import { Picker, PickerItem } from '@prl/ui-kit';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
   const [hosts, setHosts] = useState<HostConfig[]>([]);
   const [hostsLoading, setHostsLoading] = useState(!isLocked);
   const [selectedHostId, setSelectedHostId] = useState<string>('');
+  const [hostPickerItems, setHostPickerItems] = useState<PickerItem[]>([]);
 
   // ── Form fields ────────────────────────────────────────────────────────────
   const [authType, setAuthType] = useState<'credentials' | 'api_key'>('credentials');
@@ -127,6 +129,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
         saved.find((h) => h.isDefault) ??
         [...saved].sort((a, b) => (b.lastUsed ?? '').localeCompare(a.lastUsed ?? ''))[0];
       if (target) setSelectedHostId(target.id);
+      setHostPickerItems(saved.map((h) => ({ id: h.id, title: h.hostname, subtitle: h.baseUrl })));
       setHostsLoading(false);
     };
     void loadHosts();
@@ -315,9 +318,9 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
       <div className="flex min-h-screen w-screen flex-col items-center justify-center gap-6 p-6">
         <Panel maxWidth={460} variant="elevated" bodyClassName="h-full">
           {/* Brand */}
-          <div className="flex items-center justify-center pb-2 p-3">
+          <div className="flex items-center justify-center">
             <div className="flex items-center">
-              <div className="h-[40px] w-[40px] flex items-center justify-center">
+              <div className="h-10 w-10 flex items-center justify-center">
                 <img className="h-full" src={parallelsBars} alt="Parallels DevOps" />
               </div>
               <div className="flex items-start font-medium ml-2.5 text-xl">
@@ -326,7 +329,6 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
               </div>
             </div>
           </div>
-
           <div className="text-center text-base font-semibold text-neutral-900 dark:text-neutral-100">Welcome back!</div>
           <div className="text-center text-sm text-neutral-500 dark:text-neutral-400 mb-4">
             {isLocked ? `Sign in to ${lockedHostname ?? hostUrl}.` : 'Select a server and sign in.'}
@@ -351,19 +353,15 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
                     <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 truncate">{hostUrl}</p>
                   </div>
                 ) : (
-                  <FormField label="Server" required width="full">
-                    <Select
-                      tone="blue"
-                      value={selectedHostId}
-                      onChange={(e) => setSelectedHostId(e.target.value)}
-                      disabled={isSaving}
-                    >
-                      {hosts.map((h) => (
-                        <option key={h.id} value={h.id}>
-                          {h.hostname} — {h.baseUrl}
-                        </option>
-                      ))}
-                    </Select>
+                    <FormField label="Server" required width="full">
+                      <Picker
+                        items={hostPickerItems}
+                        selectedId={selectedHostId}
+                        onSelect={(value) => setSelectedHostId(value.id)}
+                        loading={hostsLoading}
+                        placeholder="Select a server"
+                        color="blue"
+                      />
                   </FormField>
                 )}
 
@@ -432,9 +430,11 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
 
               <div className="mt-4 space-y-2">
                 <Button
+                  trailingIcon="Login"
                   variant="solid"
                   color="blue"
-                  fullWidth
+                      fullWidth
+                  size='sm'
                   disabled={isSaving || !isFormValid || !selectedHost}
                   type="submit"
                 >

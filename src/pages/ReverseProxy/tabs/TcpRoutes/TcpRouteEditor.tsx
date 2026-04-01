@@ -126,6 +126,7 @@ const TcpRouteEditor: React.FC<TcpRouteEditorProps> = ({
           <div className="w-28">
             <FormField label="Port" required>
               <Input
+                fullHeight
                 placeholder="22"
                 value={targetPort}
                 onChange={(e) => {

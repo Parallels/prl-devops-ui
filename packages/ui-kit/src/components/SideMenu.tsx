@@ -441,7 +441,7 @@ export const SideMenu = ({
 
   const logoSection = (logoIcon || logoText) && (
     <div className={`relative z-50 flex h-15 items-center bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 px-4 py-4 ${isCollapsed ? 'justify-center' : ''}`}>
-      {logoIcon && <div className="flex-shrink-0">{logoIcon}</div>}
+      {logoIcon && <div className="shrink-0">{logoIcon}</div>}
       {logoText && (
         <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 ml-0' : 'w-auto opacity-100 ml-3'}`}>
           <div className="whitespace-nowrap">{logoText}</div>
@@ -519,7 +519,7 @@ export const SideMenu = ({
                   } ${isCollapsed && !isMobile ? 'justify-center' : ''}`}
                 >
                   {linkItem.icon && (
-                    <div className={`flex items-center justify-center relative flex-shrink-0 ${isCollapsed && !isMobile ? '' : 'mr-3'}`}>
+                    <div className={`flex items-center justify-center relative shrink-0 ${isCollapsed && !isMobile ? '' : 'mr-3'}`}>
                       <CustomIcon icon={linkItem.icon} className={`h-5 w-5 transition-colors duration-150 ${active ? tokens.iconActive : `text-gray-400 dark:text-neutral-500 ${tokens.iconHover}`}`} />
                       {/* Badge in collapsed mode: small dot over the icon */}
                       {isCollapsed && !isMobile && linkItem.badge && <span className="absolute -top-1 -right-1">{linkItem.badge}</span>}
@@ -527,7 +527,7 @@ export const SideMenu = ({
                   )}
                   {!(isCollapsed && !isMobile) && <span className="whitespace-nowrap overflow-hidden text-ellipsis flex-1">{linkItem.label}</span>}
                   {/* Badge in expanded mode: right-aligned next to label */}
-                  {!(isCollapsed && !isMobile) && linkItem.badge && <span className="ml-auto flex-shrink-0 pl-2">{linkItem.badge}</span>}
+                  {!(isCollapsed && !isMobile) && linkItem.badge && <span className="ml-auto shrink-0 pl-2">{linkItem.badge}</span>}
                 </Link>
               );
             })}
@@ -536,7 +536,7 @@ export const SideMenu = ({
 
         {/* Collapse Toggle (desktop only) */}
         {!isMobile && (
-          <div className="flex-shrink-0 border-t border-gray-200/60 dark:border-neutral-700/60 px-3 py-3">
+          <div className="shrink-0 border-t border-gray-200/60 dark:border-neutral-700/60 px-3 py-3">
             <button
               onClick={toggleCollapse}
               className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-lg text-gray-500 dark:text-neutral-400 hover:bg-gray-100 dark:hover:bg-neutral-700/50 hover:text-gray-700 dark:hover:text-neutral-200 transition-colors ${
@@ -544,7 +544,7 @@ export const SideMenu = ({
               }`}
               title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              <CustomIcon icon={isCollapsed ? 'ChevronRight' : 'ChevronLeft'} className="w-4 h-4 flex-shrink-0" />
+              <CustomIcon icon={isCollapsed ? 'ArrowChevronRight' : 'ArrowChevronLeft'} className="w-4 h-4 shrink-0" />
               {!isCollapsed && <span className="ml-3 whitespace-nowrap">Collapse</span>}
             </button>
           </div>

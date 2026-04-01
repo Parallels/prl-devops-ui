@@ -347,7 +347,7 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
           {onBack && (
             <div className="flex shrink-0 items-center self-center">
               <IconButton
-                icon="ChevronLeft"
+                icon="ArrowChevronLeft"
                 variant="ghost"
                 color="slate"
                 size="sm"

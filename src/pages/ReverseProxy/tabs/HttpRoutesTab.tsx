@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, CustomIcon, EmptyState, IconButton, Pill, ReverseProxyFrom, ReverseProxyTo, VirtualMachine as VirtualMachineIcon, TreeView, type TreeItemData } from '@prl/ui-kit';
+import { CustomIcon, EmptyState, IconButton, Pill, ReverseProxyFrom, ReverseProxyTo, VirtualMachine as VirtualMachineIcon, TreeView, type TreeItemData } from '@prl/ui-kit';
 import type { ReverseProxyHost, ReverseProxyHostHttpRoute } from '@/interfaces/ReverseProxy';
 import type { VirtualMachine } from '@/interfaces/VirtualMachine';
 import type { HttpRouteFormData } from '../ReverseProxyModals';
@@ -108,7 +108,7 @@ export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
 
           title: (
             <div className="flex items-center gap-1.5 min-w-0">
-              <Pill size="sm" tone={route.schema === 'https' ? 'emerald' : 'sky'} variant="soft" className="flex-shrink-0">
+              <Pill size="sm" tone={route.schema === 'https' ? 'emerald' : 'sky'} variant="soft" className="shrink-0">
                 {route.schema === 'https' ? 'HTTPS' : 'HTTP'}
               </Pill>
               <span className="font-mono font-semibold truncate">{route.path ?? '/'}</span>
@@ -165,9 +165,13 @@ export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
             ) : undefined,
           actions:
             showVmAction && !isProxyDown ? (
-              <Button variant="solid" color={health === 'stopped' ? 'success' : 'warning'} size="xs" loading={actionLoading} onClick={() => void actionHandlers.current[i]?.()}>
-                {health === 'stopped' ? 'Start VM' : 'Resume VM'}
-              </Button>
+              <IconButton
+                icon={health === 'stopped' ? 'Run' : 'Refresh'}
+                tooltip={health === 'stopped' ? 'Start VM' : 'Resume VM'}
+                variant="ghost"
+                color={health === 'stopped' ? 'success' : 'warning'}
+                size="xs"
+                loading={actionLoading} onClick={() => void actionHandlers.current[i]?.()} />
             ) : undefined,
 
           hoverActions: canDelete ? (
@@ -201,7 +205,7 @@ export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
       <div className="flex-1 overflow-y-auto p-4">
         {hasTcpRoute && (
           <div className="flex items-start gap-2 mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-            <CustomIcon icon="Info" className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <CustomIcon icon="Info" className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800 dark:text-amber-300">A TCP route is active on this host. Remove it first before adding HTTP routes.</p>
           </div>
         )}

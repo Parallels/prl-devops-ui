@@ -491,6 +491,8 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
       title={query ? 'No matching catalog items' : 'No catalog items available'}
       subtitle={query ? 'Try a different search query.' : 'This source does not contain catalog items yet.'}
       tone="neutral"
+      fullWidth
+      fullHeight
     />
   );
 
@@ -511,6 +513,7 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
       onRowClick={(flat) => onSelectItem(flat.manifest)}
       resizableColumns
       groupable
+      showColumnSelector
       userStickyColumns
       panelMinItemWidth="300px"
       panelGap={12}

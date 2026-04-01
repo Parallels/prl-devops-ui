@@ -14,7 +14,7 @@ export interface DownloadVmFormData {
   target: DownloadTarget;
 }
 
-interface DownloadCatalogVmModalProps {
+interface DownloadCatalogModalProps {
   isOpen: boolean;
   loading: boolean;
   error: string | null;
@@ -38,7 +38,7 @@ const targetOptions: MultiToggleOption[] = [
   { value: 'orchestrator', label: 'Orchestrator' },
 ];
 
-export const DownloadCatalogVmModal: React.FC<DownloadCatalogVmModalProps> = ({
+export const DownloadCatalogModal: React.FC<DownloadCatalogModalProps> = ({
   isOpen,
   loading,
   error,

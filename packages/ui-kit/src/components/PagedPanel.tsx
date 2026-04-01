@@ -44,7 +44,7 @@ const NavBtn: React.FC<{
       'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
     )}
   >
-    <CustomIcon icon={direction === 'left' ? 'ChevronLeft' : 'ChevronRight'} size="sm" />
+    <CustomIcon icon={direction === 'left' ? 'ArrowChevronLeft' : 'ArrowChevronRight'} size="sm" />
   </button>
 );
 

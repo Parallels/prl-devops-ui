@@ -83,13 +83,9 @@ class UsersService {
       if (!user) {
         return {
           id: userId,
-          ...request,
-          // These fields are not in the request, so we include empty defaults
-          // Note: Username cannot be updated, so we use userId as fallback
-          username: userId,
-          roles: [],
-          claims: [],
-          isSuperUser: false,
+          ...(request.name !== undefined ? { name: request.name } : {}),
+          ...(request.email !== undefined ? { email: request.email } : {}),
+          ...(request.is_super_user !== undefined ? { isSuperUser: request.is_super_user } : {}),
         } as DevOpsUser;
       }
 

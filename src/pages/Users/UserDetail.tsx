@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { AccessMatrix, type AccessMatrixPermission, FormField, FormLayout, Input, Panel, Section, TagPicker, Tabs, Toggle, TagPanel } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
-import { ClaimGroupResponse, DevOpsClaim, DevOpsUser, DevOpsRole } from '@/interfaces/devops';
+import { ClaimGroupResponse, DevOpsClaim, DevOpsUpdateUserRequest, DevOpsUser, DevOpsRole } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 
@@ -19,7 +19,7 @@ export interface UserDetailProps {
 }
 
 export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ user, availableRoles = [], availableClaims = [], onSave, onDirtyChange }, ref) => {
-  const { session } = useSession();
+  const { session, hasClaim, hasRole } = useSession();
   const { themeColor } = useSystemSettings();
   const hostname = session?.hostname ?? '';
 
@@ -28,14 +28,14 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
   const [email, setEmail] = useState(user.email ?? '');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [localIsSuperUser, setLocalIsSuperUser] = useState(user.isSuperUser ?? false);
 
   // Roles + Claims local state — batched until save
   const [localRoles, setLocalRoles] = useState<string[]>(user.roles ?? []);
   const [localClaims, setLocalClaims] = useState<string[]>(user.claims ?? []);
 
-  const [canUpdate, setCanUpdate] = useState(false);
-  const [isSuperUser, setIsSuperUser] = useState(false);
-  const { hasClaim, hasRole } = useSession();
+  const canUpdate = hasClaim('UPDATE_USER');
+  const canManageSuperUsers = hasRole('SUPER_USER');
 
   const [saving, setSaving] = useState(false);
 
@@ -51,10 +51,9 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
     setEmail(user.email ?? '');
     setPassword('');
     setConfirmPassword('');
+    setLocalIsSuperUser(user.isSuperUser ?? false);
     setLocalRoles(user.roles ?? []);
     setLocalClaims(user.claims ?? []);
-    setCanUpdate(hasClaim('UPDATE_USER'));
-    setIsSuperUser(hasRole('SUPER_USER'));
     setActiveTab('general');
     setMatrixGroups([]);
     setMatrixError(null);
@@ -83,7 +82,10 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
   }, [activeTab, hostname]);
 
   const passwordMismatch = password !== '' && confirmPassword !== '' && password !== confirmPassword;
-  const passwordValid = password === '' || (password !== '' && password === confirmPassword);
+  const passwordNeedsConfirmation = password !== '' && confirmPassword === '';
+  const passwordValid = password === '' || (confirmPassword !== '' && password === confirmPassword);
+  const securityError = passwordMismatch ? 'Passwords do not match' : undefined;
+  const superUserDirty = localIsSuperUser !== (user.isSuperUser ?? false);
 
   // Dirty tracking
   const isDirty = useMemo(() => {
@@ -92,8 +94,8 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
     const rolesDirty = localRoles.length !== originalRoles.length || localRoles.some((r) => !originalRoles.includes(r));
     const originalClaims = user.claims ?? [];
     const claimsDirty = localClaims.length !== originalClaims.length || localClaims.some((c) => !originalClaims.includes(c));
-    return profileDirty || rolesDirty || claimsDirty;
-  }, [name, email, password, user.name, user.email, localRoles, user.roles, localClaims, user.claims]);
+    return profileDirty || rolesDirty || claimsDirty || superUserDirty;
+  }, [name, email, password, user.name, user.email, localRoles, user.roles, localClaims, user.claims, superUserDirty]);
 
   useEffect(() => {
     onDirtyChange?.(isDirty && passwordValid);
@@ -105,8 +107,9 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
     if (saving || !user.id || !passwordValid) return;
     setSaving(true);
     try {
-      const request: { name?: string; email?: string; password?: string } = { name, email };
+      const request: DevOpsUpdateUserRequest = { name, email };
       if (password) request.password = password;
+      if (superUserDirty) request.is_super_user = localIsSuperUser;
       const updated = await devopsService.users.updateUser(hostname, user.id, request);
 
       // Sync role changes (batched)
@@ -133,11 +136,19 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
 
       setPassword('');
       setConfirmPassword('');
-      onSave({ ...updated, roles: localRoles, claims: localClaims });
+      onSave({
+        ...user,
+        ...updated,
+        name,
+        email,
+        roles: localRoles,
+        claims: localClaims,
+        isSuperUser: localIsSuperUser,
+      });
     } finally {
       setSaving(false);
     }
-  }, [saving, hostname, name, email, password, passwordValid, user.id, user.roles, localRoles, user.claims, localClaims, onSave]);
+  }, [saving, hostname, name, email, password, passwordValid, superUserDirty, localIsSuperUser, user, user.id, user.roles, localRoles, user.claims, localClaims, onSave]);
 
   // ── Reset ─────────────────────────────────────────────────────────────────
 
@@ -146,9 +157,10 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
     setEmail(user.email ?? '');
     setPassword('');
     setConfirmPassword('');
+    setLocalIsSuperUser(user.isSuperUser ?? false);
     setLocalRoles(user.roles ?? []);
     setLocalClaims(user.claims ?? []);
-  }, [user.name, user.email, user.roles, user.claims]);
+  }, [user.name, user.email, user.isSuperUser, user.roles, user.claims]);
 
   useImperativeHandle(ref, () => ({ save: handleSave, reset: handleReset }), [handleSave, handleReset]);
 
@@ -208,6 +220,22 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
           <FormField label="Username">
             <Input tone={themeColor} value={user.username ?? ''} disabled placeholder="Username" />
           </FormField>
+          <FormField
+            label="Super User"
+            description={
+              canManageSuperUsers
+                ? 'Grants unrestricted access across the host.'
+                : 'Only Super Users can change this setting.'
+            }
+          >
+            <Toggle
+              checked={localIsSuperUser}
+              disabled={!canUpdate || !canManageSuperUsers}
+              onChange={(e) => setLocalIsSuperUser(e.target.checked)}
+              label={localIsSuperUser ? 'Enabled' : 'Disabled'}
+              color={themeColor}
+            />
+          </FormField>
         </FormLayout>
       </Panel>
 
@@ -215,7 +243,7 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
       <Panel variant="glass" backgroundColor="white" padding="xs">
         <Section title="Security" noPadding />
         <FormLayout columns={2}>
-          <FormField label="Password" error={passwordMismatch ? 'Passwords do not match' : undefined}>
+          <FormField label="New Password" error={securityError}>
             <Input
               type="password"
               disabled={!canUpdate}
@@ -224,17 +252,26 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
                 setPassword(e.target.value);
                 if (!e.target.value) setConfirmPassword('');
               }}
+              autoComplete="new-password"
               placeholder="Leave blank to keep current"
             />
           </FormField>
           {password !== '' && (
-            <FormField label="Confirm Password" error={passwordMismatch ? 'Passwords do not match' : undefined}>
-              <Input type="password" disabled={!canUpdate} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter new password" />
+            <FormField
+              label="Confirm Password"
+              error={securityError}
+              description={passwordNeedsConfirmation ? 'Re-enter the new password before saving.' : undefined}
+            >
+              <Input
+                type="password"
+                disabled={!canUpdate}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+                placeholder="Re-enter new password"
+              />
             </FormField>
           )}
-          <FormField label="Super User">
-            <Toggle checked={user.isSuperUser ?? false} disabled={!canUpdate || !isSuperUser} label={user.isSuperUser ? 'Yes' : 'No'} color={themeColor} />
-          </FormField>
         </FormLayout>
       </Panel>
 
@@ -247,7 +284,7 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
           items={roleItems}
           value={localRoles}
           onChange={handleRolesChange}
-          disabled={!canUpdate || !isSuperUser}
+          disabled={!canUpdate || !canManageSuperUsers}
           placeholder="Search and add roles…"
           emptyMessage="No roles available"
           highlightNew
@@ -313,9 +350,13 @@ export const UserDetail = React.forwardRef<UserDetailRef, UserDetailProps>(({ us
 
   const accessMatrixPanel = (
     <div className="h-full flex flex-col p-1">
-      {user.isSuperUser && (
+      {(user.isSuperUser || localIsSuperUser) && (
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
-          This user is a Super User and has unrestricted access regardless of assigned claims.
+          {user.isSuperUser && localIsSuperUser
+            ? 'This user is a Super User and has unrestricted access regardless of assigned claims.'
+            : localIsSuperUser
+              ? 'This user will become a Super User after you save, which grants unrestricted access regardless of assigned claims.'
+              : 'This user is currently a Super User. Saving will remove unrestricted access and return to the assigned claims below.'}
         </div>
       )}
       {matrixLoading ? (

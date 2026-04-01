@@ -243,7 +243,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
         {/* Finished job deeplink */}
         {!isActive && outcome.deepLink && (
           <div className="px-4 pb-3">
-            <Button variant="soft" color={isFailed ? 'rose' : 'blue'} size="xs" leadingIcon="ArrowRight" onClick={handleNavigateToOutcome}>
+            <Button variant="soft" color={isFailed ? 'rose' : 'blue'} size="xs" trailingIcon="ArrowRight" onClick={handleNavigateToOutcome}>
               View {outcome.deepLink.label}
             </Button>
           </div>
@@ -269,7 +269,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono text-neutral-300 dark:text-neutral-600 truncate max-w-35">{job.id}</span>
-            {!isActive && <IconButton icon="Trash" variant="ghost" color="rose" size="xs" aria-label="Delete job" onClick={() => setConfirmDelete(true)} />}
+            {!isActive && <IconButton tooltip="Delete job" icon="Trash" variant="ghost" color="rose" size="xs" aria-label="Delete job" onClick={() => setConfirmDelete(true)} />}
           </div>
         </div>
       </Panel>

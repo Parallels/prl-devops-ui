@@ -199,14 +199,15 @@ export const Home: React.FC = () => {
         id: 'system-info-host',
         title: 'Host Information',
         group: 'System Info',
-        defaultSpan: 4,
+        defaultSpan: hasModule('host') ? 4 : 12,
         render: () => <HostInformationPanel hw={hw} />,
       },
       {
         id: 'system-info-resources',
         title: 'Available Resources',
         group: 'System Info',
-        defaultSpan: 8,
+        defaultHidden: !hasModule('host') || !hasModule('orchestrator'),
+        defaultSpan: hasModule('host') ? 8 : 12,
         render: () => <AvailableResourcesPanel resourcePages={resourcePages} orchLoading={orchLoading} orchError={orchError} />,
       },
       {

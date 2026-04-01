@@ -439,7 +439,7 @@ const ConnectionFlow: React.FC<ConnectionFlowProps> = ({
                         {/* Column or parallel group — wrapped in a ref div for bypass arc measurement */}
                         <div
                             ref={el => { groupDivRefs.current[gi] = el; }}
-                            className={(itemWidth || fullWidthConnectors) ? 'flex-shrink-0' : 'flex-1 min-w-0'}
+                            className={(itemWidth || fullWidthConnectors) ? 'shrink-0' : 'flex-1 min-w-0'}
                             style={itemWidth
                                 ? { width: typeof itemWidth === 'number' ? `${itemWidth}px` : itemWidth }
                                 : undefined}

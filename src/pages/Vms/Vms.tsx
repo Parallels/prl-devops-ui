@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Button, CustomIcon, EmptyState, IconButton, Panel, Pill, SearchBar, SidePanel, SplitView, Table, type Column, type SplitViewItem, type TableSettings } from '@prl/ui-kit';
+import { Button, CustomIcon, EmptyState, formatDuration, IconButton, Panel, Pill, SearchBar, SidePanel, SplitView, Table, VirtualMachine as VirtualMachineIcon, type Column, type SplitViewItem, type TableSettings } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { useSession } from '@/contexts/SessionContext';
@@ -74,6 +74,7 @@ const baseColumns: Column<VirtualMachine>[] = [
     accessor: 'internal_ip_address',
     maxWidth: 200,
     align: 'center',
+    groupValue: (row) => (row.internal_ip_address ?? 'Unknown'),
     render: (row) => <span className="font-mono text-xs text-neutral-400 dark:text-neutral-500 truncate block max-w-45">{String(row.internal_ip_address ?? '—')}</span>,
   },
   {
@@ -82,14 +83,197 @@ const baseColumns: Column<VirtualMachine>[] = [
     accessor: 'host_external_ip_address',
     maxWidth: 200,
     align: 'center',
+    groupValue: (row) => (row.host_external_ip_address ? 'Has external IP' : 'No external IP'),
     render: (row) => <span className="font-mono text-xs text-neutral-400 dark:text-neutral-500 truncate block max-w-45">{String(row.host_external_ip_address ?? '—')}</span>,
   },
   {
     id: 'description',
     header: 'Description',
     accessor: 'Description',
+    hideable: true,
+    defaultHidden: true,
+    groupable: false,
     render: (row) => <span className="text-neutral-500 dark:text-neutral-400 truncate max-w-65 block">{row.Description || '—'}</span>,
   },
+    {
+    id: 'home',
+    header: 'VM Home',
+    accessor: 'VM Home',
+    hideable: true,
+    defaultHidden: true,
+    groupable: false,
+    render: (row) => <span className="text-neutral-500 dark:text-neutral-400 truncate max-w-65 block">{row.Home || '—'}</span>,
+  },
+  {
+    id: 'home_path',
+    header: 'Home Path',
+    accessor: 'Home Path',
+    hideable: true,
+    defaultHidden: true,
+    groupable: false,
+    render: (row) => <span className="text-neutral-500 dark:text-neutral-400 truncate max-w-65 block">{row['Home path'] || '—'}</span>,
+  },
+  {
+    id: 'smart_mount',
+    header: 'Smart Mount',
+    accessor: 'Smart Mount',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row.SmartMount.enabled ? 'Smart Mount: Enabled' : 'Smart Mount: Disabled',
+    render: (row) => <span className={`text-${row.SmartMount.enabled ? 'green' : 'red'}-500 dark:text-${row.SmartMount.enabled ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row.SmartMount.enabled ? 'Enabled' : 'Disabled'}</span>,
+  },
+  {
+    id: 'autostart',
+    header: 'Autostart',
+    accessor: 'Autostart',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row['Startup and Shutdown']['Autostart'] !== 'off' ? `Autostart: ${row['Startup and Shutdown']['Autostart']}` : 'Autostart: Disabled',
+    render: (row) => <span className={`text-${row['Startup and Shutdown']['Autostart'] !== 'off' ? 'green' : 'red'}-500 dark:text-${row['Startup and Shutdown']['Autostart'] !== 'off' ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row['Startup and Shutdown']['Autostart'] !== 'off' ? 'Enabled' : 'Disabled'}</span>,
+  },
+  {
+    id: 'autostart_delay',
+    header: 'Autostart Delay',
+    accessor: 'Autostart Delay',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupable: false,
+    render: (row) => <span className={`text-neutral-500 dark:text-neutral-400 truncate max-w-65 block`}>{row['Startup and Shutdown']['Autostart delay']}</span>,
+  },
+  {
+    id: 'autostop',
+    header: 'Autostop',
+    accessor: 'Autostop',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row['Startup and Shutdown']['Autostop'] !== 'off' ? `Autostop: ${row['Startup and Shutdown']['Autostop']}` : 'Autostop: Disabled',
+    render: (row) => <span className={`text-neutral-500 dark:text-neutral-400 truncate max-w-65 block`}>{row['Startup and Shutdown']['Autostop']}</span>,
+  },
+  {
+    id: 'startup_view',
+    header: 'Startup View',
+    accessor: 'Startup View',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row['Startup and Shutdown']['Startup view'] !== 'off' ? `Startup view: ${row['Startup and Shutdown']['Startup view']}` : 'Startup view: Disabled',
+    render: (row) => <span className={`text-neutral-500 dark:text-neutral-400 truncate max-w-65 block`}>{row['Startup and Shutdown']['Startup view']}</span>,
+  },
+  {
+    id: 'on_shutdown',
+    header: 'On Shutdown',
+    accessor: 'On Shutdown',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row['Startup and Shutdown']['On shutdown'] !== 'off' ? 'On shutdown: Enabled' : 'On shutdown: Disabled',
+    render: (row) => <span className={`text-neutral-500 dark:text-neutral-400 truncate max-w-65 block`}>{row['Startup and Shutdown']['On shutdown']}</span>,
+  },
+  {
+    id: 'on_window_close',
+    header: 'On Window Close',
+    accessor: 'On Window Close',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row['Startup and Shutdown']['On window close'] !== 'keep_running' ? `On window close: ${row['Startup and Shutdown']['On window close']}` : 'On window close: Keep running',
+    render: (row) => <span className={`text-neutral-500 dark:text-neutral-400 truncate max-w-65 block`}>{row['Startup and Shutdown']['On window close']}</span>,
+  },
+  {
+    id: 'pause_idle',
+    header: 'Pause Idle',
+    accessor: 'Pause Idle',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row['Startup and Shutdown']['Pause idle'] !== 'off' ? 'Pause idle: Enabled' : 'Pause idle: Disabled',
+    render: (row) => <span className={`text-${row['Startup and Shutdown']['Pause idle'] !== 'off' ? 'green' : 'red'}-500 dark:text-${row['Startup and Shutdown']['Pause idle'] !== 'off' ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row['Startup and Shutdown']['Pause idle'] !== 'off' ? 'Enabled' : 'Disabled'}</span>,
+  },
+    {
+    id: 'undo_disks',
+    header: 'Undo Disks',
+    accessor: 'Undo Disks',
+    align: 'center',
+    hideable: true,
+      defaultHidden: true,
+    groupValue: (row) => row['Startup and Shutdown']['Undo disks'] !== 'off' ? 'Undo disks: Enabled' : 'Undo disks: Disabled',
+    render: (row) => <span className={`text-${row['Startup and Shutdown']['Undo disks'] !== 'off' ? 'green' : 'red'}-500 dark:text-${row['Startup and Shutdown']['Undo disks'] !== 'off' ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row['Startup and Shutdown']['Undo disks'] !== 'off' ? 'Enabled' : 'Disabled'}</span>,
+  },
+  {
+    id: 'vm_host_sync',
+    header: 'VM hostname sync',
+    accessor: 'VM Host Sync',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row.Advanced['VM hostname synchronization'] !== 'off' ? 'VM hostname sync: Enabled' : 'VM hostname sync: Disabled',
+    render: (row) => <span className={`text-${row.Advanced['VM hostname synchronization'] !== 'off' ? 'green' : 'red'}-500 dark:text-${row.Advanced['VM hostname synchronization'] !== 'off' ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row.Advanced['VM hostname synchronization'] !== 'off' ? 'Enabled' : 'Disabled'}</span>,
+  },
+  {
+    id: 'public_ssh_keys_sync',
+    header: 'Public SSH keys sync',
+    accessor: 'Public SSH Keys Sync',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row.Advanced['Public SSH keys synchronization'] !== 'off' ? 'Public SSH keys sync: Enabled' : 'Public SSH keys sync: Disabled',
+    render: (row) => <span className={`text-${row.Advanced['Public SSH keys synchronization'] !== 'off' ? 'green' : 'red'}-500 dark:text-${row.Advanced['Public SSH keys synchronization'] !== 'off' ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row.Advanced['Public SSH keys synchronization'] !== 'off' ? 'Enabled' : 'Disabled'}</span>,
+  },
+  {
+    id: 'show_developer_tools',
+    header: 'Show developer tools',
+    accessor: 'Show Developer Tools',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row.Advanced['Show developer tools'] !== 'off' ? 'Show developer tools: Enabled' : 'Show developer tools: Disabled',
+    render: (row) => <span className={`text-${row.Advanced['Show developer tools'] !== 'off' ? 'green' : 'red'}-500 dark:text-${row.Advanced['Show developer tools'] !== 'off' ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row.Advanced['Show developer tools'] !== 'off' ? 'Enabled' : 'Disabled'}</span>,
+  },
+  {
+    id: 'swipe_from_edges',
+    header: 'Swipe from edges',
+    accessor: 'Swipe from Edges',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row.Advanced['Swipe from edges'] !== 'off' ? 'Swipe from edges: Enabled' : 'Swipe from edges: Disabled',
+    render: (row) => <span className={`text-${row.Advanced['Swipe from edges'] !== 'off' ? 'green' : 'red'}-500 dark:text-${row.Advanced['Swipe from edges'] !== 'off' ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row.Advanced['Swipe from edges'] !== 'off' ? 'Enabled' : 'Disabled'}</span>,
+  },
+  {
+    id: 'share_host_location',
+    header: 'Share host location',
+    accessor: 'Share Host Location',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row.Advanced['Share host location'] !== 'off' ? 'Share host location: Enabled' : 'Share host location: Disabled',
+    render: (row) => <span className={`text-${row.Advanced['Share host location'] !== 'off' ? 'green' : 'red'}-500 dark:text-${row.Advanced['Share host location'] !== 'off' ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row.Advanced['Share host location'] !== 'off' ? 'Enabled' : 'Disabled'}</span>,
+  },
+  {
+    id: 'rosetta_linux',
+    header: 'Rosetta Linux',
+    accessor: 'Rosetta Linux',
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupValue: (row) => row.Advanced['Rosetta Linux'] !== 'off' ? 'Rosetta Linux: Enabled' : 'Rosetta Linux: Disabled',
+    render: (row) => <span className={`text-${row.Advanced['Rosetta Linux'] !== 'off' ? 'green' : 'red'}-500 dark:text-${row.Advanced['Rosetta Linux'] !== 'off' ? 'green' : 'red'}-400 truncate max-w-65 block`}>{row.Advanced['Rosetta Linux'] !== 'off' ? 'Enabled' : 'Disabled'}</span>,
+  },
+  {
+    id: 'uptime',
+    header: 'Uptime',
+    accessor: 'Uptime',
+    sortable: true,
+    align: 'center',
+    hideable: true,
+    defaultHidden: true,
+    groupable: false,
+    render: (row) => <span className="font-mono text-xs text-neutral-400 dark:text-neutral-500">{formatDuration(parseInt(row.Uptime)) ?? '—'}</span>,
+  }
 ];
 
 // HostLink is a component so it can call useNavigateTo (hooks require components).
@@ -115,10 +299,8 @@ function HostLink({ hostId, hostName }: { hostId: string; hostName: string }) {
   );
 }
 
-const orchestratorColumns: Column<VirtualMachine>[] = [
-  baseColumns[0], // os
-  baseColumns[1], // name
-  baseColumns[2], // state
+// Extra columns inserted after 'state' for the orchestrator view
+const orchestratorExtraColumns: Column<VirtualMachine>[] = [
   {
     id: 'host',
     header: 'Host',
@@ -135,17 +317,17 @@ const orchestratorColumns: Column<VirtualMachine>[] = [
     width: 130,
     render: (row) => <span className="font-mono text-xs text-neutral-400 dark:text-neutral-500 truncate block max-w-45">{String(row.user ?? 'Unknown')}</span>,
   },
-  baseColumns[3], // internal_ip
-  baseColumns[4], // external_ip
 ];
 
-const localColumns: Column<VirtualMachine>[] = [
-  baseColumns[0], // os
-  baseColumns[1], // name
-  baseColumns[2], // state
-  baseColumns[3], // internal_ip
-  baseColumns[4], // external_ip
+// Orchestrator = base columns with host+user inserted after 'state' (index 2)
+const orchestratorColumns: Column<VirtualMachine>[] = [
+  ...baseColumns.slice(0, 3),
+  ...orchestratorExtraColumns,
+  ...baseColumns.slice(3),
 ];
+
+// Local = all base columns
+const localColumns = baseColumns;
 
 // ── VM table panel (header + sticky-search + scrollable table) ─────────────
 
@@ -194,6 +376,7 @@ function VmTablePanel({
           noBorders
           fullHeight
           stickyHeader
+          showColumnSelector
           variant="flat"
           defaultSort={defaultSort}
           onRowClick={onRowClick}
@@ -683,7 +866,7 @@ export const Vms: React.FC = () => {
         minListWidth={220}
         searchPlaceholder="Search vms..."
         panelEmptyState={emptyState()}
-        listActions={<IconButton variant="ghost" size="xs" color={themeColor} aria-label="Refresh" icon="Restart" onClick={() => void fetchVms()} />}
+        listActions={<IconButton tooltip='Refresh' variant="ghost" size="xs" color={themeColor} aria-label="Refresh" icon="Restart" onClick={() => void fetchVms()} />}
         panelHeaderProps={(activeItem) => {
           const vmCount = activeItem?.id === 'local' ? localVms.length : activeItem?.id === 'orchestrator' ? orchestratorVms.length : 0;
           const runningCount =
@@ -741,6 +924,7 @@ export const Vms: React.FC = () => {
 
       {/* ── SidePanel ─────────────────────────────────────────── */}
       <SidePanel
+        icon={<VirtualMachineIcon className="w-5 h-5" />}
         isOpen={!!selectedVm}
         onClose={() => setSelectedVm(null)}
         title={selectedVm?.vm.Name ?? 'VM Details'}

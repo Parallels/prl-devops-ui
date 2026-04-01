@@ -106,8 +106,8 @@ const FormField: React.FC<FormFieldProps> = ({
         {labelAction && <div className="mt-2 sm:mt-4">{labelAction}</div>}
       </div>
 
-      <div className={controlWrapperClasses}>
-        <div className="flex flex-col gap-2">{child}</div>
+      <div className={classNames("h-full", controlWrapperClasses)}>
+        <div className="flex flex-col gap-2 grow h-full">{child}</div>
         {helpText && (
           <p id={helpId} className={classNames('text-sm', hintColor)}>
             {helpText}

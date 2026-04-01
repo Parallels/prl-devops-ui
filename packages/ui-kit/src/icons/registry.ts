@@ -136,6 +136,9 @@ import { Revoke } from './components/Revoke';
 import { Taint } from './components/Taint';
 import { Unlock } from './components/Unlock';
 import { Check } from './components/Check';
+import { ArrowChevronLeft } from './components/ArrowChevronLeft';
+import { ArrowChevronRight } from './components/ArrowChevronRight';
+import { Drag } from './components/Drag';
 
 export type IconName =
   | 'Add'
@@ -274,7 +277,10 @@ export type IconName =
   | 'Revoke'
   | 'Taint'
   | 'Unlock'
-  | 'Check';
+  | 'Check'
+  | 'ArrowChevronLeft'
+  | 'ArrowChevronRight'
+  | 'Drag';
 
 export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<React.SVGProps<SVGSVGElement>>> = {
   Add: Add,
@@ -414,4 +420,7 @@ export const iconRegistry: Record<IconName, React.ForwardRefExoticComponent<Reac
   Taint: Taint,
   Unlock: Unlock,
   Check: Check,
+  ArrowChevronLeft: ArrowChevronLeft,
+  ArrowChevronRight: ArrowChevronRight,
+  Drag: Drag,
 };

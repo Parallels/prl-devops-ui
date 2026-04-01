@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import classNames from 'classnames';
-import { Pill, Pause, Suspend, Stop, Restart, Run, Section, Tabs, formatDuration, InfoRow } from '@prl/ui-kit';
+import { Pill, Pause, Suspend, Stop, Restart, Run, Section, Tabs, formatDuration, InfoRow, TooltipWrapper } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
@@ -285,6 +285,7 @@ export function VmDetailContent({ vm, hostname, isOrchestrator }: VmDetailConten
             {vm.GuestTools?.version && (
               <p className="text-xs text-neutral-400 dark:text-neutral-500">
                 Guest tools:{' '}
+                <TooltipWrapper text={vm.GuestTools.state === 'possibly_installed' ? 'Possibly installed' : vm.GuestTools.state === 'outdated' ? 'Outdated' : 'Up to date'}>
                 <span
                   className={
                     vm.GuestTools.state === 'possibly_installed'
@@ -295,14 +296,15 @@ export function VmDetailContent({ vm, hostname, isOrchestrator }: VmDetailConten
                   }
                 >
                   {vm.GuestTools.version}
-                </span>
+                  </span>
+                  </TooltipWrapper>
               </p>
             )}
           </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
           {isStopped && (
             <ActionButton
               icon={<Run className="w-3.5 h-3.5" />}
