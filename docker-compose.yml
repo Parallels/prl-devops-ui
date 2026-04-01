@@ -9,6 +9,9 @@ services:
       - "5780:80"
     environment:
       APP_ENV: ${APP_ENV:-production}
+      VITE_DEFAULT_HOST_URL: ${VITE_DEFAULT_HOST_URL:-}
+      VITE_DEFAULT_USERNAME: ${VITE_DEFAULT_USERNAME:-}
+      VITE_DEFAULT_PASSWORD: ${VITE_DEFAULT_PASSWORD:-}
     restart: unless-stopped
 
   prl-devops-ui-dev:
@@ -21,6 +24,9 @@ services:
       - "8081:80"
     environment:
       APP_ENV: development
+      VITE_DEFAULT_HOST_URL: ${VITE_DEFAULT_HOST_URL:-}
+      VITE_DEFAULT_USERNAME: ${VITE_DEFAULT_USERNAME:-}
+      VITE_DEFAULT_PASSWORD: ${VITE_DEFAULT_PASSWORD:-}
     restart: unless-stopped
     profiles:
       - dev

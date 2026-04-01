@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useMemo } from 'react';
 
-// ── Build-time constants (evaluated once at module load) ──────────────────────
+// ── Runtime/build constants (evaluated once at module load) ───────────────────
 
-const RAW_HOST_URL = import.meta.env.VITE_DEFAULT_HOST_URL || '';
-const RAW_USERNAME = import.meta.env.VITE_DEFAULT_USERNAME || '';
-const RAW_PASSWORD = import.meta.env.VITE_DEFAULT_PASSWORD || '';
+const runtimeEnv = typeof window !== 'undefined' ? window.__ENV__ : undefined;
+const RAW_HOST_URL = runtimeEnv?.VITE_DEFAULT_HOST_URL || import.meta.env.VITE_DEFAULT_HOST_URL || '';
+const RAW_USERNAME = runtimeEnv?.VITE_DEFAULT_USERNAME || import.meta.env.VITE_DEFAULT_USERNAME || '';
+const RAW_PASSWORD = runtimeEnv?.VITE_DEFAULT_PASSWORD || import.meta.env.VITE_DEFAULT_PASSWORD || '';
 
 // Derive hostname from the URL; treat malformed URL as "not locked"
 let _isLocked = false;
