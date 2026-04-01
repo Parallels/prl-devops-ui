@@ -29,9 +29,33 @@ window.__ENV__ = {
   VITE_DEFAULT_PASSWORD: "${DEFAULT_PASSWORD_ESCAPED}"
 };
 EOF
+chmod 644 /usr/share/nginx/html/env-config.js
 
-# Inject the env-config.js script tag into index.html before </head>
-sed -i 's|</head>|<script src="/env-config.js"></script></head>|' /usr/share/nginx/html/index.html
+# Inject the env-config.js script tag into index.html before the app module script.
+# Use awk here instead of sed range syntax because the alpine image uses busybox
+# tooling and the previous sed command was not reliably portable.
+if ! grep -q 'src="/env-config.js"' /usr/share/nginx/html/index.html; then
+  TMP_HTML="$(mktemp)"
+  if grep -q '<script type="module"' /usr/share/nginx/html/index.html; then
+    awk '
+      !inserted && /<script type="module"/ {
+        print "    <script src=\"/env-config.js\"></script>"
+        inserted = 1
+      }
+      { print }
+    ' /usr/share/nginx/html/index.html > "$TMP_HTML"
+  else
+    awk '
+      /<\/head>/ && !inserted {
+        print "    <script src=\"/env-config.js\"></script>"
+        inserted = 1
+      }
+      { print }
+    ' /usr/share/nginx/html/index.html > "$TMP_HTML"
+  fi
+  mv "$TMP_HTML" /usr/share/nginx/html/index.html
+  chmod 644 /usr/share/nginx/html/index.html
+fi
 
 echo "Starting prl-devops-ui [env=${APP_ENV}]"
 

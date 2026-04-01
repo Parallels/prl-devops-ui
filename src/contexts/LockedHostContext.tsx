@@ -1,27 +1,52 @@
 import React, { createContext, useContext, useMemo } from 'react';
 
-// ── Runtime/build constants (evaluated once at module load) ───────────────────
+// ── Runtime/build constants ───────────────────────────────────────────────────
 
-const runtimeEnv = typeof window !== 'undefined' ? window.__ENV__ : undefined;
-const RAW_HOST_URL = runtimeEnv?.VITE_DEFAULT_HOST_URL || import.meta.env.VITE_DEFAULT_HOST_URL || '';
-const RAW_USERNAME = runtimeEnv?.VITE_DEFAULT_USERNAME || import.meta.env.VITE_DEFAULT_USERNAME || '';
-const RAW_PASSWORD = runtimeEnv?.VITE_DEFAULT_PASSWORD || import.meta.env.VITE_DEFAULT_PASSWORD || '';
+const readLockedHostEnv = () => {
+  const runtimeEnv = typeof window !== 'undefined' ? window.__ENV__ : undefined;
+  return {
+    hostUrl: runtimeEnv?.VITE_DEFAULT_HOST_URL ?? import.meta.env.VITE_DEFAULT_HOST_URL ?? '',
+    username: runtimeEnv?.VITE_DEFAULT_USERNAME ?? import.meta.env.VITE_DEFAULT_USERNAME ?? '',
+    password: runtimeEnv?.VITE_DEFAULT_PASSWORD ?? import.meta.env.VITE_DEFAULT_PASSWORD ?? '',
+  };
+};
 
-// Derive hostname from the URL; treat malformed URL as "not locked"
-let _isLocked = false;
-let _hostUrl: string | null = null;
-let _lockedHostname: string | null = null;
+const resolveLockedHostState = (): LockedHostContextType => {
+  const { hostUrl: rawHostUrl, username: rawUsername, password: rawPassword } = readLockedHostEnv();
 
-if (RAW_HOST_URL) {
+  if (!rawHostUrl) {
+    return {
+      isLocked: false,
+      hostUrl: null,
+      lockedHostname: null,
+      username: rawUsername || null,
+      hasPassword: rawPassword.length > 0,
+      password: rawPassword || null,
+    };
+  }
+
   try {
-    const parsed = new URL(RAW_HOST_URL);
-    _isLocked = true;
-    _hostUrl = RAW_HOST_URL.replace(/\/+$/, ''); // strip trailing slashes
-    _lockedHostname = parsed.hostname;
+    const parsed = new URL(rawHostUrl);
+    return {
+      isLocked: true,
+      hostUrl: rawHostUrl.replace(/\/+$/, ''),
+      lockedHostname: parsed.hostname,
+      username: rawUsername || null,
+      hasPassword: rawPassword.length > 0,
+      password: rawPassword || null,
+    };
   } catch {
     console.warn('[LockedHostContext] VITE_DEFAULT_HOST_URL is set but not a valid URL — falling back to normal mode.');
+    return {
+      isLocked: false,
+      hostUrl: null,
+      lockedHostname: null,
+      username: rawUsername || null,
+      hasPassword: rawPassword.length > 0,
+      password: rawPassword || null,
+    };
   }
-}
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,14 +71,7 @@ const LockedHostContext = createContext<LockedHostContextType | null>(null);
 
 export const LockedHostProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const value = useMemo<LockedHostContextType>(
-    () => ({
-      isLocked: _isLocked,
-      hostUrl: _hostUrl,
-      lockedHostname: _lockedHostname,
-      username: RAW_USERNAME || null,
-      hasPassword: RAW_PASSWORD.length > 0,
-      password: RAW_PASSWORD || null,
-    }),
+    () => resolveLockedHostState(),
     []
   );
 

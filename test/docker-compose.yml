@@ -1,0 +1,12 @@
+services:
+  prl-devops-ui:
+    image: prl-devops-ui:local-test
+    container_name: prl-devops-ui
+    ports:
+      - '5782:80'
+    environment:
+      APP_ENV: production
+      VITE_DEFAULT_HOST_URL: https://devops-orchestrator.local-build.co
+      VITE_DEFAULT_USERNAME: 'root'
+      VITE_DEFAULT_PASSWORD: ''
+    restart: unless-stopped
