@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo } from 'react';
+import React, { createContext, useContext, useMemo, useState, useCallback } from 'react';
 
 // ── Runtime/build constants ───────────────────────────────────────────────────
 
@@ -11,7 +11,9 @@ const readLockedHostEnv = () => {
   };
 };
 
-const resolveLockedHostState = (): LockedHostContextType => {
+type LockedHostResolvedState = Omit<LockedHostContextType, 'clearLockedPassword'>;
+
+const resolveLockedHostState = (): LockedHostResolvedState => {
   const { hostUrl: rawHostUrl, username: rawUsername, password: rawPassword } = readLockedHostEnv();
 
   if (!rawHostUrl) {
@@ -63,6 +65,8 @@ export interface LockedHostContextType {
   hasPassword: boolean;
   /** Raw password — only for the auto-login path. Do not render this value. */
   password: string | null;
+  /** Clears the runtime password so locked mode falls back to the login form. */
+  clearLockedPassword: () => void;
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -70,9 +74,21 @@ export interface LockedHostContextType {
 const LockedHostContext = createContext<LockedHostContextType | null>(null);
 
 export const LockedHostProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const initialState = useMemo(() => resolveLockedHostState(), []);
+  const [password, setPassword] = useState<string | null>(initialState.password);
+
+  const clearLockedPassword = useCallback(() => {
+    setPassword(null);
+  }, []);
+
   const value = useMemo<LockedHostContextType>(
-    () => resolveLockedHostState(),
-    []
+    () => ({
+      ...initialState,
+      password,
+      hasPassword: !!password,
+      clearLockedPassword,
+    }),
+    [clearLockedPassword, initialState, password]
   );
 
   return <LockedHostContext.Provider value={value}>{children}</LockedHostContext.Provider>;

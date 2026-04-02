@@ -13,7 +13,7 @@ import { devopsService } from '../services/devops';
 export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const config = useConfig();
     const { session, setSession } = useSession();
-    const { isLocked, hostUrl, lockedHostname, username: lockedUsername, hasPassword, password: lockedPassword } = useLockedHost();
+    const { isLocked, hostUrl, lockedHostname, username: lockedUsername, password: lockedPassword, clearLockedPassword } = useLockedHost();
     const navigate = useNavigate();
     const [isReady, setIsReady] = useState(false);
 
@@ -40,7 +40,22 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
         const checkConfig = async () => {
             try {
                 // ── Locked-host auto-login (all three env vars set) ───────────────
-                if (isLocked && lockedHostname && lockedUsername && hasPassword && lockedPassword) {
+                if (isLocked && lockedHostname) {
+                    const savedHosts = (await config.get<HostConfig[]>('hosts')) ?? [];
+                    const savedHost = savedHosts.find((host) => host.hostname === lockedHostname);
+                    const loginUsername = lockedUsername ?? savedHost?.username ?? '';
+                    const savedPassword = await config.getSecret(getPasswordKey(lockedHostname));
+                    const loginPassword = lockedPassword ?? savedPassword;
+
+                    if (!loginUsername || !loginPassword) {
+                        if (session) {
+                            if (!cancelled) setIsReady(true);
+                            return;
+                        }
+                        redirectToLogin('locked mode — no auto-login credentials');
+                        return;
+                    }
+
                     if (session) {
                         // Already have a session — proceed immediately
                         if (!cancelled) setIsReady(true);
@@ -50,9 +65,9 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                     try {
                         authService.setCredentials(lockedHostname, {
                             url: hostUrl!,
-                            username: lockedUsername,
-                            password: lockedPassword,
-                            email: lockedUsername,
+                            username: loginUsername,
+                            password: loginPassword,
+                            email: loginUsername,
                             api_key: '',
                         });
                         await authService.forceReauth(lockedHostname);
@@ -68,7 +83,7 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                             setSession({
                                 serverUrl: hostUrl!,
                                 hostname: lockedHostname,
-                                username: lockedUsername,
+                                username: loginUsername,
                                 authType: 'credentials',
                                 hostId: `locked:${lockedHostname}`,
                                 connectedAt: new Date().toISOString(),
@@ -79,6 +94,9 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                         }
                     } catch (error) {
                         console.error('[StartupGuard] locked auto-login failed:', error);
+                        clearLockedPassword();
+                        await config.removeSecret(getPasswordKey(lockedHostname));
+                        await config.flushSecrets();
                         redirectToLogin('locked auto-login failed');
                     }
                     return;
