@@ -3,6 +3,7 @@ import { JwtTokenPayload, Modules } from '../interfaces/tokenTypes';
 import { HostHardwareInfo } from '../interfaces/devops';
 import { authService } from '../services/authService';
 import { decodeToken } from '../utils/tokenUtils';
+import { clearActiveHostId, setActiveHostId } from '../utils/activeHost';
 
 /**
  * Session data representing the current connection state.
@@ -85,6 +86,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const clearSession = useCallback(() => {
         console.log('[Session] Disconnected');
+        clearActiveHostId();
         setSessionState(null);
     }, []);
 
@@ -149,6 +151,10 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
         return () => sub.unsubscribe();
     }, []);
+
+    useEffect(() => {
+        if (session?.hostId) setActiveHostId(session.hostId);
+    }, [session?.hostId]);
 
     const value: SessionContextType = useMemo(() => ({
         session,

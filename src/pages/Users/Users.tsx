@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, ConfirmModal, DeleteConfirmModal, EmptyState, FormField, FormLayout, getGravatarUrl, IconButton, Input, Modal, ModalActions, NotificationModal, SplitView, TagPicker, UserAvatar, type SplitViewItem } from '@prl/ui-kit';
+import { Button, ConfirmModal, DeleteConfirmModal, EmptyState, FormField, FormLayout, getGravatarUrl, IconButton, Input, Modal, ModalActions, NotificationModal, PasswordInput, SplitView, TagPicker, UserAvatar, type SplitViewItem } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import { DevOpsClaim, DevOpsUser, DevOpsRole } from '@/interfaces/devops';
 import { useSession } from '@/contexts/SessionContext';
@@ -276,8 +276,8 @@ export const Users: React.FC = () => {
         icon="User"
         actions={
           <ModalActions>
-            <Button variant="outline" color="theme" size="sm" onClick={handleModalClose} disabled={modalSaving}>
-              Cancel
+            <Button variant="solid" color="rose" size="sm" onClick={handleModalClose} disabled={modalSaving}>
+              Discard
             </Button>
             <Button variant="solid" color="emerald" size="sm" loading={modalSaving} disabled={!isModalValid} onClick={() => void handleModalCreate()}>
               Create
@@ -300,24 +300,24 @@ export const Users: React.FC = () => {
 
           <FormLayout columns={2}>
             <FormField label="Password" required error={modalPasswordMismatch ? 'Passwords do not match' : undefined}>
-              <Input
+              <PasswordInput
                 tone={themeColor}
-                type="password"
                 value={modalPassword}
                 onChange={(e) => {
                   setModalPassword(e.target.value);
                   if (!e.target.value) setModalConfirmPassword('');
                 }}
                 placeholder="Password"
+                autoComplete="new-password"
               />
             </FormField>
             <FormField label="Confirm Password" required error={modalPasswordMismatch ? 'Passwords do not match' : undefined}>
-              <Input
+              <PasswordInput
                 tone={themeColor}
-                type="password"
                 value={modalConfirmPassword}
                 onChange={(e) => setModalConfirmPassword(e.target.value)}
                 placeholder="Re-enter password"
+                autoComplete="new-password"
                 disabled={modalPassword === ''}
               />
             </FormField>

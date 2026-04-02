@@ -9,6 +9,7 @@ import { getPasswordKey, getApiKeyKey } from '../utils/secretKeys';
 import { LoginPrefill } from '../pages/Login/Login';
 import { decodeToken } from '../utils/tokenUtils';
 import { devopsService } from '../services/devops';
+import { getActiveHostId } from '../utils/activeHost';
 
 export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const config = useConfig();
@@ -39,6 +40,44 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
 
         const checkConfig = async () => {
             try {
+                const buildSession = (host: HostConfig, tokenPayload?: ReturnType<typeof decodeToken>) => ({
+                    serverUrl: host.baseUrl,
+                    hostname: host.hostname,
+                    username: host.username,
+                    authType: host.authType,
+                    hostId: host.id,
+                    connectedAt: new Date().toISOString(),
+                    tokenPayload: tokenPayload ?? undefined,
+                    hardwareInfo: host.hardwareInfo,
+                });
+
+                const hydrateCredentials = async (host: HostConfig) => {
+                    const secretKey = host.authType === 'credentials'
+                        ? getPasswordKey(host.hostname)
+                        : getApiKeyKey(host.hostname);
+                    const secret = await config.getSecret(secretKey);
+
+                    if (!secret) return false;
+
+                    authService.setCredentials(host.hostname, {
+                        url: host.baseUrl,
+                        username: host.authType === 'credentials' ? host.username : '',
+                        password: host.authType === 'credentials' ? secret : '',
+                        email: host.authType === 'credentials' ? host.username : '',
+                        api_key: host.authType === 'api_key' ? secret : '',
+                    });
+
+                    return true;
+                };
+
+                const hasValidStoredToken = (host: HostConfig) => {
+                    const token = authService.getToken(host.hostname);
+                    const tokenPayload = token ? decodeToken(token) ?? undefined : undefined;
+                    if (!tokenPayload?.exp) return null;
+                    if ((tokenPayload.exp * 1000) <= Date.now()) return null;
+                    return tokenPayload;
+                };
+
                 // ── Locked-host auto-login (all three env vars set) ───────────────
                 if (isLocked && lockedHostname) {
                     const savedHosts = (await config.get<HostConfig[]>('hosts')) ?? [];
@@ -133,14 +172,47 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                     console.log('[StartupGuard] active session host removed from config, re-selecting');
                 }
 
-                // Prefer the default host, fall back to most recently used
+                const activeHostId = getActiveHostId();
+                const activeHost = activeHostId ? hosts.find((h) => h.id === activeHostId) : undefined;
+
+                if (activeHost) {
+                    const tokenPayload = hasValidStoredToken(activeHost);
+                    if (tokenPayload) {
+                        console.log('[StartupGuard] restoring active host from stored token', activeHost.hostname);
+                        await hydrateCredentials(activeHost);
+                        authService.currentHostname = activeHost.hostname;
+                        if (!cancelled) {
+                            setSession(buildSession(activeHost, tokenPayload));
+                            setIsReady(true);
+                        }
+                        return;
+                    }
+                }
+
+                // Prefer the active host, then the default host, then most recently used
                 const defaultHost = hosts.find((h) => h.isDefault);
                 const sorted = [...hosts].sort((a, b) =>
                     (b.lastUsed ?? '').localeCompare(a.lastUsed ?? '')
                 );
-                const host = defaultHost ?? sorted[0];
+                const hostCandidates = [activeHost, defaultHost, ...sorted].filter(
+                    (candidate, index, list): candidate is HostConfig =>
+                        !!candidate && list.findIndex((item) => item?.id === candidate.id) === index
+                );
+                const host = hostCandidates[0];
 
                 console.log('[StartupGuard] checking host', host.hostname, 'keepLoggedIn=', host.keepLoggedIn);
+
+                const existingTokenPayload = hasValidStoredToken(host);
+                if (existingTokenPayload) {
+                    console.log('[StartupGuard] restoring session from stored token for', host.hostname);
+                    await hydrateCredentials(host);
+                    authService.currentHostname = host.hostname;
+                    if (!cancelled) {
+                        setSession(buildSession(host, existingTokenPayload));
+                        setIsReady(true);
+                    }
+                    return;
+                }
 
                 if (host.keepLoggedIn === false) {
                     redirectToLogin('keepLoggedIn is false', host);
@@ -176,16 +248,7 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                         console.warn('[StartupGuard] Failed to decode token, session will have limited functionality');
                     }
 
-                    setSession({
-                        serverUrl: host.baseUrl,
-                        hostname: host.hostname,
-                        username: host.username,
-                        authType: host.authType,
-                        hostId: host.id,
-                        connectedAt: new Date().toISOString(),
-                        tokenPayload,
-                        hardwareInfo: host.hardwareInfo,
-                    });
+                    setSession(buildSession(host, tokenPayload));
                     console.log('[StartupGuard] ready');
                     setIsReady(true);
                 }

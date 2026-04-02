@@ -9,10 +9,9 @@ const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy
 
 const IS_DEVELOPMENT = (import.meta.env.VITE_IS_DEVELOPMENT ?? '').toLowerCase() === 'true';
 
-// In development keep a large rolling history so the Events debug view works.
-// In production use a tiny sliding window — enough for drainUnseenMessages
-// consumers to drain on each render tick without accumulating history.
-const DEFAULT_LIMIT = IS_DEVELOPMENT ? 2000 : 20;
+// Keep a large rolling history in all environments so the Events page can
+// inspect the actual event stream instead of a tiny recent sample.
+const DEFAULT_LIMIT = IS_DEVELOPMENT ? 5000 : 2000;
 // system_logs is always kept at full capacity regardless of environment:
 // consumers need the full log buffer to display host/system log streams.
 const SYSTEM_LOGS_LIMIT = 1000;
@@ -319,7 +318,7 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // -----------------------------------------------------------------------
     const buildWsUrl = useCallback(async (hostname: string, serverUrl: string): Promise<string> => {
         const effectiveUrl = serverUrl || window.location.origin;
-        const token = await authService.forceReauth(hostname, effectiveUrl);
+        const token = await authService.getAccessToken(hostname);
         const base = effectiveUrl.replace(/^http/, 'ws').replace(/\/$/, '');
         return `${base}/api/v1/ws/subscribe?event_types=${WS_EVENT_TYPES}&authorization=${encodeURIComponent(token)}`;
     }, []);
@@ -406,8 +405,8 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             }
 
             // HOST_STATS_UPDATE messages are high-frequency (1/s per host).
-            // Route them into the per-host stats store and skip the general
-            // containers to avoid flooding the orchestrator container.
+            // Route them into the per-host stats store and also keep them in
+            // the general event history so the Events page shows the real stream.
             if (msg.event_type === 'orchestrator' && msg.message === 'HOST_STATS_UPDATE') {
                 const body = msg.body as { host_id?: string; stats?: Partial<HostStatsPoint> } | undefined;
                 if (body?.host_id && body?.stats) {
@@ -426,10 +425,10 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                         },
                     });
                 }
-                return;
             }
 
-            // HOST_LOGS_UPDATE — route into per-host log buffer, skip general containers.
+            // HOST_LOGS_UPDATE — route into per-host log buffer and also retain
+            // the raw event in the general history.
             if (msg.event_type === 'orchestrator' && msg.message === 'HOST_LOGS_UPDATE') {
                 const body = msg.body as { host_id?: string; log?: { level?: string; message?: string; time?: string } } | undefined;
                 if (body?.host_id && body?.log) {
@@ -445,7 +444,6 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                         },
                     });
                 }
-                return;
             }
 
             // HOST_REVERSE_PROXY_EVENT — orchestrator wraps a reverse_proxy event.
