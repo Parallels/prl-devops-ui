@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = () => {
   const { sideItemActions, sidePanelActions } = useSideMenuActions();
   const config = useConfig();
   const { session, setSession, clearSession, hasModule } = useSession();
-  const { isLocked, hostUrl, clearLockedPassword } = useLockedHost();
+  const { isLocked, clearLockedPassword } = useLockedHost();
   const { isConnected } = useEventsHub();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
