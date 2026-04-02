@@ -51,7 +51,7 @@ export const Header: React.FC<HeaderProps> = () => {
   const { sideItemActions, sidePanelActions } = useSideMenuActions();
   const config = useConfig();
   const { session, setSession, clearSession, hasModule } = useSession();
-  const { isLocked, hostUrl } = useLockedHost();
+  const { isLocked, hostUrl, clearLockedPassword } = useLockedHost();
   const { isConnected } = useEventsHub();
   const navigate = useNavigate();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -67,6 +67,17 @@ export const Header: React.FC<HeaderProps> = () => {
     setIsUserMenuOpen(false);
 
     try {
+      if (isLocked && session?.hostname) {
+        await config.removeSecret(getPasswordKey(session.hostname));
+        await config.removeSecret(getApiKeyKey(session.hostname));
+        await config.flushSecrets();
+        clearLockedPassword();
+        authService.logout(session.hostname);
+        clearSession();
+        navigate('/login', { replace: true });
+        return;
+      }
+
       const hosts = (await config.get<HostConfig[]>('hosts')) ?? [];
       const currentHostId = session?.hostId;
       const currentHost = hosts.find((h) => h.id === currentHostId);

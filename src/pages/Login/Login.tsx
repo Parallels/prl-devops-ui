@@ -78,7 +78,7 @@ const friendlyLoginError = (error: unknown, targetUrl?: string): LoginErrorResul
 export const Login: React.FC<LoginProps> = ({ prefill }) => {
   const config = useConfig();
   const { setSession } = useSession();
-  const { isLocked, hostUrl, lockedHostname, username: lockedUsername, hasPassword, password: lockedPassword } = useLockedHost();
+  const { isLocked, hostUrl, lockedHostname, username: lockedUsername, hasPassword, password: lockedPassword, clearLockedPassword } = useLockedHost();
   const navigate = useNavigate();
 
   // ── Host list ──────────────────────────────────────────────────────────────
@@ -105,14 +105,16 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
   const [dialog, setDialog] = useState<DialogInformation>({ isOpen: false, title: '', message: '', tone: 'danger' });
 
   // Build a synthetic in-memory host when in locked mode
+  const effectiveLockedUsername = username || lockedUsername || '';
+
   const lockedHost = isLocked && hostUrl && lockedHostname
     ? ({
         id: `locked:${lockedHostname}`,
         hostname: lockedHostname,
         baseUrl: hostUrl,
         authType: 'credentials' as const,
-        username: lockedUsername ?? '',
-        keepLoggedIn: false, // creds come from env, never persisted
+        username: effectiveLockedUsername,
+        keepLoggedIn,
         lastUsed: new Date().toISOString(),
         type: 'Orchestrator' as const,
       } satisfies HostConfig)
@@ -120,7 +122,24 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
 
   // Load all saved hosts on mount (skipped in locked mode)
   useEffect(() => {
-    if (isLocked) return;
+    if (isLocked) {
+      const loadLockedHost = async () => {
+        if (!lockedHost) return;
+
+        const savedHosts = (await config.get<HostConfig[]>('hosts')) ?? [];
+        const savedHost = savedHosts.find((host) => host.hostname === lockedHost.hostname);
+        const savedPassword = await config.getSecret(getPasswordKey(lockedHost.hostname));
+
+        setKeepLoggedIn(savedHost?.keepLoggedIn ?? !!savedPassword);
+        setUsername(lockedUsername ?? savedHost?.username ?? '');
+        setPassword(savedPassword ?? '');
+        setHostsLoading(false);
+      };
+
+      void loadLockedHost();
+      return;
+    }
+
     const loadHosts = async () => {
       const saved = (await config.get<HostConfig[]>('hosts')) ?? [];
       setHosts(saved);
@@ -162,15 +181,15 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
 
   // Auto-login when both VITE_DEFAULT_USERNAME and VITE_DEFAULT_PASSWORD are set
   useEffect(() => {
-    if (!isLocked || !lockedHost || !lockedUsername || !hasPassword || !lockedPassword) return;
+    if (!isLocked || !lockedHost || !hasPassword || !lockedPassword || hostsLoading || !username) return;
     setIsSaving(true);
     const performAutoLogin = async () => {
       try {
         authService.setCredentials(lockedHostname!, {
           url: hostUrl!,
-          username: lockedUsername,
+          username,
           password: lockedPassword,
-          email: lockedUsername,
+          email: username,
           api_key: '',
         });
         await authService.forceReauth(lockedHostname!);
@@ -185,7 +204,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
         setSession({
           serverUrl: hostUrl!,
           hostname: lockedHostname!,
-          username: lockedUsername,
+          username,
           authType: 'credentials',
           hostId: lockedHost.id,
           connectedAt: new Date().toISOString(),
@@ -194,13 +213,18 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
         });
         navigate('/', { replace: true });
       } catch (error: unknown) {
+        clearLockedPassword();
+        await config.removeSecret(getPasswordKey(lockedHostname!));
+        await config.flushSecrets();
+        setPassword('');
+        setKeepLoggedIn(false);
         setIsSaving(false);
         const { title, message: errMessage, details } = friendlyLoginError(error, hostUrl ?? '');
         setDialog({ isOpen: true, title, message: errMessage, errorMessage: details, tone: 'danger' });
       }
     };
     void performAutoLogin();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hasPassword, hostUrl, hostsLoading, isLocked, lockedHost, lockedHostname, lockedPassword, navigate, setSession, username, clearLockedPassword, config]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Elapsed-time counter while saving
   useEffect(() => {
@@ -381,7 +405,6 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
                         disabled={isSaving || (isLocked && !!lockedUsername)}
                       />
                     </FormField>
-                    {/* Hide password field in locked mode when password comes from env */}
                     {!hasPassword && (
                       <FormField label="Password" required width="full" error={hasError('password') ? errors.password : undefined}>
                         <PasswordInput
@@ -414,7 +437,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
                   </FormField>
                 )}
 
-                {!isLocked && (
+                {authType === 'credentials' && (
                   <div className="py-1">
                     <Toggle
                       label="Keep me logged in"
