@@ -1,8 +1,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Alert, CollapsiblePanel, FormField, Input, MultiToggle, Panel, PasswordInput, type ThemeColor } from '@prl/ui-kit';
+import { Alert, CollapsiblePanel, FormField, Input, MultiToggle, Panel, PasswordInput, TagPicker, type ThemeColor } from '@prl/ui-kit';
 import { devopsService } from '@/services/devops';
 import type { AddOrchestratorHostRequest } from '@/interfaces/devops';
-import { TagInput } from './TagInput';
 import type { AuthType, ConnectFormHandle, ConnectFormState } from './types';
 
 export interface ConnectToHostFormProps {
@@ -148,7 +147,7 @@ export const ConnectToHostForm = forwardRef<ConnectFormHandle, ConnectToHostForm
       </Panel>
 
       <CollapsiblePanel title="Tags" variant="glass" padding="xs">
-        <TagInput value={tags} onChange={setTags} color={color} />
+        <TagPicker items={[]} value={tags} onChange={setTags} allowCreate color={color} normalizeValue={(v) => v.toUpperCase()} escapeBoundary />
       </CollapsiblePanel>
 
       {error && <Alert variant="subtle" tone="danger" title="Error" description={error} />}

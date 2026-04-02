@@ -183,12 +183,12 @@ export const Header: React.FC<HeaderProps> = () => {
         {/* Left: host switcher + module view */}
         <div className="flex items-center gap-3">
           {session && !isLocked && <HostSwitcher color={themeColor} />}
-          {session && isLocked && (
+          {/* {session && isLocked && (
             <div className="flex items-center gap-2 rounded-md px-3 py-1.5 bg-neutral-100 dark:bg-neutral-700/60 text-sm font-medium text-neutral-700 dark:text-neutral-200">
               <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
               <span className="max-w-60 truncate">{hostUrl ?? session.hostname}</span>
             </div>
-          )}
+          )} */}
           {session && isConnected && hasModule('host') && hasModule('orchestrator') && <ModuleViewSwitcher />}
         </div>
 

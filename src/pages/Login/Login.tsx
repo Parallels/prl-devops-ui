@@ -78,7 +78,7 @@ const friendlyLoginError = (error: unknown, targetUrl?: string): LoginErrorResul
 export const Login: React.FC<LoginProps> = ({ prefill }) => {
   const config = useConfig();
   const { setSession } = useSession();
-  const { isLocked, hostUrl, lockedHostname, username: lockedUsername, hasPassword, password: lockedPassword, clearLockedPassword } = useLockedHost();
+  const { isLocked, hostUrl, hostName: lockedHostName, lockedHostname, username: lockedUsername, hasPassword, password: lockedPassword, clearLockedPassword } = useLockedHost();
   const navigate = useNavigate();
 
   // ── Host list ──────────────────────────────────────────────────────────────
@@ -110,6 +110,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
   const lockedHost = isLocked && hostUrl && lockedHostname
     ? ({
         id: `locked:${lockedHostname}`,
+        name: lockedHostName || undefined,
         hostname: lockedHostname,
         baseUrl: hostUrl,
         authType: 'credentials' as const,
@@ -355,7 +356,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
           </div>
           <div className="text-center text-base font-semibold text-neutral-900 dark:text-neutral-100">Welcome back!</div>
           <div className="text-center text-sm text-neutral-500 dark:text-neutral-400 mb-4">
-            {isLocked ? `Sign in to ${lockedHostname ?? hostUrl}.` : 'Select a server and sign in.'}
+            {isLocked ? `Sign in to ${lockedHostName ?? lockedHostname ?? hostUrl}.` : 'Select a server and sign in.'}
           </div>
 
           {hostsLoading ? (

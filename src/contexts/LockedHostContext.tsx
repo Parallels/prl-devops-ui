@@ -6,6 +6,7 @@ const readLockedHostEnv = () => {
   const runtimeEnv = typeof window !== 'undefined' ? window.__ENV__ : undefined;
   return {
     hostUrl: runtimeEnv?.VITE_DEFAULT_HOST_URL ?? import.meta.env.VITE_DEFAULT_HOST_URL ?? '',
+    hostName: runtimeEnv?.VITE_DEFAULT_HOST_NAME ?? import.meta.env.VITE_DEFAULT_HOST_NAME ?? '',
     username: runtimeEnv?.VITE_DEFAULT_USERNAME ?? import.meta.env.VITE_DEFAULT_USERNAME ?? '',
     password: runtimeEnv?.VITE_DEFAULT_PASSWORD ?? import.meta.env.VITE_DEFAULT_PASSWORD ?? '',
   };
@@ -14,12 +15,13 @@ const readLockedHostEnv = () => {
 type LockedHostResolvedState = Omit<LockedHostContextType, 'clearLockedPassword'>;
 
 const resolveLockedHostState = (): LockedHostResolvedState => {
-  const { hostUrl: rawHostUrl, username: rawUsername, password: rawPassword } = readLockedHostEnv();
+  const { hostUrl: rawHostUrl, hostName: rawHostName, username: rawUsername, password: rawPassword } = readLockedHostEnv();
 
   if (!rawHostUrl) {
     return {
       isLocked: false,
       hostUrl: null,
+      hostName: rawHostName || null,
       lockedHostname: null,
       username: rawUsername || null,
       hasPassword: rawPassword.length > 0,
@@ -32,6 +34,7 @@ const resolveLockedHostState = (): LockedHostResolvedState => {
     return {
       isLocked: true,
       hostUrl: rawHostUrl.replace(/\/+$/, ''),
+      hostName: rawHostName || null,
       lockedHostname: parsed.hostname,
       username: rawUsername || null,
       hasPassword: rawPassword.length > 0,
@@ -42,6 +45,7 @@ const resolveLockedHostState = (): LockedHostResolvedState => {
     return {
       isLocked: false,
       hostUrl: null,
+      hostName: rawHostName || null,
       lockedHostname: null,
       username: rawUsername || null,
       hasPassword: rawPassword.length > 0,
@@ -57,6 +61,8 @@ export interface LockedHostContextType {
   isLocked: boolean;
   /** The normalised base URL of the locked host, or null when not locked. */
   hostUrl: string | null;
+  /** Optional display name from VITE_DEFAULT_HOST_NAME. Falls back to lockedHostname if not set. */
+  hostName: string | null;
   /** Hostname extracted from hostUrl (used as HostConfig.hostname key). */
   lockedHostname: string | null;
   /** Pre-configured username, or null. */
