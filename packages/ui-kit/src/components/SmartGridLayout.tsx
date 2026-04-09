@@ -923,6 +923,20 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                     variant="outline"
                     color="slate"
                     size="xs"
+                    leadingIcon="Add"
+                    onClick={() => {
+                      const newRowId = createRow(sectionId);
+                      setRowAddTarget({ sectionId, rowId: newRowId });
+                      setIsAddModalOpen(true);
+                    }}
+                  >
+                    Add Item
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    color="slate"
+                    size="xs"
                     leadingIcon="Edit"
                     onClick={() => {
                       setEditingSectionId(sectionId);
