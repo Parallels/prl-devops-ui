@@ -14,6 +14,7 @@ import { UploadCatalogModal } from './Modals/UploadCatalogModal';
 import { DownloadCatalogModal, DownloadVmFormData } from './Modals/DownloadCatalogModals';
 import { CatalogSourcePanel, type CatalogSourceStats } from './CatalogPanels';
 import { CatalogManifestItem, CatalogRow, CatalogSource, defaultManagerForm, managerToForm, normalizeForDirtyCheck, toManagerRequest } from './CatalogModels';
+import { getForcedDownloadTarget, resolveDownloadTarget } from './downloadTarget';
 import type { CatalogsDeepLinkState } from '@/types/deepLink';
 
 interface SelectedCatalogItem {
@@ -90,6 +91,16 @@ export const Catalogs: React.FC = () => {
   const hasCatalogManagers = hasModule(Modules.CATALOG_MANAGERS);
   const hasHostModule = hasModule(Modules.HOST);
   const hasOrchestratorModule = hasModule(Modules.ORCHESTRATOR);
+  const resolvedDownloadTarget = resolveDownloadTarget({
+    preferredTarget: downloadTarget,
+    hasHostModule,
+    hasOrchestratorModule,
+  });
+  const forcedDownloadTarget = getForcedDownloadTarget({
+    preferredTarget: downloadTarget,
+    hasHostModule,
+    hasOrchestratorModule,
+  });
 
   const hasCreateCatalog = hasClaim(Claims.CATALOG_MANAGER_CREATE);
   const hasCreateCatalogOwn = hasClaim(Claims.CATALOG_MANAGER_CREATE_OWN);
@@ -325,10 +336,10 @@ export const Catalogs: React.FC = () => {
         path: '',
         cpu: item.row.specs.cpu ?? '',
         memory: item.row.specs.memory ?? '',
-        target: downloadTarget ?? 'host',
+        target: resolvedDownloadTarget,
       });
     },
-    [downloadTarget],
+    [resolvedDownloadTarget],
   );
 
   const closeDownloadVmModal = useCallback(() => {
@@ -344,6 +355,11 @@ export const Catalogs: React.FC = () => {
     const trimmedName = downloadVmForm.name.trim();
     const trimmedOwner = downloadVmForm.owner.trim();
     const architecture = downloadVmModalItem.row.architecture?.trim();
+    const effectiveTarget = resolveDownloadTarget({
+      preferredTarget: forcedDownloadTarget ?? downloadVmForm.target,
+      hasHostModule,
+      hasOrchestratorModule,
+    });
 
     if (!trimmedName) {
       setDownloadVmError('VM name is required.');
@@ -386,7 +402,7 @@ export const Catalogs: React.FC = () => {
           owner: trimmedOwner,
           catalog_manifest: catalogManifestPayload,
         },
-        downloadVmForm.target === 'orchestrator',
+        effectiveTarget === 'orchestrator',
       );
       closeDownloadVmModal();
     } catch (err: any) {
@@ -394,7 +410,7 @@ export const Catalogs: React.FC = () => {
     } finally {
       setDownloadVmLoading(false);
     }
-  }, [closeDownloadVmModal, downloadVmForm, downloadVmModalItem, hostname]);
+  }, [closeDownloadVmModal, downloadVmForm, downloadVmModalItem, forcedDownloadTarget, hasHostModule, hasOrchestratorModule, hostname]);
 
   const handleUploadCatalog = useCallback(
     async (data: CatalogPushRequest) => {
@@ -675,7 +691,7 @@ export const Catalogs: React.FC = () => {
         managerId={downloadVmModalItem?.source.managerId}
         hasHostModule={hasHostModule}
         hasOrchestratorModule={hasOrchestratorModule}
-        forcedTarget={downloadTarget}
+        forcedTarget={forcedDownloadTarget}
         onClose={closeDownloadVmModal}
         onSubmit={() => void handleDownloadVm()}
         onFormChange={setDownloadVmForm}

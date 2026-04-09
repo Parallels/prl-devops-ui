@@ -7,6 +7,7 @@ const ConfigContext = createContext<IConfigService | null>(null);
 
 export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [configService, setConfigService] = useState<IConfigService | null>(null);
+    const [initError, setInitError] = useState<Error | null>(null);
 
     useEffect(() => {
         const initService = async () => {
@@ -15,12 +16,27 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 await service.initialize();
                 await amplitudeService.initializeWithConfig(service);
                 setConfigService(service);
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error("Failed to initialize ConfigService:", error);
+                setInitError(error instanceof Error ? error : new Error('Unknown initialization error'));
             }
         };
         initService();
     }, []);
+
+    if (initError) {
+        return (
+            <div className="flex items-center justify-center h-screen p-6">
+                <div className="max-w-lg text-center">
+                    <h1 className="text-2xl font-bold text-red-600 mb-2">Configuration Error</h1>
+                    <p className="text-neutral-700 dark:text-neutral-300 mb-4">{initError.message}</p>
+                    <pre className="text-xs bg-red-50 dark:bg-red-900/30 p-4 rounded overflow-auto text-left">
+                        {initError.stack}
+                    </pre>
+                </div>
+            </div>
+        );
+    }
 
     if (!configService) {
         // You might want a better loading state here

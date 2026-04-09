@@ -24,7 +24,16 @@ export class SpaSecretStore implements ISecretStore {
             },
         });
 
-        this.keyPromise = this.getOrCreateKey();
+        this.keyPromise = this.initializeKey();
+    }
+
+    private async initializeKey(): Promise<CryptoKey> {
+        // Check if crypto.subtle and getRandomValues are available
+        if (!window.crypto || !window.crypto.subtle || !window.crypto.getRandomValues) {
+            throw new Error('Web Crypto API is not available in this environment. Required: crypto.subtle and crypto.getRandomValues');
+        }
+
+        return this.getOrCreateKey();
     }
 
     private async getOrCreateKey(): Promise<CryptoKey> {
