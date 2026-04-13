@@ -237,7 +237,7 @@ jobs:
             }' > release-assets/latest.json
 
       - name: Create beta GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.metadata.outputs.release_tag }}
           name: ${{ needs.metadata.outputs.release_tag }}
