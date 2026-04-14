@@ -153,7 +153,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
       setHostsLoading(false);
     };
     void loadHosts();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLocked, config, getPasswordKey, lockedHost, lockedUsername, prefill, lockedHostname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Populate form fields whenever the selected host changes (normal mode only)
   useEffect(() => {
@@ -178,7 +178,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
       }
     };
     void loadSecret();
-  }, [selectedHostId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLocked, selectedHostId, hosts, hostsLoading, hosts.find]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-login when both VITE_DEFAULT_USERNAME and VITE_DEFAULT_PASSWORD are set
   useEffect(() => {
@@ -276,9 +276,26 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
           api_key: authType === 'api_key' ? apiKey : '',
         });
 
-        await authService.forceReauth(hostname);
-
-        if (keepLoggedIn) {
+         await authService.forceReauth(hostname);
+ 
+         // After successful login, check if we used API key authentication
+         // and extract the api_key_id from the token for storage and audit logging
+         if (authType === 'api_key') {
+           const token = authService.getToken(hostname);
+           if (token) {
+             const tokenPayload = decodeToken(token);
+             if (tokenPayload && tokenPayload.api_key_id) {
+               // Store api_key_id for later guard checks
+               if (authType === 'api_key' && tokenPayload.api_key_id) {
+                 // Log the api_key_id for audit purposes (but not the actual key)
+                 console.info(`[Login] API Key authentication used: api_key_id=${tokenPayload.api_key_id}`);
+                 // The api_key_id will be available in the session token payload
+               }
+             }
+           }
+         }
+ 
+         if (keepLoggedIn) {
           if (authType === 'credentials') {
             await config.setSecret(getPasswordKey(hostname), password);
             await config.removeSecret(getApiKeyKey(hostname));

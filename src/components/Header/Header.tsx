@@ -177,6 +177,11 @@ export const Header: React.FC<HeaderProps> = () => {
 
   const displayLabel = session?.username || 'User';
 
+// Check if user is authenticated with API key (has api_key_id claim)
+const isApiKeyAuth = session?.tokenPayload?.api_key_id ? true : false;
+
+
+
   return (
     <header className="flex items-center sticky w-full h-15 top-0 z-50 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700">
       <div className="flex w-full items-center px-4 py-4">
@@ -258,10 +263,15 @@ export const Header: React.FC<HeaderProps> = () => {
                     size={36}
                     variant="circle"
                   />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">{displayLabel}</p>
-                    <p className="truncate text-xs text-neutral-400 dark:text-neutral-500">{session?.hostname ?? ''}</p>
-                  </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-200">{displayLabel}</p>
+                      <p className="truncate text-xs text-neutral-400 dark:text-neutral-500">{session?.hostname ?? ''}</p>
+                      {isApiKeyAuth && (
+                        <p className="truncate text-xs text-neutral-400 dark:text-neutral-500">
+                          <span className="font-medium text-blue-600 dark:text-blue-400">API Key Authentication</span>
+                        </p>
+                      )}
+                    </div>
                 </div>
 
                 {/* Menu items */}

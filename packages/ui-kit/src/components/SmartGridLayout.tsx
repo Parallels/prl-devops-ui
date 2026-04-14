@@ -11,6 +11,7 @@ export interface SmartGridItemDefinition {
   defaultHidden?: boolean;
   defaultRemoved?: boolean;
   render: () => React.ReactNode;
+  isSpacer?: boolean;
 }
 
 export interface SmartGridItemState {
@@ -52,6 +53,7 @@ interface VisibleEntry {
   item: SmartGridItemDefinition;
   state: SmartGridItemState;
   order: number;
+  isSpacer?: boolean;
 }
 
 interface PackedCell {
@@ -92,6 +94,7 @@ interface RowPreviewState {
 
 const DEFAULT_SECTION = 'General';
 const GRID_GAP_PX = 16;
+const SPACER_PREFIX = 'spacer:';
 
 const EDIT_THEME_COLORS: Record<string, { border: string; tint: string; solid: string; rgb: string }> = {
   blue: { border: 'border-blue-300 dark:border-blue-700', tint: 'bg-blue-500/10', solid: 'bg-blue-500 dark:bg-blue-400', rgb: '59,130,246' },
@@ -108,6 +111,14 @@ const EDIT_THEME_COLORS: Record<string, { border: string; tint: string; solid: s
 
 function makeId(prefix: string): string {
   return `${prefix}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isSpacerId(id: string): boolean {
+  return id.startsWith(SPACER_PREFIX);
+}
+
+function createSpacerId(): string {
+  return `${SPACER_PREFIX}${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function clampSpan(span: number | undefined, maxColumns: number): number {
@@ -221,11 +232,10 @@ function normalizeLayout(items: SmartGridSeedItem[], persistedLayout: SmartGridL
     return next.sections[sectionId];
   };
 
-  Object.entries(persistedSections).forEach(([id, section], index) => {
-    ensureSection(id, section?.title ?? id, index);
-  });
-
   items.forEach((item, index) => {
+    if (isSpacerId(item.id)) {
+      return;
+    }
     const persisted = persistedItems[item.id];
     // Hidden items with no persisted placement don't pre-create their group's section.
     // Their group is left undefined until the user explicitly adds them to a row.
@@ -249,6 +259,27 @@ function normalizeLayout(items: SmartGridSeedItem[], persistedLayout: SmartGridL
 
     if (rowKey && section && !section.rowOrder.includes(rowKey)) {
       section.rowOrder.push(rowKey);
+    }
+  });
+
+  // Preserve spacers from persisted layout
+  Object.entries(persistedItems).forEach(([id, itemState]) => {
+    if (isSpacerId(id)) {
+      next.items[id] = {
+        order: itemState.order ?? 0,
+        span: clampSpan(itemState.span, maxColumns),
+        hidden: typeof itemState.hidden === 'boolean' ? itemState.hidden : false,
+        removed: typeof itemState.removed === 'boolean' ? itemState.removed : false,
+        group: itemState.group,
+        rowKey: itemState.rowKey,
+      };
+      // Add spacer's rowKey to section if it exists
+      if (itemState.rowKey && itemState.group) {
+        const section = ensureSection(itemState.group, itemState.group, 0);
+        if (!section.rowOrder.includes(itemState.rowKey)) {
+          section.rowOrder.push(itemState.rowKey);
+        }
+      }
     }
   });
 
@@ -284,6 +315,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
   const [rowPreview, setRowPreview] = useState<RowPreviewState | null>(null);
 
   const [resizeState, setResizeState] = useState<ResizeState | null>(null);
+  const [resizePreview, setResizePreview] = useState<{ sectionId: string; rowId: string; insertIndex: number } | null>(null);
   const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
   const [sectionDraftTitle, setSectionDraftTitle] = useState('');
   const isEditMode = Boolean(isEditModeProp);
@@ -303,19 +335,29 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
   );
 
   const normalizedLayout = useMemo(() => normalizeLayout(layoutSeedItems, persistedLayout, maxColumns), [layoutSeedItems, persistedLayout, maxColumns]);
-  const [layout, setLayout] = useState<SmartGridLayoutState>(normalizedLayout);
+  const [layout, setLayout] = useState<SmartGridLayoutState>(() => normalizedLayout);
 
-  const layoutRef = useRef(layout);
+  const layoutRef = useRef<SmartGridLayoutState>(normalizedLayout);
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const resizeChangedRef = useRef(false);
 
   useEffect(() => {
-    setLayout(normalizedLayout);
-  }, [normalizedLayout]);
-
-  useEffect(() => {
     layoutRef.current = layout;
   }, [layout]);
+
+  useEffect(() => {
+    const prevItems = Object.keys(layout.items);
+    const prevSections = Object.keys(layout.sections);
+    const nextItems = Object.keys(normalizedLayout.items);
+    const nextSections = Object.keys(normalizedLayout.sections);
+    
+    const itemsEqual = prevItems.length === nextItems.length && prevItems.every((id) => nextItems.includes(id));
+    const sectionsEqual = prevSections.length === nextSections.length && prevSections.every((id) => nextSections.includes(id));
+    
+    if (!itemsEqual || !sectionsEqual) {
+      setLayout(normalizedLayout);
+    }
+  }, [normalizedLayout]);
 
   const byId = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
 
@@ -326,14 +368,46 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
         item,
         state: layout.items[item.id],
         order: layout.items[item.id]?.order ?? 0,
+        isSpacer: isSpacerId(item.id),
       })),
     );
-  }, [items, layout.items]);
+  }, [items, layout]);
 
-  const activeItems = useMemo(() => orderedItems.filter((row) => !row.state?.removed), [orderedItems]);
-  const visibleItems = useMemo(() => activeItems.filter((row) => !row.state?.hidden), [activeItems]);
+  const orderedSpacers = useMemo(() => {
+    return sortByOrder(
+      Object.entries(layout.items)
+        .filter(([id]) => isSpacerId(id))
+        .map(([id, state]) => ({
+          id,
+          item: {
+            id,
+            title: '',
+            render: () => null,
+            isSpacer: true,
+          } as SmartGridItemDefinition,
+          state,
+          order: state.order ?? 0,
+          isSpacer: true,
+        })),
+    );
+  }, [layout]);
+
+  const activeItems = useMemo(() => {
+    const fromProps = orderedItems.filter((row) => !row.state?.removed);
+    const fromLayout = orderedSpacers.filter((row) => !row.state?.removed);
+    return [...fromProps, ...fromLayout];
+  }, [orderedItems, orderedSpacers]);
+  
+  const visibleItems = useMemo(() => {
+    const fromProps = activeItems.filter((row) => !row.state?.hidden);
+    return fromProps;
+  }, [activeItems]);
+  
   // Items available to add via the modal: anything not currently rendered (hidden or removed)
-  const addableItems = useMemo(() => orderedItems.filter((row) => row.state?.removed || row.state?.hidden), [orderedItems]);
+  // Spacers can only be added via the dedicated "Add Spacer" button, not from the list
+  const addableItems = useMemo(() => {
+    return orderedItems.filter((row) => row.state?.removed || row.state?.hidden);
+  }, [orderedItems]);
 
   const orderedSectionIds = useMemo(() => {
     const sectionIdsWithContent = new Set(visibleItems.map((e) => e.state.group).filter(Boolean));
@@ -342,18 +416,19 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
         .filter(([id]) => sectionIdsWithContent.has(id))
         .map(([id, section]) => ({ id, order: section.order })),
     ).map((entry) => entry.id);
-  }, [layout.sections, isEditMode, visibleItems]);
+  }, [layout, isEditMode, visibleItems]);
 
   const entriesBySection = useMemo(() => {
     const map = new Map<string, VisibleEntry[]>();
     for (const entry of visibleItems) {
       const sectionId = entry.state.group ?? entry.item.group ?? DEFAULT_SECTION;
       const prev = map.get(sectionId);
-      if (prev) prev.push(entry);
-      else map.set(sectionId, [entry]);
+      const entryWithFlag = { ...entry, isSpacer: isSpacerId(entry.id) };
+      if (prev) prev.push(entryWithFlag);
+      else map.set(sectionId, [entryWithFlag]);
     }
     return map;
-  }, [visibleItems]);
+  }, [visibleItems, layout]);
 
   const sectionRows = useMemo(() => {
     const result = new Map<string, DisplayRow[]>();
@@ -379,7 +454,8 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
 
       const rows: DisplayRow[] = [];
       section.rowOrder.forEach((rowId) => {
-        const rowEntries = sortByOrder((byRow.get(rowId) ?? []).map((e) => ({ ...e, order: e.order })));
+        const rowEntries = sortByOrder((byRow.get(rowId) ?? []).map((e) => ({ ...e, order: e.order })))
+          .filter((e) => !e.state.removed);
         if (rowEntries.length === 0) {
           // Skip empty managed rows — they're pruned on save and should not render
           return;
@@ -477,8 +553,63 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
     [updateItem],
   );
 
+  const addSpacerToRow = useCallback(
+    (sectionId: string, rowId: string, span: number = 1) => {
+      const spacerId = createSpacerId();
+      updateLayout((prev) => {
+        const maxOrder = Math.max(...Object.values(prev.items).map((item) => item.order), 0);
+        
+        // Check if adding this spacer would overflow the row
+        // Get current items in the row
+        const rowItems = Object.entries(prev.items).filter(([, item]) => 
+          item.rowKey === rowId && item.group === sectionId && !item.removed
+        );
+        
+        const currentRowSpan = rowItems.reduce((sum, [, item]) => sum + item.span, 0);
+        const wouldOverflow = currentRowSpan + span > maxColumns;
+        
+        // If would overflow, reduce the largest item by the overflow amount
+        let items = { ...prev.items };
+        if (wouldOverflow) {
+          const overflow = currentRowSpan + span - maxColumns;
+          // Find the largest item to reduce
+          const largestItem = rowItems.reduce((largest, [, item]) => 
+            item.span > largest.span ? item : largest
+          , rowItems[0][1]);
+          
+          if (largestItem.span > overflow) {
+            items = {
+              ...items,
+              [rowItems.find(([, item]) => item === largestItem)?.[0] as string]: { ...largestItem, span: largestItem.span - overflow }
+            };
+          }
+        }
+        
+        return {
+          ...prev,
+          items: {
+            ...items,
+            [spacerId]: {
+              order: maxOrder + 1,
+              span,
+              hidden: false,
+              removed: false,
+              group: sectionId,
+              rowKey: rowId,
+            },
+          },
+        };
+      });
+    },
+    [updateLayout],
+  );
+
   const addItemToRow = useCallback(
     (itemId: string, sectionId: string, rowId: string) => {
+      if (isSpacerId(itemId)) {
+        addSpacerToRow(sectionId, rowId);
+        return;
+      }
       updateLayout((prev) => {
         const current = prev.items[itemId];
         if (!current) return prev;
@@ -499,7 +630,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
         };
       });
     },
-    [updateLayout],
+    [updateLayout, addSpacerToRow],
   );
 
   const ensureSection = useCallback(
@@ -723,7 +854,6 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
       if (!rowEl) return;
 
       const rect = rowEl.getBoundingClientRect();
-      // The row uses `maxColumns` tracks even in edit mode; resize must follow that physical track width.
       const colWidth = (rect.width - (maxColumns - 1) * GRID_GAP_PX) / maxColumns;
       if (!Number.isFinite(colWidth) || colWidth <= 0) return;
 
@@ -752,28 +882,48 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
         const left = prev.items[resizeState.leftId];
         const right = prev.items[resizeState.rightId];
         if (!left || !right) return prev;
-        if (left.span === nextLeft && right.span === nextRight) return prev;
+
+        let shouldUpdate = false;
+
+        if (resizeState.leftId === resizeState.rightId) {
+          if (left.span === nextLeft) return prev;
+          shouldUpdate = true;
+        } else {
+          if (left.span === nextLeft && right.span === nextRight) return prev;
+          shouldUpdate = true;
+        }
 
         resizeChangedRef.current = true;
-        return {
-          ...prev,
-          items: {
-            ...prev.items,
-            [resizeState.leftId]: {
-              ...left,
-              span: nextLeft,
+
+        if (shouldUpdate) {
+          const newLayout = {
+            ...prev,
+            items: {
+              ...prev.items,
+              [resizeState.leftId]: {
+                ...left,
+                span: nextLeft,
+              },
             },
-            [resizeState.rightId]: {
+          };
+
+          if (resizeState.leftId !== resizeState.rightId) {
+            newLayout.items[resizeState.rightId] = {
               ...right,
               span: nextRight,
-            },
-          },
-        };
+            };
+          }
+
+          return newLayout;
+        }
+
+        return prev;
       });
     };
 
     const onMouseUp = () => {
       setResizeState(null);
+      setResizePreview(null);
       if (resizeChangedRef.current) {
         onLayoutChange?.(layoutRef.current);
       }
@@ -798,6 +948,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
     setSectionBottomDropTarget(null);
     setNewSectionDropTarget(false);
     setRowPreview(null);
+    setResizePreview(null);
   }, []);
 
   useEffect(() => {
@@ -822,18 +973,40 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
       {isAddModalOpen && (
         <div className="fixed inset-0 z-30 flex items-center justify-center bg-neutral-900/50 p-4">
           <div className="w-full max-w-xl rounded-xl border border-neutral-200 bg-white p-4 shadow-xl dark:border-neutral-700 dark:bg-neutral-900">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Add Items To Row</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setRowAddTarget(null);
-                  setIsAddModalOpen(false);
-                }}
-                className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700 dark:border-neutral-700 dark:text-neutral-200"
-              >
-                Close
-              </button>
+             <div className="mb-3 flex items-center justify-between">
+               <h3 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">Add Items To Row</h3>
+               <div className="flex items-center gap-2">
+                 {isEditMode && rowAddTarget && (() => {
+                   const sectionRowsList = sectionRows.get(rowAddTarget.sectionId) ?? [];
+                   const targetRow = sectionRowsList.find((r) => r.id === rowAddTarget.rowId);
+                   const hasItems = targetRow && targetRow.cells.length > 0;
+                   return hasItems ? (
+                     <Button
+                       type="button"
+                       variant="outline"
+                       color="slate"
+                       size="xs"
+                       leadingIcon="Add"
+                       onClick={() => {
+                         addSpacerToRow(rowAddTarget.sectionId, rowAddTarget.rowId);
+                         setIsAddModalOpen(false);
+                       }}
+                     >
+                       Add Spacer
+                     </Button>
+                   ) : null;
+                 })()}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRowAddTarget(null);
+                    setIsAddModalOpen(false);
+                  }}
+                  className="rounded border border-neutral-300 px-2 py-1 text-xs text-neutral-700 dark:border-neutral-700 dark:text-neutral-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
             {addableItems.length === 0 ? (
               <p className="text-sm text-neutral-500 dark:text-neutral-400">No items available to add.</p>
@@ -866,13 +1039,17 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                         type="button"
                         onClick={() => {
                           if (!rowAddTarget) return;
-                          addItemToRow(row.id, rowAddTarget.sectionId, rowAddTarget.rowId);
+                          if (isSpacerId(row.id)) {
+                            addSpacerToRow(rowAddTarget.sectionId, rowAddTarget.rowId);
+                          } else {
+                            addItemToRow(row.id, rowAddTarget.sectionId, rowAddTarget.rowId);
+                          }
                           setRowAddTarget(null);
                           setIsAddModalOpen(false);
                         }}
                         className="shrink-0 rounded border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
                       >
-                        Add
+                        {isSpacerId(row.id) ? 'Add Spacer' : 'Add'}
                       </button>
                     </div>
                   );
@@ -942,22 +1119,20 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                       setEditingSectionId(sectionId);
                       setSectionDraftTitle(section.title);
                     }}
-                  >
-                    Rename
-                  </Button>
-                  {rows.every((row) => row.cells.length === 0) && (
-                    <IconButton
-                      icon="Trash"
-                      size="xs"
-                      variant="ghost"
-                      color="rose"
-                      onClick={() => removeSection(sectionId)}
-                      title="Remove empty section"
-                      aria-label="Remove empty section"
-                    />
-                  )}
-                </div>
-              )}
+                   >
+                     Rename
+                   </Button>
+                   <IconButton
+                     icon="Trash"
+                     size="xs"
+                     variant="ghost"
+                     color="rose"
+                     onClick={() => removeSection(sectionId)}
+                     title="Remove section and all items"
+                     aria-label="Remove section and all items"
+                   />
+                 </div>
+               )}
             </div>
 
             <div className="space-y-4">
@@ -967,34 +1142,61 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                 const rowContentSpan = maxColumns;
                 const isRowPreviewActive = Boolean(isEditMode && draggingId && rowPreview && rowPreview.sectionId === sectionId && rowPreview.rowId === row.id);
 
+                const isResizePreviewActive = Boolean(resizeState && resizePreview && resizePreview.sectionId === sectionId && resizePreview.rowId === row.id && row.cells.length === 1);
+
                 const renderCells = (() => {
-                  if (!isRowPreviewActive || !draggingId || !rowPreview) {
+                  if (!isRowPreviewActive && !isResizePreviewActive) {
                     return row.cells.map((cell) => ({ kind: 'item' as const, id: cell.entry.id, span: cell.span, cell }));
                   }
 
-                  const draggedState = layout.items[draggingId];
-                  const draggedSpan = clampSpan(draggedState?.span ?? 3, rowContentSpan);
+                  if (isRowPreviewActive && draggingId && rowPreview) {
+                    const draggedState = layout.items[draggingId];
+                    const draggedSpan = clampSpan(draggedState?.span ?? 3, rowContentSpan);
 
-                  const withoutDragged = row.cells.filter((cell) => cell.entry.id !== draggingId);
-                  const insertIndex = Math.max(0, Math.min(rowPreview.insertIndex, withoutDragged.length));
+                    const withoutDragged = row.cells.filter((cell) => cell.entry.id !== draggingId);
+                    const insertIndex = Math.max(0, Math.min(rowPreview.insertIndex, withoutDragged.length));
 
-                  const withGhost = [
-                    ...withoutDragged.slice(0, insertIndex).map((cell) => ({ kind: 'item' as const, id: cell.entry.id, desiredSpan: clampSpan(cell.entry.state.span, rowContentSpan), cell })),
-                    { kind: 'ghost' as const, id: '__ghost__', desiredSpan: draggedSpan },
-                    ...withoutDragged.slice(insertIndex).map((cell) => ({ kind: 'item' as const, id: cell.entry.id, desiredSpan: clampSpan(cell.entry.state.span, rowContentSpan), cell })),
-                  ];
+                    const withGhost = [
+                      ...withoutDragged.slice(0, insertIndex).map((cell) => ({ kind: 'item' as const, id: cell.entry.id, desiredSpan: clampSpan(cell.entry.state.span, rowContentSpan), cell })),
+                      { kind: 'ghost' as const, id: '__ghost__', desiredSpan: draggedSpan },
+                      ...withoutDragged.slice(insertIndex).map((cell) => ({ kind: 'item' as const, id: cell.entry.id, desiredSpan: clampSpan(cell.entry.state.span, rowContentSpan), cell })),
+                    ];
 
-                  const normalized = normalizeRowSpans(
-                    withGhost.map((entry) => entry.desiredSpan),
-                    rowContentSpan,
-                  );
+                    const normalized = normalizeRowSpans(
+                      withGhost.map((entry) => entry.desiredSpan),
+                      rowContentSpan,
+                    );
 
-                  return withGhost.map((entry, index) => ({
-                    kind: entry.kind,
-                    id: entry.id,
-                    span: normalized[index],
-                    cell: entry.kind === 'item' ? entry.cell : undefined,
-                  }));
+                    return withGhost.map((entry) => ({
+                      kind: entry.kind,
+                      id: entry.id,
+                      span: normalized[withGhost.indexOf(entry)],
+                      cell: entry.kind === 'item' ? entry.cell : undefined,
+                    }));
+                  }
+
+                  if (isResizePreviewActive && resizeState) {
+                    const itemId = resizeState.leftId;
+                    const currentSpan = resizeState.startLeftSpan;
+                    const resizedSpan = Math.max(1, Math.min(resizeState.pairTotal - 1, currentSpan + Math.round((0 - resizeState.startX) / resizeState.colWidth)));
+
+                    const cell = row.cells[0];
+                    const emptySpaceSpan = maxColumns - resizedSpan;
+
+                    const withGhost = [
+                      { kind: 'item' as const, id: itemId, desiredSpan: resizedSpan, cell },
+                      { kind: 'ghost' as const, id: '__empty_space__', desiredSpan: emptySpaceSpan },
+                    ];
+
+                    return withGhost.map((entry) => ({
+                      kind: entry.kind,
+                      id: entry.id,
+                      span: entry.desiredSpan,
+                      cell: entry.kind === 'item' ? entry.cell : undefined,
+                    }));
+                  }
+
+                  return row.cells.map((cell) => ({ kind: 'item' as const, id: cell.entry.id, span: cell.span, cell }));
                 })();
 
                 return (
@@ -1068,38 +1270,72 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                         if (rowPreview?.sectionId === sectionId && rowPreview.rowId === row.id) {
                           setRowPreview(null);
                         }
-                      }}
-                      onDrop={(event) => {
-                        if (!isEditMode) return;
-                        event.preventDefault();
-                        const sourceId = getDraggedId(event);
-                        if (!sourceId) return;
+                        }}
+                        onDrop={(event) => {
+                          if (!isEditMode) return;
+                          event.preventDefault();
+                          const sourceId = getDraggedId(event);
+                          if (!sourceId) return;
 
-                        if (!row.isEmpty && row.cells.length > 0) {
-                          const previewIndex = rowPreview?.sectionId === sectionId && rowPreview.rowId === row.id ? rowPreview.insertIndex : row.cells.length;
+                          // Clear any active row preview
+                          if (rowPreview) {
+                            setRowPreview(null);
+                          }
 
-                          const withoutDragged = row.cells.filter((cell) => cell.entry.id !== sourceId);
-                          const safeIndex = Math.max(0, Math.min(previewIndex, withoutDragged.length));
+                          if (!row.isEmpty && row.cells.length > 0) {
+                            const targetRowId = row.id;
+                            const previewIndex = rowPreview?.sectionId === sectionId && rowPreview.rowId === targetRowId ? rowPreview.insertIndex : row.cells.length;
 
-                          if (withoutDragged.length === 0) {
-                            moveItemToSectionEnd(sourceId, sectionId, row.id);
+                            const withoutDragged = row.cells.filter((cell) => cell.entry.id !== sourceId);
+                            const safeIndex = Math.max(0, Math.min(previewIndex, withoutDragged.length));
+
+                            if (withoutDragged.length === 0) {
+                              moveItemToSectionEnd(sourceId, sectionId, targetRowId);
+                              resetDragState();
+                              return;
+                            }
+
+                            if (safeIndex <= 0) {
+                              reorderItems(sourceId, withoutDragged[0].entry.id, 'before');
+                            } else {
+                              reorderItems(sourceId, withoutDragged[safeIndex - 1].entry.id, 'after');
+                            }
+                            setItemPlacement(sourceId, sectionId, targetRowId);
+
+                            updateLayout((prev) => {
+                              const currentRow = prev.sections[sectionId];
+                              if (!currentRow || !currentRow.rowOrder.includes(targetRowId)) return prev;
+
+                               const rowItemIds = withoutDragged.map((cell) => cell.entry.id);
+                               const newSpans = normalizeRowSpans(
+                                 rowItemIds.map((id) => {
+                                   const item = prev.items[id];
+                                   return clampSpan(item?.span, maxColumns);
+                                 }),
+                                 maxColumns,
+                               );
+
+                               const nextItems = { ...prev.items };
+                               rowItemIds.forEach((id, index) => {
+                                 nextItems[id] = {
+                                   ...nextItems[id],
+                                   span: newSpans[index],
+                                 };
+                               });
+
+                               return {
+                                 ...prev,
+                                 items: nextItems,
+                               };
+                             });
+
                             resetDragState();
                             return;
                           }
 
-                          if (safeIndex <= 0) {
-                            reorderItems(sourceId, withoutDragged[0].entry.id, 'before');
-                          } else {
-                            reorderItems(sourceId, withoutDragged[safeIndex - 1].entry.id, 'after');
-                          }
-                          setItemPlacement(sourceId, sectionId, row.id);
+                          moveItemToSectionEnd(sourceId, sectionId, row.id);
                           resetDragState();
-                          return;
-                        }
-
-                        moveItemToSectionEnd(sourceId, sectionId, row.id);
-                        resetDragState();
-                      }}
+                        }}
                     >
                       {row.isEmpty && (
                         <div
@@ -1110,33 +1346,115 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                         </div>
                       )}
 
-                      {renderCells.map((renderCell, cellIndex) => {
-                        if (renderCell.kind === 'ghost') {
-                          return (
-                            <div
-                              key="__ghost__"
-                              className={`relative z-10 min-h-28 rounded-xl border-2 border-dashed ${editTheme.border} ${editTheme.tint}`}
-                              style={{ gridColumn: `span ${renderCell.span} / span ${renderCell.span}` }}
-                            />
-                          );
-                        }
+                       {renderCells.map((renderCell, cellIndex) => {
+                         if (renderCell.kind === 'ghost') {
+                           return (
+                             <div
+                               key="__ghost__"
+                               className={`relative z-10 min-h-28 rounded-xl border-2 border-dashed ${editTheme.border} ${editTheme.tint}`}
+                               style={{ gridColumn: `span ${renderCell.span} / span ${renderCell.span}` }}
+                             />
+                           );
+                         }
 
-                        const cell = renderCell.cell;
-                        if (!cell) return null;
+                         const cell = renderCell.cell;
+                         if (!cell) return null;
 
-                        const def = byId.get(cell.entry.id);
-                        if (!def) return null;
+                          const nextItemIndex = renderCells.slice(cellIndex + 1).findIndex((c) => c.kind === 'item');
+                          const neighbor = nextItemIndex >= 0 ? renderCells[cellIndex + 1 + nextItemIndex] : undefined;
+                          const neighborCell = neighbor?.kind === 'item' ? neighbor.cell : undefined;
 
-                        const nextItemIndex = renderCells.slice(cellIndex + 1).findIndex((c) => c.kind === 'item');
-                        const neighbor = nextItemIndex >= 0 ? renderCells[cellIndex + 1 + nextItemIndex] : undefined;
-                        const neighborCell = neighbor?.kind === 'item' ? neighbor.cell : undefined;
+                          const def = byId.get(cell.entry.id);
+                          if (!def && !cell.entry.isSpacer) return null;
 
-                        return (
-                          <article
-                            key={cell.entry.id}
-                            data-sg-item-id={cell.entry.id}
-                            className={`relative z-0 min-w-0 transition-[grid-column,transform,box-shadow] duration-150 ease-out ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''} ${draggingId === cell.entry.id ? 'opacity-50 scale-[0.99]' : ''}`}
-                            style={{ gridColumn: `span ${renderCell.span} / span ${renderCell.span}` }}
+                           if (cell.entry.isSpacer) {
+                             return (
+                               <div
+                                 key={cell.entry.id}
+                                 data-sg-item-id={cell.entry.id}
+                                 className={`relative z-10 min-h-28 rounded-xl ${isEditMode ? `border-2 border-dashed ${editTheme.border} ${editTheme.tint} cursor-grab active:cursor-grabbing` : ''} ${draggingId === cell.entry.id ? 'opacity-50 scale-[0.99]' : ''}`}
+                                 style={{ gridColumn: `span ${renderCell.span} / span ${renderCell.span}` }}
+                                draggable={isEditMode}
+                                onDragStart={(event) => {
+                                  event.dataTransfer.effectAllowed = 'move';
+                                  event.dataTransfer.setData('text/plain', cell.entry.id);
+                                  setDraggingId(cell.entry.id);
+                                  setDragOver(null);
+                                }}
+                                onDragEnd={resetDragState}
+                                onDragOver={(event) => {
+                                  if (!isEditMode || !draggingId) return;
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  if (draggingId === cell.entry.id) return;
+                                  const rect = event.currentTarget.getBoundingClientRect();
+                                  const position = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after';
+                                  if (!dragOver || dragOver.id !== cell.entry.id || dragOver.position !== position) {
+                                    setDragOver({ id: cell.entry.id, position });
+                                  }
+                                  const previewIndex =
+                                    position === 'before'
+                                      ? row.cells.filter((entry) => entry.entry.id !== draggingId).findIndex((entry) => entry.entry.id === cell.entry.id)
+                                      : row.cells.filter((entry) => entry.entry.id !== draggingId).findIndex((entry) => entry.entry.id === cell.entry.id) + 1;
+                                  if (previewIndex >= 0 && (!rowPreview || rowPreview.sectionId !== sectionId || rowPreview.rowId !== row.id || rowPreview.insertIndex !== previewIndex)) {
+                                    setRowPreview({ sectionId, rowId: row.id, insertIndex: previewIndex });
+                                  }
+                                }}
+                                onDragLeave={(event) => {
+                                  if (!isEditMode || !draggingId) return;
+                                  const nextTarget = event.relatedTarget as Node | null;
+                                  if (nextTarget && event.currentTarget.contains(nextTarget)) return;
+                                  if (dragOver?.id === cell.entry.id) setDragOver(null);
+                                }}
+                                onDrop={(event) => {
+                                  if (!isEditMode) return;
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  const sourceId = getDraggedId(event);
+                                  if (!sourceId || sourceId === cell.entry.id) return;
+                                  const rect = event.currentTarget.getBoundingClientRect();
+                                  const position = event.clientX < rect.left + rect.width / 2 ? 'before' : 'after';
+                                  reorderItems(sourceId, cell.entry.id, position);
+                                  setItemPlacement(sourceId, sectionId, row.id);
+                                  resetDragState();
+                                }}
+                              >
+                                {isEditMode && (
+                                  <div className="absolute right-2 top-2 z-30">
+                                    <IconButton
+                                      icon="Trash"
+                                      size="xs"
+                                      variant="ghost"
+                                      color="rose"
+                                      onClick={() => removeItem(cell.entry.id)}
+                                      aria-label="Remove spacer"
+                                      title="Remove spacer"
+                                    />
+                                  </div>
+                                 )}
+                                 {isEditMode && cell.entry.item.isSpacer && neighborCell && neighbor && (
+                                   <button
+                                     type="button"
+                                     onMouseDown={(event) => {
+                                       beginResize(event, rowDomKey, cell.entry.id, neighborCell.entry.id, renderCell.span, neighbor.span);
+                                     }}
+                                     className="group absolute left-full top-2 bottom-2 z-10 w-4 cursor-col-resize bg-transparent"
+                                     aria-label="Resize spacer"
+                                   >
+                                     <span
+                                       className={`absolute left-1/2 top-0 h-full w-1 -translate-x-1/2 rounded-full opacity-0 transition-opacity duration-150 group-hover:opacity-80 group-focus-visible:opacity-80 ${editTheme.solid} ${resizeState?.leftId === cell.entry.id ? 'opacity-90' : ''}`}
+                                     />
+                                   </button>
+                                 )}
+                               </div>
+                               );
+                             }
+                            return (
+                              <article
+                             key={cell.entry.id}
+                             data-sg-item-id={cell.entry.id}
+                             className={`relative z-0 min-w-0 transition-[grid-column,transform,box-shadow] duration-150 ease-out ${isEditMode ? 'cursor-grab active:cursor-grabbing' : ''} ${draggingId === cell.entry.id ? 'opacity-50 scale-[0.99]' : ''}`}
+                             style={{ gridColumn: `span ${renderCell.span} / span ${renderCell.span}` }}
                             draggable={isEditMode}
                             onDragStart={(event) => {
                               event.dataTransfer.effectAllowed = 'move';
@@ -1185,8 +1503,8 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                               setItemPlacement(sourceId, sectionId, row.id);
                               resetDragState();
                             }}
-                          >
-                            {def.render()}
+                           >
+                             {def!.render()}
 
                             {isEditMode && (
                               <div className="absolute right-2 top-2 z-30">
@@ -1202,18 +1520,20 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                               </div>
                             )}
 
-                            {isEditMode && neighborCell && neighbor && (
-                              <button
-                                type="button"
-                                onMouseDown={(event) => beginResize(event, rowDomKey, cell.entry.id, neighborCell.entry.id, renderCell.span, neighbor.span)}
-                                className="group absolute left-full top-2 bottom-2 z-10 w-4 cursor-col-resize bg-transparent"
-                                aria-label={`Resize ${cell.entry.item.title}`}
-                              >
-                                <span
-                                  className={`absolute left-1/2 top-0 h-full w-1 -translate-x-1/2 rounded-full opacity-0 transition-opacity duration-150 group-hover:opacity-80 group-focus-visible:opacity-80 ${editTheme.solid} ${resizeState?.leftId === cell.entry.id ? 'opacity-90' : ''}`}
-                                />
-                              </button>
-                            )}
+                             {isEditMode && neighborCell && neighbor && (
+                               <button
+                                 type="button"
+                                 onMouseDown={(event) => {
+                                   beginResize(event, rowDomKey, cell.entry.id, neighborCell.entry.id, renderCell.span, neighbor.span);
+                                 }}
+                                 className="group absolute left-full top-2 bottom-2 z-10 w-4 cursor-col-resize bg-transparent"
+                                 aria-label={`Resize ${cell.entry.item.title}`}
+                               >
+                                 <span
+                                   className={`absolute left-1/2 top-0 h-full w-1 -translate-x-1/2 rounded-full opacity-0 transition-opacity duration-150 group-hover:opacity-80 group-focus-visible:opacity-80 ${editTheme.solid} ${resizeState?.leftId === cell.entry.id ? 'opacity-90' : ''}`}
+                                 />
+                               </button>
+                             )}
                           </article>
                         );
                       })}
@@ -1260,12 +1580,15 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
                     moveItemToSectionEnd(sourceId, sectionId, rowId);
                     resetDragState();
                   }}
-                >
-                  <Button type="button" variant="outline" color="slate" size="xs" leadingIcon="Add" onClick={() => createRow(sectionId)}>
-                    Add New Row
-                  </Button>
-                  <p className="mt-1">Or drop here to create a row and place item</p>
-                </div>
+                 >
+                   <Button type="button" variant="outline" color="slate" size="xs" leadingIcon="Add" onClick={() => {
+                     setRowAddTarget({ sectionId, rowId: '' });
+                     setIsAddModalOpen(true);
+                   }}>
+                     Add New Item
+                   </Button>
+                   <p className="mt-1">Or drop here to add item to new row</p>
+                 </div>
               )}
             </div>
           </section>
@@ -1294,10 +1617,15 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({ items, persist
             moveItemToSectionEnd(sourceId, sectionId, rowId);
             resetDragState();
           }}
-        >
-          <Button type="button" variant="outline" color="slate" size="sm" leadingIcon="Add" onClick={() => createSection()}>
-            Add New Section
-          </Button>
+         >
+           <Button type="button" variant="outline" color="slate" size="sm" leadingIcon="Add" onClick={() => {
+             const sectionId = createSection();
+             const rowId = createRow(sectionId);
+             setRowAddTarget({ sectionId, rowId });
+             setIsAddModalOpen(true);
+           }}>
+             Add item to create new section
+           </Button>
           <p className="mt-2 text-xs">Or drop a card here to create a section and place it there</p>
         </div>
       )}

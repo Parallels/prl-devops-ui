@@ -1,5 +1,6 @@
 import { StatGraphTile, Panel, Section } from '@prl/ui-kit';
 import { type GraphDataPoint } from './CpuUtilizationPanel';
+import { formatTimeRange } from '@/utils/timeRange';
 
 interface MemoryUsagePanelProps {
   hasGraphData: boolean;
@@ -18,12 +19,14 @@ export function MemoryUsagePanel({ hasGraphData, memUsedDisplay, memTotalDisplay
     );
   }
 
+  const timeRange = formatTimeRange(graphData.map((d) => (typeof d.timestamp === 'number' ? d.timestamp : 0)));
+
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 h-full">
       <StatGraphTile
         title="Memory Usage"
         value={memUsedDisplay}
-        subtitle={`of ${memTotalDisplay} total`}
+        subtitle={`of ${memTotalDisplay} total (${timeRange})`}
         data={graphData}
         variant="sparkline"
         series={[{ key: 'memoryBytes', label: 'Used', color: 'amber' }]}

@@ -161,7 +161,7 @@ export const Home: React.FC = () => {
   const memTotalDisplay = `${memTotal.value} ${memTotal.unit}`;
   const hasGraphData = history.length > 0;
 
-  const persistedLayout = getConfig<SmartGridLayoutState | null>(HOME_SMART_GRID_LAYOUT_SLUG, null);
+  const [persistedLayout, setPersistedLayout] = useState<SmartGridLayoutState | null>(() => getConfig<SmartGridLayoutState | null>(HOME_SMART_GRID_LAYOUT_SLUG, null));
 
   const handleLayoutChange = useCallback(
     (layout: SmartGridLayoutState) => {
@@ -184,7 +184,12 @@ export const Home: React.FC = () => {
     }
     pendingLayoutRef.current = null;
     setIsLayoutEditMode(false);
-  }, [setConfig]);
+    // Reload layout from config to get updated data
+    const newLayout = getConfig<SmartGridLayoutState | null>(HOME_SMART_GRID_LAYOUT_SLUG, null);
+    if (newLayout) {
+      setPersistedLayout(newLayout);
+    }
+  }, [setConfig, getConfig]);
 
   const cancelLayoutEdit = useCallback(() => {
     pendingLayoutRef.current = null;
