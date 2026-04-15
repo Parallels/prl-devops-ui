@@ -178,10 +178,10 @@ export const NotificationWrapper: React.FC<NotificationWrapperProps> = ({
                   buttonRef.current = node;
                 };
 
-                console.log('NotificationWrapper', 'trigger render', {
-                  channel: channelFilter,
-                  resolvedIsOpen,
-                });
+                // console.log('NotificationWrapper', 'trigger render', {
+                //   channel: channelFilter,
+                //   resolvedIsOpen,
+                // });
 
                 return (
                   <button
