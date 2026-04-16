@@ -76,16 +76,6 @@ export const NotificationWrapper: React.FC<NotificationWrapperProps> = ({
     }
   }, [layoutEnabled, layoutOpen, isOpen, togglePanelContext, channelFilter]);
 
-  useEffect(() => {
-    console.log('NotificationWrapper', 'resolvedIsOpen changed', {
-      channel: channelFilter,
-      resolvedIsOpen,
-      layoutKey: layoutEnabled ? layoutKey : null,
-      contextOpen: isOpen,
-      layoutOpen,
-    });
-  }, [resolvedIsOpen, channelFilter, layoutEnabled, layoutKey, isOpen, layoutOpen]);
-
   const contextValue = useMemo<NotificationPopoverContextValue>(
     () => ({
       channel: channelFilter,

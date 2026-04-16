@@ -6,7 +6,7 @@ export const PodmanDesktop = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
       d="m327.87 17.267c-3.379-1.689-7.355-1.689-10.734 0l-290.5 145.25c-4.065 2.033-6.633 6.188-6.633 10.733v287.67c0 4.545 2.568 8.7 6.633 10.733l290.5 145.25c3.379 1.689 7.355 1.689 10.734 0l290.5-145.25c4.065-2.033 6.633-6.188 6.633-10.733v-287.67c0-4.545-2.568-8.7-6.633-10.733z"
       clip-rule="evenodd"
       fill="url(#paint1_linear_1_2)"
-      fill-rule="evenodd"
+      fillRule="evenodd"
       style={{ fill: 'url(#paint1_linear_1_2)' }}
     />
     <g transform="translate(-189 -194.42)" filter="url(#filter0_d_1_2)" shape-rendering="crispEdges">
@@ -35,7 +35,7 @@ export const PodmanDesktop = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
         d="m297.09 421.02c0-7.732 6.268-14 14-14h400.58c7.732 0 14 6.268 14 14v186.29c0 7.732-6.268 14-14 14h-400.58c-7.732 0-14-6.268-14-14zm35.714 26.715c0-2.762 2.239-5 5-5h25.715c2.762 0 5 2.238 5 5v97.145c0 2.761-2.238 5-5 5h-25.715c-2.761 0-5-2.239-5-5zm76.43-5c-2.761 0-5 2.238-5 5v97.145c0 2.761 2.239 5 5 5h25.715c2.761 0 5-2.239 5-5v-97.145c0-2.762-2.239-5-5-5zm66.43 5c0-2.762 2.239-5 5-5h25.715c2.761 0 5 2.238 5 5v97.145c0 2.761-2.239 5-5 5h-25.715c-2.761 0-5-2.239-5-5zm76.601-5.161c-2.762 0-5 2.238-5 5v97.145c0 2.761 2.238 5 5 5h25.715c2.761 0 5-2.239 5-5v-97.145c0-2.762-2.239-5-5-5z"
         clip-rule="evenodd"
         fill="url(#paint7_linear_1_2)"
-        fill-rule="evenodd"
+        fillRule="evenodd"
         style={{ fill: 'url(#paint7_linear_1_2)' }}
       />
     </g>
