@@ -1,11 +1,24 @@
-import { forwardRef, type SVGProps } from 'react';
+import { forwardRef, type SVGProps } from "react";
 
-export const CatalogManifest = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
-  <svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" {...props} ref={ref}>
+export const CatalogManifest = forwardRef<
+  SVGSVGElement,
+  SVGProps<SVGSVGElement>
+>((props, ref) => (
+  <svg
+    width="16px"
+    height="16px"
+    viewBox="0 0 16 16"
+    version="1.1"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+    ref={ref}
+  >
     <path
       d="M13.9988247,0.961871713 L13.9988247,13.7987654 L13.6159423,13.8910164 L6.61594232,15.8185222 L5.99882467,15.9672094 L5.99882467,15.9068717 L7.49882467,15.086909 L11.3918247,13.4618717 L12.9988247,13.0099264 L12.9988247,2.08862601 L12.2375236,2.19008875 C12.1566712,2.20147102 12.0771236,2.2129132 11.9988507,2.22441469 L11.9997319,1.2173522 C12.3338235,1.16855213 12.686757,1.12088533 13.0599637,1.07431156 L13.9988247,0.961871713 Z M10.9988247,-0.0381282871 L10.9988247,12.918465 L10.6159423,13.010716 L3.61594232,14.9382218 L2.99882467,15.086909 L2.99882467,2.21148719 L3.19833363,2.06147226 C4.30161141,1.23189479 5.95184409,0.587782287 10.0486773,0.0757211367 L10.9988247,-0.0381282871 Z M9.99882467,12.129626 L9.99882467,1.08862601 L9.73853659,1.12251872 C6.4001438,1.5540041 5.10959685,2.07713039 4.1155824,2.65757501 L3.99882467,2.72662601 L3.99882467,13.816626 L9.99882467,12.129626 Z"
-      fill="currentColor" fillRule="nonzero"></path>
+      fill="currentColor"
+      fillRule="nonzero"
+    ></path>
   </svg>
 ));
 
-CatalogManifest.displayName = 'CatalogManifest';
+CatalogManifest.displayName = "CatalogManifest";

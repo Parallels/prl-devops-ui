@@ -13,7 +13,7 @@ export type BaseIconName = string;
 export type IconRenderer = (
   icon: BaseIconName | ReactElement | undefined,
   size: IconSize | undefined,
-  className?: string
+  className?: string,
 ) => ReactNode;
 
 /**

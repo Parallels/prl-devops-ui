@@ -1,12 +1,23 @@
+import { forwardRef, type SVGProps } from "react";
 
-import { forwardRef, type SVGProps } from 'react';
-
-export const ReverseProxyTo = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
-  <svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg"  {...props} ref={ref}>
+export const ReverseProxyTo = forwardRef<
+  SVGSVGElement,
+  SVGProps<SVGSVGElement>
+>((props, ref) => (
+  <svg
+    width="16px"
+    height="16px"
+    viewBox="0 0 16 16"
+    version="1.1"
+    xmlns="http://www.w3.org/2000/svg"
+    {...props}
+    ref={ref}
+  >
     <path
       d="M6.22743596,5.63934145 L9.05586309,8.46776857 L6.22743596,11.2961957 L5.52032918,10.5890889 L7.16540023,8.94334145 L1.99140023,8.94413691 L1.99140023,7.94413691 L7.11740023,7.94334145 L5.52032918,6.34644823 L6.22743596,5.63934145 Z M12.5,7 C13.3284271,7 14,7.67157288 14,8.5 C14,9.32842712 13.3284271,10 12.5,10 C11.6715729,10 11,9.32842712 11,8.5 C11,7.67157288 11.6715729,7 12.5,7 Z M12.5,8 C12.2238576,8 12,8.22385763 12,8.5 C12,8.77614237 12.2238576,9 12.5,9 C12.7761424,9 13,8.77614237 13,8.5 C13,8.22385763 12.7761424,8 12.5,8 Z"
-      fill="currentColor"></path>
+      fill="currentColor"
+    ></path>
   </svg>
 ));
 
-ReverseProxyTo.displayName = 'ReverseProxyTo';
+ReverseProxyTo.displayName = "ReverseProxyTo";

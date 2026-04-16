@@ -22,7 +22,9 @@ export function useAccordion({
   multiple = false,
   onChange,
 }: UseAccordionOptions = {}): UseAccordionResult {
-  const [internalOpenIds, setInternalOpenIds] = useState<string[]>(defaultOpenIds ?? []);
+  const [internalOpenIds, setInternalOpenIds] = useState<string[]>(
+    defaultOpenIds ?? [],
+  );
 
   const resolvedOpenIds = controlledOpenIds ?? internalOpenIds;
 
@@ -33,7 +35,7 @@ export function useAccordion({
       }
       onChange?.(next);
     },
-    [controlledOpenIds, onChange]
+    [controlledOpenIds, onChange],
   );
 
   const toggle = useCallback(
@@ -51,7 +53,7 @@ export function useAccordion({
         emitChange([id]);
       }
     },
-    [emitChange, multiple, resolvedOpenIds]
+    [emitChange, multiple, resolvedOpenIds],
   );
 
   const open = useCallback(
@@ -65,7 +67,7 @@ export function useAccordion({
         emitChange([id]);
       }
     },
-    [emitChange, multiple, resolvedOpenIds]
+    [emitChange, multiple, resolvedOpenIds],
   );
 
   const close = useCallback(
@@ -75,7 +77,7 @@ export function useAccordion({
       }
       emitChange(resolvedOpenIds.filter((item) => item !== id));
     },
-    [emitChange, resolvedOpenIds]
+    [emitChange, resolvedOpenIds],
   );
 
   const api = useMemo(
@@ -87,7 +89,7 @@ export function useAccordion({
       close,
       setOpenIds: emitChange,
     }),
-    [resolvedOpenIds, toggle, open, close, emitChange]
+    [resolvedOpenIds, toggle, open, close, emitChange],
   );
 
   return api;

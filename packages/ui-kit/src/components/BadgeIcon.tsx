@@ -73,20 +73,42 @@ const BadgeIcon = forwardRef<HTMLButtonElement, BadgeIconProps>(
       fullWidth = false,
       ...iconButtonProps
     },
-    ref
+    ref,
   ) => {
     const showBadge = shouldRenderBadge({ badgeContent, badgeCount, badgeDot });
-    const badgeNode = badgeContent ?? (showBadge ? <Badge count={badgeCount} dot={badgeDot} {...badgeProps} /> : null);
+    const badgeNode =
+      badgeContent ??
+      (showBadge ? (
+        <Badge count={badgeCount} dot={badgeDot} {...badgeProps} />
+      ) : null);
 
     return (
-      <span className={classNames("relative inline-flex", fullWidth && "w-full", wrapperClassName)}>
-        <IconButton ref={ref} accent={true} className={classNames(fullWidth && "w-full", className)} {...iconButtonProps} />
+      <span
+        className={classNames(
+          "relative inline-flex",
+          fullWidth && "w-full",
+          wrapperClassName,
+        )}
+      >
+        <IconButton
+          ref={ref}
+          accent={true}
+          className={classNames(fullWidth && "w-full", className)}
+          {...iconButtonProps}
+        />
         {showBadge && badgeNode && (
-          <span className={classNames("pointer-events-none absolute", POSITION_CLASSES[badgePosition])}>{badgeNode}</span>
+          <span
+            className={classNames(
+              "pointer-events-none absolute",
+              POSITION_CLASSES[badgePosition],
+            )}
+          >
+            {badgeNode}
+          </span>
         )}
       </span>
     );
-  }
+  },
 );
 
 BadgeIcon.displayName = "BadgeIcon";

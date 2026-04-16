@@ -41,7 +41,8 @@ const createIconAccentRing = (): Record<ThemeColor, string> => {
     if (color === "white") {
       rings[color] = "focus-visible:ring-slate-200";
     } else if (color === "theme") {
-      rings[color] = "focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500";
+      rings[color] =
+        "focus-visible:ring-neutral-400 dark:focus-visible:ring-neutral-500";
     } else {
       rings[color] = `focus-visible:ring-${c}-500`;
     }
@@ -79,6 +80,9 @@ const createIconAccentActive = (): Record<ThemeColor, string> => {
   return actives as Record<ThemeColor, string>;
 };
 
-export const iconAccentRing: Record<ThemeColor, string> = createIconAccentRing();
-export const iconAccentHover: Record<ThemeColor, string> = createIconAccentHover();
-export const iconAccentActive: Record<ThemeColor, string> = createIconAccentActive();
+export const iconAccentRing: Record<ThemeColor, string> =
+  createIconAccentRing();
+export const iconAccentHover: Record<ThemeColor, string> =
+  createIconAccentHover();
+export const iconAccentActive: Record<ThemeColor, string> =
+  createIconAccentActive();

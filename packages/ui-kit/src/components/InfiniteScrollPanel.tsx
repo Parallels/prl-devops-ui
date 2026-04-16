@@ -74,13 +74,21 @@ export function InfiniteScrollPanel<T>({
       const containerRect = container.getBoundingClientRect();
       const loadingRect = loadingElement.getBoundingClientRect();
 
-      const isVisible = loadingRect.top <= containerRect.bottom + threshold * 50;
+      const isVisible =
+        loadingRect.top <= containerRect.bottom + threshold * 50;
 
       if (isVisible && hasMore && !isLoadingMore && !isLoading) {
         void handleLoadMore();
       }
     }, debounceMs);
-  }, [hasMore, isLoadingMore, isLoading, threshold, debounceMs, handleLoadMore]);
+  }, [
+    hasMore,
+    isLoadingMore,
+    isLoading,
+    threshold,
+    debounceMs,
+    handleLoadMore,
+  ]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -96,10 +104,23 @@ export function InfiniteScrollPanel<T>({
   }, [handleScroll]);
 
   useEffect(() => {
-    if (items.length > 0 && items.length < threshold && hasMore && !isLoadingMore && !isLoading) {
+    if (
+      items.length > 0 &&
+      items.length < threshold &&
+      hasMore &&
+      !isLoadingMore &&
+      !isLoading
+    ) {
       void handleLoadMore();
     }
-  }, [items.length, threshold, hasMore, isLoadingMore, isLoading, handleLoadMore]);
+  }, [
+    items.length,
+    threshold,
+    hasMore,
+    isLoadingMore,
+    isLoading,
+    handleLoadMore,
+  ]);
 
   useEffect(() => {
     if (!isLoading && !isLoadingMore) {
@@ -125,12 +146,17 @@ export function InfiniteScrollPanel<T>({
     if (!grid) return;
     const computed = window.getComputedStyle(grid);
     const rowGap = parseFloat(computed.rowGap || "0");
-    const rowHeight = parseFloat(computed.getPropertyValue("--masonry-row-height") || "8");
+    const rowHeight = parseFloat(
+      computed.getPropertyValue("--masonry-row-height") || "8",
+    );
 
     itemRefs.current.forEach((el) => {
       if (!el) return;
       const contentHeight = el.getBoundingClientRect().height;
-      const rowSpan = Math.max(1, Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap)));
+      const rowSpan = Math.max(
+        1,
+        Math.ceil((contentHeight + rowGap) / (rowHeight + rowGap)),
+      );
       const current = el.style.gridRowEnd;
       const next = `span ${rowSpan}`;
       if (current !== next) {
@@ -155,7 +181,7 @@ export function InfiniteScrollPanel<T>({
         });
       }, delayMs);
     },
-    [recomputeMasonrySpans]
+    [recomputeMasonrySpans],
   );
 
   useEffect(() => {
@@ -196,7 +222,10 @@ export function InfiniteScrollPanel<T>({
       if (!container) return;
       const gap = 16;
       const width = container.clientWidth;
-      const cols = Math.max(1, Math.floor((width + gap) / (minColumnWidthPx + gap)));
+      const cols = Math.max(
+        1,
+        Math.floor((width + gap) / (minColumnWidthPx + gap)),
+      );
       setColumnCount(maxColumns ? Math.min(cols, maxColumns) : cols);
     };
     computeColumns();
@@ -212,7 +241,7 @@ export function InfiniteScrollPanel<T>({
         "scrollbar-thin scrollbar-track-neutral-100 scrollbar-thumb-neutral-300 hover:scrollbar-thumb-neutral-400",
         "dark:scrollbar-track-neutral-800 dark:scrollbar-thumb-neutral-600 dark:hover:scrollbar-thumb-neutral-500",
         "[&::-webkit-scrollbar-track]:rounded [&::-webkit-scrollbar-thumb]:rounded",
-        className
+        className,
       )}
     >
       {items.length === 0 && !isLoading ? (
@@ -227,7 +256,7 @@ export function InfiniteScrollPanel<T>({
                 columnCount === 2 && "grid-cols-2",
                 columnCount === 3 && "grid-cols-3",
                 columnCount === 4 && "grid-cols-4",
-                columnCount >= 5 && "grid-cols-5"
+                columnCount >= 5 && "grid-cols-5",
               )}
             >
               {Array.from({ length: columnCount }).map((_, colIdx) => (
@@ -236,7 +265,10 @@ export function InfiniteScrollPanel<T>({
                     .map((item, index) => ({ item, index }))
                     .filter(({ index }) => index % columnCount === colIdx)
                     .map(({ item, index }) => (
-                      <div key={index} className="flex items-start justify-center">
+                      <div
+                        key={index}
+                        className="flex items-start justify-center"
+                      >
                         {renderItem(item, index)}
                       </div>
                     ))}
@@ -248,7 +280,8 @@ export function InfiniteScrollPanel<T>({
               ref={itemsContainerRef}
               className={classNames(
                 "mb-[60px] grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] items-start gap-2.5 py-4",
-                masonry && "[--masonry-row-height:8px] auto-rows-[var(--masonry-row-height)]"
+                masonry &&
+                  "[--masonry-row-height:8px] auto-rows-[var(--masonry-row-height)]",
               )}
               style={{
                 gridTemplateColumns: columnTemplate,

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
-import type { TooltipPosition } from './Tooltip';
-import TooltipWrapper from './TooltipWrapper';
+import React, { useEffect, useRef, useState } from "react";
+import type { TooltipPosition } from "./Tooltip";
+import TooltipWrapper from "./TooltipWrapper";
 
 export interface TruncatedTextProps {
   /** The text to display, truncated with an ellipsis when it overflows. */
@@ -10,7 +10,7 @@ export interface TruncatedTextProps {
   /** Delay in ms before the tooltip becomes visible. Defaults to 2000. */
   delay?: number;
   /** Render as a different element. Defaults to "div". */
-  as?: 'div' | 'span' | 'p';
+  as?: "div" | "span" | "p";
   /** Where to place the tooltip. Defaults to 'top'. */
   tooltipPosition?: TooltipPosition;
   /**
@@ -25,8 +25,8 @@ const TruncatedText: React.FC<TruncatedTextProps> = ({
   text,
   className,
   delay = 2000,
-  as: Tag = 'div',
-  tooltipPosition = 'top',
+  as: Tag = "div",
+  tooltipPosition = "top",
   noWrapper = false,
 }) => {
   const ref = useRef<HTMLElement>(null);
@@ -51,10 +51,18 @@ const TruncatedText: React.FC<TruncatedTextProps> = ({
   // TooltipWrapper>Tag tree, which would unmount/remount the Tag element and
   // detach the ref, causing a ResizeObserver feedback loop.
   const inner = (
-    <TooltipWrapper text={truncated ? text : undefined} delay={delay} position={tooltipPosition}>
+    <TooltipWrapper
+      text={truncated ? text : undefined}
+      delay={delay}
+      position={tooltipPosition}
+    >
       <Tag
-        ref={ref as React.Ref<HTMLDivElement & HTMLSpanElement & HTMLParagraphElement>}
-        className={['truncate', className].filter(Boolean).join(' ')}
+        ref={
+          ref as React.Ref<
+            HTMLDivElement & HTMLSpanElement & HTMLParagraphElement
+          >
+        }
+        className={["truncate", className].filter(Boolean).join(" ")}
       >
         {text}
       </Tag>

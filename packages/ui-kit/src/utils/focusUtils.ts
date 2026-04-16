@@ -14,12 +14,14 @@ export interface FocusHandlerOptions {
  * @param options Configuration options for the focus handler
  * @returns A function that can be used as an event listener
  */
-export function createIntelligentFocusHandler(options: FocusHandlerOptions = {}) {
+export function createIntelligentFocusHandler(
+  options: FocusHandlerOptions = {},
+) {
   const {
     debounceMs = 500,
     checkConnection = () => true,
-    onReconnect = () => { },
-    onSkip = () => { },
+    onReconnect = () => {},
+    onSkip = () => {},
   } = options;
 
   const enableDebugLogging = false;
@@ -61,7 +63,7 @@ export function createIntelligentFocusHandler(options: FocusHandlerOptions = {})
  */
 export function cleanupFocusHandler(
   handler: () => void,
-  timeoutRef: ReturnType<typeof setTimeout> | null
+  timeoutRef: ReturnType<typeof setTimeout> | null,
 ) {
   window.removeEventListener("focus", handler);
   if (timeoutRef) {

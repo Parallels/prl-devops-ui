@@ -9,13 +9,20 @@ type DynamicValue = string | boolean;
 export interface DynamicFormFieldProps {
   parameter: CapsuleBlueprintParameter;
   value: DynamicValue;
-  onChange: (serviceName: string, key: string, value: DynamicValue, triggerDependencyEvaluation?: boolean) => void;
+  onChange: (
+    serviceName: string,
+    key: string,
+    value: DynamicValue,
+    triggerDependencyEvaluation?: boolean,
+  ) => void;
   error?: string;
   className?: string;
   isVisible?: boolean;
 }
 
-const normalizeOptions = (options: CapsuleBlueprintParameter["options"]): Array<{ id: string; label: string; value: string }> => {
+const normalizeOptions = (
+  options: CapsuleBlueprintParameter["options"],
+): Array<{ id: string; label: string; value: string }> => {
   if (!options) {
     return [];
   }
@@ -42,17 +49,33 @@ const normalizeOptions = (options: CapsuleBlueprintParameter["options"]): Array<
   }));
 };
 
-const DynamicFormField: React.FC<DynamicFormFieldProps> = ({ parameter, value, onChange, error, className, isVisible = true }) => {
+const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
+  parameter,
+  value,
+  onChange,
+  error,
+  className,
+  isVisible = true,
+}) => {
   const { name, key, hint, is_required, options, is_secret, help } = parameter;
   const normalizedOptions = useMemo(() => normalizeOptions(options), [options]);
 
   const handleChange = (fieldValue: DynamicValue, trigger?: boolean) => {
-    onChange(parameter.service_name || "global", key, fieldValue, trigger ?? true);
+    onChange(
+      parameter.service_name || "global",
+      key,
+      fieldValue,
+      trigger ?? true,
+    );
   };
 
   const handleBlur = () => {
-    const hasDependencies = parameter.depends_on && parameter.depends_on.length > 0;
-    if (hasDependencies && parameter.value_type === CapsuleBlueprintValueType.String) {
+    const hasDependencies =
+      parameter.depends_on && parameter.depends_on.length > 0;
+    if (
+      hasDependencies &&
+      parameter.value_type === CapsuleBlueprintValueType.String
+    ) {
       handleChange(value, true);
     }
   };
@@ -72,7 +95,13 @@ const DynamicFormField: React.FC<DynamicFormFieldProps> = ({ parameter, value, o
         required={is_required}
         validationStatus={error ? "error" : "none"}
       />
-      {(error || hint) && <p className={`text-xs ${error ? "text-rose-500" : "text-neutral-500"}`}>{error || hint}</p>}
+      {(error || hint) && (
+        <p
+          className={`text-xs ${error ? "text-rose-500" : "text-neutral-500"}`}
+        >
+          {error || hint}
+        </p>
+      )}
     </div>
   );
 
@@ -83,7 +112,14 @@ const DynamicFormField: React.FC<DynamicFormFieldProps> = ({ parameter, value, o
       case CapsuleBlueprintValueType.Int:
         return renderTextField("number");
       case CapsuleBlueprintValueType.Boolean:
-        return <Checkbox checked={Boolean(value)} onChange={(event) => handleChange(event.target.checked)} label={name} description={hint} />;
+        return (
+          <Checkbox
+            checked={Boolean(value)}
+            onChange={(event) => handleChange(event.target.checked)}
+            label={name}
+            description={hint}
+          />
+        );
       case CapsuleBlueprintValueType.Select:
         return (
           <div className="w-full space-y-1">
@@ -91,14 +127,25 @@ const DynamicFormField: React.FC<DynamicFormFieldProps> = ({ parameter, value, o
               {name}
               {is_required && <span className="ml-1 text-rose-500">*</span>}
             </label>
-            <Select value={String(value ?? "")} onChange={(event) => handleChange(event.target.value ?? "")} required={is_required} validationStatus={error ? "error" : "none"}>
+            <Select
+              value={String(value ?? "")}
+              onChange={(event) => handleChange(event.target.value ?? "")}
+              required={is_required}
+              validationStatus={error ? "error" : "none"}
+            >
               {normalizedOptions.map((option) => (
                 <option key={option.id} value={option.value}>
                   {option.label}
                 </option>
               ))}
             </Select>
-            {(error || hint) && <p className={`text-xs ${error ? "text-rose-500" : "text-neutral-500"}`}>{error || hint}</p>}
+            {(error || hint) && (
+              <p
+                className={`text-xs ${error ? "text-rose-500" : "text-neutral-500"}`}
+              >
+                {error || hint}
+              </p>
+            )}
           </div>
         );
       default:
@@ -116,7 +163,15 @@ const DynamicFormField: React.FC<DynamicFormFieldProps> = ({ parameter, value, o
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm dark:border-slate-800/70 dark:bg-slate-900/50">
       {renderField()}
-      {help && <CollapsibleHelpText title="What is this?" text={help} tone="emerald" maxLength={180} showIcon />}
+      {help && (
+        <CollapsibleHelpText
+          title="What is this?"
+          text={help}
+          tone="emerald"
+          maxLength={180}
+          showIcon
+        />
+      )}
     </div>
   );
 };

@@ -19,7 +19,15 @@ const sizeClasses = {
   xl: "h-10 w-10",
 };
 
-const DynamicImg: React.FC<DynamicImgProps> = ({ base64, fill, stroke, className, title, size = "md", style }) => {
+const DynamicImg: React.FC<DynamicImgProps> = ({
+  base64,
+  fill,
+  stroke,
+  className,
+  title,
+  size = "md",
+  style,
+}) => {
   const renderIcon = useIconRenderer();
 
   if (!base64) {
@@ -27,7 +35,15 @@ const DynamicImg: React.FC<DynamicImgProps> = ({ base64, fill, stroke, className
   }
 
   if (base64.toLowerCase().includes("data:image/png;base64,")) {
-    return <img src={base64} alt="Dynamic Image" className={className} style={style} title={title} />;
+    return (
+      <img
+        src={base64}
+        alt="Dynamic Image"
+        className={className}
+        style={style}
+        title={title}
+      />
+    );
   }
 
   if (!base64.toLowerCase().includes("data:image/svg+xml;base64,")) {

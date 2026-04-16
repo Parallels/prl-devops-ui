@@ -1,7 +1,13 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import classNames from 'classnames';
-import type { TooltipPosition } from './Tooltip';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+import classNames from "classnames";
+import type { TooltipPosition } from "./Tooltip";
 
 export interface TooltipWrapperProps {
   /** Tooltip text. When omitted no tooltip is shown but the child is rendered unchanged. */
@@ -33,7 +39,7 @@ const VIEWPORT_PADDING = 8; // px to keep away from viewport edges
 const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
   text,
   delay = 500,
-  position = 'top',
+  position = "top",
   children,
 }) => {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -45,7 +51,7 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
   // Post-collision-detection final left for the tooltip (null = not yet measured)
   const [finalLeft, setFinalLeft] = useState<number | null>(null);
   // Caret left offset inside the tooltip box
-  const [caretOffset, setCaretOffset] = useState('50%');
+  const [caretOffset, setCaretOffset] = useState("50%");
 
   useEffect(() => {
     return () => {
@@ -96,11 +102,11 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
       if (text) {
         const rect = (e.currentTarget as Element).getBoundingClientRect();
         setTriggerCenter({
-          top: position === 'top' ? rect.top : rect.bottom,
+          top: position === "top" ? rect.top : rect.bottom,
           left: rect.left + rect.width / 2,
         });
         setFinalLeft(null);
-        setCaretOffset('50%');
+        setCaretOffset("50%");
         timerRef.current = setTimeout(() => setVisible(true), delay);
       }
       children.props.onMouseEnter?.(e);
@@ -116,13 +122,13 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
       }
       setVisible(false);
       setFinalLeft(null);
-      setCaretOffset('50%');
+      setCaretOffset("50%");
       if (e) children.props.onMouseLeave?.(e);
     },
     [children.props],
   );
 
-  const isTop = position === 'top';
+  const isTop = position === "top";
   const renderLeft = finalLeft ?? triggerCenter.left;
 
   // Always render a Fragment so the child element is never unmounted when
@@ -135,21 +141,22 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
   return (
     <>
       {child}
-      {visible && text &&
+      {visible &&
+        text &&
         createPortal(
           <div
             ref={tooltipRef}
             role="tooltip"
             style={{
-              position: 'fixed',
+              position: "fixed",
               top: triggerCenter.top,
               left: renderLeft,
               transform: isTop
-                ? 'translate(-50%, calc(-100% - 8px))'
-                : 'translate(-50%, 8px)',
+                ? "translate(-50%, calc(-100% - 8px))"
+                : "translate(-50%, 8px)",
               // Hide until collision detection has run to avoid a 1-frame flash
               // at the wrong position when near the viewport edge
-              visibility: finalLeft === null ? 'hidden' : 'visible',
+              visibility: finalLeft === null ? "hidden" : "visible",
               zIndex: 9999,
             }}
             className="pointer-events-none whitespace-nowrap rounded-md bg-neutral-900 px-2.5 py-1.5 text-xs leading-snug text-white shadow-lg dark:bg-neutral-700"
@@ -158,10 +165,10 @@ const TooltipWrapper: React.FC<TooltipWrapperProps> = ({
             <span
               style={{ left: caretOffset }}
               className={classNames(
-                'absolute -translate-x-1/2 border-4 border-transparent',
+                "absolute -translate-x-1/2 border-4 border-transparent",
                 isTop
-                  ? 'top-full border-t-neutral-900 dark:border-t-neutral-700'
-                  : 'bottom-full border-b-neutral-900 dark:border-b-neutral-700',
+                  ? "top-full border-t-neutral-900 dark:border-t-neutral-700"
+                  : "bottom-full border-b-neutral-900 dark:border-b-neutral-700",
               )}
             />
           </div>,

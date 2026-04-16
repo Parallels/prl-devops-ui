@@ -42,14 +42,22 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 });
-  const selectionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+  const selectionRef = useRef<{ start: number; end: number }>({
+    start: 0,
+    end: 0,
+  });
 
-  const resolveVariable = (source: string, name: string): { value: string; isResolved: boolean; isRuntime?: boolean } => {
+  const resolveVariable = (
+    source: string,
+    name: string,
+  ): { value: string; isResolved: boolean; isRuntime?: boolean } => {
     if (source === "global" || source === "env") {
       let param = globalParameters.find((p) => p.key === name);
       if (!param) {
         // Fallback: Try case-insensitive comparison (URLs might lowercase the name)
-        param = globalParameters.find((p) => p.key.toLowerCase() === name.toLowerCase());
+        param = globalParameters.find(
+          (p) => p.key.toLowerCase() === name.toLowerCase(),
+        );
       }
 
       if (param) {
@@ -84,7 +92,16 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       }
 
       // Runtime Variables
-      const runtimeVars = ["name", "reverse_proxy_host", "ip_address", "host_gateway_ip", "capsule_id", "capsule_name", "host_ip", "app_url"];
+      const runtimeVars = [
+        "name",
+        "reverse_proxy_host",
+        "ip_address",
+        "host_gateway_ip",
+        "capsule_id",
+        "capsule_name",
+        "host_ip",
+        "app_url",
+      ];
       if (runtimeVars.includes(lowerName)) {
         return { value: `[${lowerName}]`, isResolved: true, isRuntime: true };
       }
@@ -102,15 +119,21 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   // Replaces {{...}} with SVAR...END so markdown parser treats it as simple text/link
   const preprocess = React.useCallback((text: string) => {
     const regex = new RegExp(SMART_VAR_REGEX, "gi");
-    return text.replace(regex, (_match, type: string, source: string, name: string) => {
-      return `SVAR${type}SVAR${source}SVAR${name}END`;
-    });
+    return text.replace(
+      regex,
+      (_match, type: string, source: string, name: string) => {
+        return `SVAR${type}SVAR${source}SVAR${name}END`;
+      },
+    );
   }, []);
 
   // Helper to resolve variables in a string (for attributes like href)
   const replaceVariablesInString = React.useCallback(
     (text: string) => {
-      const combined = new RegExp(`${SAFE_VAR_PATTERN}|${SMART_VAR_REGEX.source}`, "gi");
+      const combined = new RegExp(
+        `${SAFE_VAR_PATTERN}|${SMART_VAR_REGEX.source}`,
+        "gi",
+      );
       return text.replace(combined, (_match, _t1, s1, n1, _t2, s2, n2) => {
         const source = s1 || s2;
         const name = n1 || n2;
@@ -128,7 +151,10 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     let lastIndex = 0;
     let match;
 
-    const combinedRegex = new RegExp(`${SAFE_VAR_PATTERN}|${SMART_VAR_REGEX.source}`, "gi");
+    const combinedRegex = new RegExp(
+      `${SAFE_VAR_PATTERN}|${SMART_VAR_REGEX.source}`,
+      "gi",
+    );
 
     while ((match = combinedRegex.exec(text)) !== null) {
       if (match.index > lastIndex) {
@@ -142,19 +168,28 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 
       // If we matched something valid
       if (source && name) {
-        const { value: resolvedVal, isResolved } = resolveVariable(source, name);
+        const { value: resolvedVal, isResolved } = resolveVariable(
+          source,
+          name,
+        );
 
         if (isResolved) {
           // Render resolved value as plain text (with tooltip)
           parts.push(
-            <span key={`var-${match.index}`} title={`Variable: ${source}::${name}\nOriginal: ${match[0]}`} className="cursor-help border-b border-dotted border-gray-400 decoration-gray-400">
+            <span
+              key={`var-${match.index}`}
+              title={`Variable: ${source}::${name}\nOriginal: ${match[0]}`}
+              className="cursor-help border-b border-dotted border-gray-400 decoration-gray-400"
+            >
               {resolvedVal}
             </span>,
           );
         } else {
           // Unresolved variables: show as original text with warning style
           // Reconstruct original token if we have SVAR matches
-          const displayToken = match[0].startsWith("SVAR") ? `{{ ${type}::${source}::${name} }}` : match[0];
+          const displayToken = match[0].startsWith("SVAR")
+            ? `{{ ${type}::${source}::${name} }}`
+            : match[0];
 
           const badgeClass = "bg-red-50 text-red-700 border-red-200";
           parts.push(
@@ -272,9 +307,17 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     () => ({
       name: "variable",
       keyCommand: "variable",
-      buttonProps: { "aria-label": "Insert Variable", title: "Insert Variable" },
+      buttonProps: {
+        "aria-label": "Insert Variable",
+        title: "Insert Variable",
+      },
       icon: (
-        <svg width="12" height="12" viewBox="0 0 20 20" style={{ marginTop: "2px" }}>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 20 20"
+          style={{ marginTop: "2px" }}
+        >
           <path
             fill="currentColor"
             d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-13c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.65 0-3-1.35-3-3s1.35-3 3-3 3 1.35 3 3-1.35 3-3 3z"
@@ -287,7 +330,10 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       ),
       execute: (state: any) => {
         // Save selection
-        selectionRef.current = { start: state.selection.start, end: state.selection.end };
+        selectionRef.current = {
+          start: state.selection.start,
+          end: state.selection.end,
+        };
 
         // Position picker?
         // This is hard since toolbar button click event isn't easily passed here for coordinates.
@@ -302,7 +348,10 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             left: rect.left + window.scrollX + 50,
           });
         } else {
-          setPickerPos({ top: window.scrollY + 100, left: window.scrollX + 100 });
+          setPickerPos({
+            top: window.scrollY + 100,
+            left: window.scrollX + 100,
+          });
         }
 
         setShowPicker(true);
@@ -322,7 +371,10 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   };
 
   return (
-    <div className={classNames("markdown-editor-wrapper relative", className)} data-color-mode="light">
+    <div
+      className={classNames("markdown-editor-wrapper relative", className)}
+      data-color-mode="light"
+    >
       <MDEditor
         value={value}
         onChange={onChange}
@@ -356,13 +408,24 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         // @ts-ignore
         renderPreview={React.useCallback(
           (source: string) => (
-            <MDEditor.Markdown source={preprocess(source)} components={components} style={{ backgroundColor: "white", color: "#334155", minHeight: "100%" }} />
+            <MDEditor.Markdown
+              source={preprocess(source)}
+              components={components}
+              style={{
+                backgroundColor: "white",
+                color: "#334155",
+                minHeight: "100%",
+              }}
+            />
           ),
           [preprocess, components],
         )}
-        className={classNames("rounded-lg overflow-hidden border border-slate-300", {
-          "pointer-events-none opacity-60": readOnly,
-        })}
+        className={classNames(
+          "rounded-lg overflow-hidden border border-slate-300",
+          {
+            "pointer-events-none opacity-60": readOnly,
+          },
+        )}
         style={{
           backgroundColor: "white",
           color: "#334155", // slate-700
@@ -379,7 +442,12 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               zIndex: 9999,
             }}
           >
-            <VariablePicker onSelect={handleSelectVariable} onClose={() => setShowPicker(false)} globalParameters={globalParameters} serviceNames={serviceNames} />
+            <VariablePicker
+              onSelect={handleSelectVariable}
+              onClose={() => setShowPicker(false)}
+              globalParameters={globalParameters}
+              serviceNames={serviceNames}
+            />
           </div>,
           document.body,
         )}

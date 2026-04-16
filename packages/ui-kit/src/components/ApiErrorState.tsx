@@ -2,7 +2,11 @@ import React from "react";
 import { EmptyState, type EmptyStateProps } from ".";
 import { type IconName } from "../icons/registry";
 
-export interface ApiErrorStateProps extends Omit<EmptyStateProps, "title" | "tone" | "icon" | "onAction" | "buttonText"> {
+export interface ApiErrorStateProps
+  extends Omit<
+    EmptyStateProps,
+    "title" | "tone" | "icon" | "onAction" | "buttonText"
+  > {
   onRetry?: () => void;
   title?: React.ReactNode;
   isError?: boolean;

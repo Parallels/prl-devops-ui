@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import classNames from "classnames";
 import { useIconRenderer } from "../contexts/IconContext";
@@ -118,7 +125,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
       onSelect?.(item);
       onClose();
     },
-    [onClose, onSelect]
+    [onClose, onSelect],
   );
 
   useEffect(() => {
@@ -126,7 +133,10 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
       return;
     }
     const handlePointer = (event: MouseEvent) => {
-      if (menuRef.current?.contains(event.target as Node) || anchorRef.current?.contains(event.target as Node)) {
+      if (
+        menuRef.current?.contains(event.target as Node) ||
+        anchorRef.current?.contains(event.target as Node)
+      ) {
         return;
       }
       onClose();
@@ -160,8 +170,11 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     }
 
     const anchorRect = anchorRef.current.getBoundingClientRect();
-    const caretElement = anchorRef.current.querySelector("[data-dropdown-caret]");
-    const alignReferenceRect = caretElement?.getBoundingClientRect() ?? anchorRect;
+    const caretElement = anchorRef.current.querySelector(
+      "[data-dropdown-caret]",
+    );
+    const alignReferenceRect =
+      caretElement?.getBoundingClientRect() ?? anchorRect;
     const menuRect = menuRef.current.getBoundingClientRect();
     const boundary = resolveBoundaryBounds(anchorRef.current);
     const zIndex = resolveAnchorLayerZIndex(anchorRef.current);
@@ -183,7 +196,10 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
     const overflowForTop = (top: number): number => {
       const overflowTop = Math.max(0, boundary.top + minMargin - top);
-      const overflowBottom = Math.max(0, top + computedHeight - (boundary.bottom - minMargin));
+      const overflowBottom = Math.max(
+        0,
+        top + computedHeight - (boundary.bottom - minMargin),
+      );
       return overflowTop + overflowBottom;
     };
 
@@ -193,18 +209,28 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
 
       const belowOverflow = overflowForTop(belowTop);
       const aboveOverflow = overflowForTop(aboveTop);
-      if (aboveOverflow < belowOverflow) return { top: aboveTop, isTopSide: true };
+      if (aboveOverflow < belowOverflow)
+        return { top: aboveTop, isTopSide: true };
       return { top: belowTop, isTopSide: false };
     };
 
     const verticalChoice = chooseTop();
     const clampedTop = Math.min(
       Math.max(verticalChoice.top, boundary.top + minMargin),
-      Math.max(boundary.top + minMargin, boundary.bottom - computedHeight - minMargin),
+      Math.max(
+        boundary.top + minMargin,
+        boundary.bottom - computedHeight - minMargin,
+      ),
     );
 
-    const availableBelow = Math.max(120, boundary.bottom - minMargin - belowTop);
-    const availableAbove = Math.max(120, anchorRect.top - offset - (boundary.top + minMargin));
+    const availableBelow = Math.max(
+      120,
+      boundary.bottom - minMargin - belowTop,
+    );
+    const availableAbove = Math.max(
+      120,
+      anchorRect.top - offset - (boundary.top + minMargin),
+    );
     const nextMaxHeight = Math.max(
       120,
       Math.min(
@@ -217,18 +243,25 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     const endLeft = alignReferenceRect.right - computedWidth;
     const overflowForLeft = (left: number): number => {
       const overflowLeft = Math.max(0, boundary.left + minMargin - left);
-      const overflowRight = Math.max(0, left + computedWidth - (boundary.right - minMargin));
+      const overflowRight = Math.max(
+        0,
+        left + computedWidth - (boundary.right - minMargin),
+      );
       return overflowLeft + overflowRight;
     };
 
     const preferredLeft = align === "start" ? startLeft : endLeft;
     const alternateLeft = align === "start" ? endLeft : startLeft;
-    const leftCandidate = overflowForLeft(preferredLeft) <= overflowForLeft(alternateLeft)
-      ? preferredLeft
-      : alternateLeft;
+    const leftCandidate =
+      overflowForLeft(preferredLeft) <= overflowForLeft(alternateLeft)
+        ? preferredLeft
+        : alternateLeft;
     const clampedLeft = Math.min(
       Math.max(leftCandidate, boundary.left + minMargin),
-      Math.max(boundary.left + minMargin, boundary.right - computedWidth - minMargin),
+      Math.max(
+        boundary.left + minMargin,
+        boundary.right - computedWidth - minMargin,
+      ),
     );
 
     const nextStyle: React.CSSProperties = {
@@ -248,10 +281,14 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     setStyle((prev) => {
       const prevTop = typeof prev?.top === "string" ? prev.top : "";
       const prevLeft = typeof prev?.left === "string" ? prev.left : "";
-      const prevWidth = typeof prev?.width === "number" ? prev.width : undefined;
-      const prevMinWidth = typeof prev?.minWidth === "number" ? prev.minWidth : undefined;
-      const prevMaxWidth = typeof prev?.maxWidth === "string" ? prev.maxWidth : "";
-      const prevZIndex = typeof prev?.zIndex === "number" ? prev.zIndex : undefined;
+      const prevWidth =
+        typeof prev?.width === "number" ? prev.width : undefined;
+      const prevMinWidth =
+        typeof prev?.minWidth === "number" ? prev.minWidth : undefined;
+      const prevMaxWidth =
+        typeof prev?.maxWidth === "string" ? prev.maxWidth : "";
+      const prevZIndex =
+        typeof prev?.zIndex === "number" ? prev.zIndex : undefined;
 
       if (
         prevTop === nextStyle.top &&
@@ -289,9 +326,10 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
     window.addEventListener("resize", handleResize);
     window.addEventListener("scroll", handleScroll, true);
 
-    const resizeObserver = typeof ResizeObserver !== "undefined"
-      ? new ResizeObserver(() => scheduleUpdate())
-      : undefined;
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => scheduleUpdate())
+        : undefined;
 
     if (resizeObserver) {
       if (anchorRef.current) resizeObserver.observe(anchorRef.current);
@@ -322,10 +360,14 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
       className={classNames(
         "fixed min-w-[10rem] overflow-hidden rounded-lg border border-neutral-200 bg-white/95 p-1 text-sm shadow-xl ring-1 ring-black/5 backdrop-blur dark:border-neutral-700 dark:bg-neutral-900/95",
         !style && "invisible opacity-0",
-        className
+        className,
       )}
     >
-      <ul className="overflow-auto" style={{ maxHeight: computedMaxHeight }} onClick={(event) => event.stopPropagation()}>
+      <ul
+        className="overflow-auto"
+        style={{ maxHeight: computedMaxHeight }}
+        onClick={(event) => event.stopPropagation()}
+      >
         {items.map((item) => (
           <li key={item.value}>
             <button
@@ -343,18 +385,24 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
                   : item.danger
                     ? "text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-500/10"
                     : "hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                itemClassName
+                itemClassName,
               )}
             >
               {item.icon && (
                 <span className="mt-0.5 flex h-4 w-4 items-center justify-center text-neutral-400 dark:text-neutral-300">
-                  {typeof item.icon === "string" ? renderIcon(item.icon, "sm") : item.icon}
+                  {typeof item.icon === "string"
+                    ? renderIcon(item.icon, "sm")
+                    : item.icon}
                 </span>
               )}
               <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-medium text-neutral-900 dark:text-neutral-100">{item.label}</span>
+                <span className="truncate font-medium text-neutral-900 dark:text-neutral-100">
+                  {item.label}
+                </span>
                 {item.description && (
-                  <span className="text-xs text-neutral-500 dark:text-neutral-400">{item.description}</span>
+                  <span className="text-xs text-neutral-500 dark:text-neutral-400">
+                    {item.description}
+                  </span>
                 )}
               </span>
             </button>
@@ -362,7 +410,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({
         ))}
       </ul>
     </div>,
-    PORTAL_ROOT
+    PORTAL_ROOT,
   );
 };
 

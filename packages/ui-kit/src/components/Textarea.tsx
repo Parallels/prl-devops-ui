@@ -1,12 +1,21 @@
 import classNames from "classnames";
-import { type ForwardedRef, type ReactNode, type TextareaHTMLAttributes, forwardRef, useMemo } from "react";
+import {
+  type ForwardedRef,
+  type ReactNode,
+  type TextareaHTMLAttributes,
+  forwardRef,
+  useMemo,
+} from "react";
 import type { ThemeColor } from "../theme/Theme";
 
 type TextareaSize = "sm" | "md" | "lg";
 type TextareaValidationStatus = "none" | "error" | "success";
 type TextareaResize = "none" | "vertical" | "horizontal" | "both";
 
-const sizeTokens: Record<TextareaSize, { padding: string; text: string; minHeight: string }> = {
+const sizeTokens: Record<
+  TextareaSize,
+  { padding: string; text: string; minHeight: string }
+> = {
   sm: { padding: "px-3 py-2", text: "text-sm", minHeight: "min-h-[6rem]" },
   md: { padding: "px-3.5 py-2.5", text: "text-sm", minHeight: "min-h-[7rem]" },
   lg: { padding: "px-4 py-3", text: "text-base", minHeight: "min-h-[8rem]" },
@@ -36,7 +45,8 @@ const toneTokens: Partial<Record<ThemeColor, ToneTokens>> = {
     darkBackground: "dark:bg-neutral-900",
   },
   emerald: {
-    focusRing: "focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/60",
+    focusRing:
+      "focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/60",
     border: "border-neutral-300",
     darkBorder: "dark:border-neutral-700",
     background: "bg-white",
@@ -71,7 +81,8 @@ const toneTokens: Partial<Record<ThemeColor, ToneTokens>> = {
     darkBackground: "dark:bg-neutral-900",
   },
   theme: {
-    focusRing: "focus:border-neutral-400 focus:ring-2 focus:ring-neutral-400/60 dark:focus:border-neutral-500 dark:focus:ring-neutral-500/60",
+    focusRing:
+      "focus:border-neutral-400 focus:ring-2 focus:ring-neutral-400/60 dark:focus:border-neutral-500 dark:focus:ring-neutral-500/60",
     border: "border-neutral-300",
     darkBorder: "dark:border-neutral-700",
     background: "bg-white",
@@ -85,7 +96,8 @@ const toneTokens: Partial<Record<ThemeColor, ToneTokens>> = {
     darkBackground: "dark:bg-neutral-900",
   },
   success: {
-    focusRing: "focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/60",
+    focusRing:
+      "focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/60",
     border: "border-neutral-300",
     darkBorder: "dark:border-neutral-700",
     background: "bg-white",
@@ -121,8 +133,12 @@ const toneTokens: Partial<Record<ThemeColor, ToneTokens>> = {
   },
 };
 
-const statusClasses: Record<Exclude<TextareaValidationStatus, "none">, string> = {
-  error: "border-rose-500 focus:border-rose-500 focus:ring-rose-500/60 text-neutral-900 dark:border-rose-400 dark:focus:border-rose-400 dark:focus:ring-rose-400/60 dark:text-neutral-100",
+const statusClasses: Record<
+  Exclude<TextareaValidationStatus, "none">,
+  string
+> = {
+  error:
+    "border-rose-500 focus:border-rose-500 focus:ring-rose-500/60 text-neutral-900 dark:border-rose-400 dark:focus:border-rose-400 dark:focus:ring-rose-400/60 dark:text-neutral-100",
   success:
     "border-emerald-500 focus:border-emerald-500 focus:ring-emerald-500/60 text-neutral-900 dark:border-emerald-400 dark:focus:border-emerald-400 dark:focus:ring-emerald-400/60 dark:text-neutral-100",
 };
@@ -130,7 +146,8 @@ const statusClasses: Record<Exclude<TextareaValidationStatus, "none">, string> =
 const disabledClasses =
   "disabled:cursor-not-allowed disabled:border-neutral-200 disabled:bg-neutral-100 disabled:text-neutral-400 dark:disabled:border-neutral-700 dark:disabled:bg-neutral-800 dark:disabled:text-neutral-500";
 
-export interface TextareaProps extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "size" | "color"> {
+export interface TextareaProps
+  extends Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "size" | "color"> {
   size?: TextareaSize;
   tone?: ThemeColor;
   validationStatus?: TextareaValidationStatus;
@@ -145,36 +162,60 @@ const resizeClasses: Record<TextareaResize, string> = {
   both: "resize",
 };
 
-const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
-  { size = "md", tone = "theme", validationStatus = "none", className, resize = "vertical", disabled, ...rest },
-  ref: ForwardedRef<HTMLTextAreaElement>,
-) {
-  const sizeToken = sizeTokens[size] ?? sizeTokens.md;
-  const tokens = (toneTokens[tone] ?? toneTokens.theme) as ToneTokens;
-  const resizeClass = resizeClasses[resize] ?? resizeClasses.vertical;
+const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
+  function Textarea(
+    {
+      size = "md",
+      tone = "theme",
+      validationStatus = "none",
+      className,
+      resize = "vertical",
+      disabled,
+      ...rest
+    },
+    ref: ForwardedRef<HTMLTextAreaElement>,
+  ) {
+    const sizeToken = sizeTokens[size] ?? sizeTokens.md;
+    const tokens = (toneTokens[tone] ?? toneTokens.theme) as ToneTokens;
+    const resizeClass = resizeClasses[resize] ?? resizeClasses.vertical;
 
-  const classes = useMemo(
-    () =>
-      classNames(
-        "block w-full rounded-lg border bg-white text-sm text-neutral-900 placeholder:text-neutral-400 shadow-sm focus:outline-none dark:text-neutral-100 dark:placeholder:text-neutral-500",
+    const classes = useMemo(
+      () =>
+        classNames(
+          "block w-full rounded-lg border bg-white text-sm text-neutral-900 placeholder:text-neutral-400 shadow-sm focus:outline-none dark:text-neutral-100 dark:placeholder:text-neutral-500",
+          sizeToken.padding,
+          sizeToken.text,
+          sizeToken.minHeight,
+          tokens.border,
+          tokens.darkBorder,
+          tokens.background,
+          tokens.darkBackground,
+          tokens.focusRing,
+          disabledClasses,
+          resizeClass,
+          validationStatus !== "none" ? statusClasses[validationStatus] : null,
+          className,
+        ),
+      [
+        className,
+        resizeClass,
+        sizeToken.minHeight,
         sizeToken.padding,
         sizeToken.text,
-        sizeToken.minHeight,
-        tokens.border,
-        tokens.darkBorder,
         tokens.background,
+        tokens.border,
         tokens.darkBackground,
+        tokens.darkBorder,
         tokens.focusRing,
-        disabledClasses,
-        resizeClass,
-        validationStatus !== "none" ? statusClasses[validationStatus] : null,
-        className,
-      ),
-    [className, resizeClass, sizeToken.minHeight, sizeToken.padding, sizeToken.text, tokens.background, tokens.border, tokens.darkBackground, tokens.darkBorder, tokens.focusRing, validationStatus],
-  );
+        validationStatus,
+      ],
+    );
 
-  return <textarea ref={ref} className={classes} disabled={disabled} {...rest} />;
-});
+    return (
+      <textarea ref={ref} className={classes} disabled={disabled} {...rest} />
+    );
+  },
+);
 
 Textarea.displayName = "Textarea";
 
