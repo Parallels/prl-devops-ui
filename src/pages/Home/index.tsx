@@ -289,7 +289,6 @@ export const Home: React.FC = () => {
     }
 
     const sections: SmartGridSectionDefinition[] = [];
-    let sectionOrder = 0;
     const systemInfoSection: SmartGridSectionDefinition = {
       id: 'system-info',
       title: 'System Information',
