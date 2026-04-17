@@ -264,6 +264,7 @@ export const Home: React.FC = () => {
         title: 'Virtual Machines',
         description: 'Combined list of all virtual machines from local host and orchestrator, deduplicated.',
         defaultSpan: 12,
+        defaultRowHeightSpan: 3,
         active: hasModule('host') || hasModule('orchestrator'),
         single: true,
         render: () => <VmsPanel />,
@@ -273,6 +274,7 @@ export const Home: React.FC = () => {
         title: 'Hosts',
         description: 'All remote hosts registered in the orchestrator with their addresses and health state.',
         defaultSpan: 12,
+        defaultRowHeightSpan: 3,
         active: hasModule('orchestrator'),
         single: true,
         render: () => <HostsPanel />,
@@ -288,39 +290,27 @@ export const Home: React.FC = () => {
 
     const sections: SmartGridSectionDefinition[] = [];
     let sectionOrder = 0;
+    const systemInfoSection: SmartGridSectionDefinition = {
+      id: 'system-info',
+      title: 'System Information',
+      rows: [
+        {
+          itemIds: ['system-info-host', 'system-info-resources'] as const
+        }
+      ] as const
+    };
+    const resourcesSection: SmartGridSectionDefinition = {
+      id: 'agent-resources',
+      title: 'Agent Resources',
+      rows: [
+        {
+          itemIds: ['agent-resources-cpu', 'agent-resources-memory', 'agent-resources-goroutines'] as const
+        }
+      ] as const
+    };
 
-    if (showLocal && hw?.total?.logical_cpu_count) {
-      sections.push({
-        id: 'local-host',
-        title: 'Local Host',
-        rows: [
-          {
-            itemIds: ['system-info-host', 'system-info-resources'] as const
-          },
-          {
-            itemIds: ['agent-resources-cpu', 'agent-resources-memory', 'agent-resources-goroutines'] as const
-          }
-        ] as const
-      });
-      sectionOrder++;
-    }
-
-    if (showOrchestrator) {
-      orchResources.forEach((res, index) => {
-        const archLabel = (ARCH_META[res.cpu_type] ?? UNKNOWN_META).label;
-        sections.push({
-          id: `orchestrator-${index}`,
-          title: archLabel,
-          rows: [
-            {
-              itemIds: ['overview-vms', 'overview-hosts'] as const
-            }
-          ] as const
-        });
-        sectionOrder++;
-      });
-    }
-
+    sections.push(systemInfoSection);
+    sections.push(resourcesSection);
     return sections;
   }, [showLocal, showOrchestrator, hw, orchResources]) as SmartGridSectionDefinition[];
 

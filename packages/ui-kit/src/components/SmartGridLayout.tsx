@@ -13,6 +13,7 @@ export interface SmartGridItemDefinition {
   description?: string;
   screenshot?: string;
   defaultSpan?: number;
+  defaultRowHeightSpan?: number;
   active: boolean;
   single: boolean;
   render: () => React.ReactNode;
@@ -34,6 +35,7 @@ export interface SmartGridRow {
   items: SmartGridItem[];
   order: number;
   height?: number;
+  heightSpan?: number;
 }
 
 export interface SmartGridSection {
@@ -52,6 +54,7 @@ export interface SmartGridSectionDefinition {
 export interface SmartGridRowDefinition {
   id?: number;
   itemIds: string[];
+  defaultHeightSpan?: number;
 }
 
 export interface SmartGridLayoutState {
@@ -85,6 +88,7 @@ interface RowResizeState {
   sectionId: string;
   startY: number;
   startHeight: number;
+  startHeightSpan: number;
 }
 
 interface DragOverState {
@@ -104,6 +108,8 @@ interface RowPreviewState {
 }
 
 const GRID_GAP_PX = 16;
+const ROW_SPAN_SIZE = 100;
+const MAX_ROW_SPANS = 12;
 const SPACER_PREFIX = "spacer:";
 
 const EDIT_THEME_COLORS: Record<
@@ -219,6 +225,37 @@ function sortByOrder<T extends { id: string; order: number }>(rows: T[]): T[] {
   });
 }
 
+function heightToSpan(height: number | undefined): number {
+  if (!height || height <= 0) return 0;
+  const span = Math.round(height / ROW_SPAN_SIZE);
+  return Math.max(1, Math.min(MAX_ROW_SPANS, span));
+}
+
+function spanToHeight(span: number | undefined): number {
+  if (!span || span === 0) return 0;
+  return span * ROW_SPAN_SIZE;
+}
+
+function normalizeRowHeight(row: SmartGridRow): SmartGridRow {
+  if (row.heightSpan !== undefined) {
+    return row;
+  }
+  return {
+    ...row,
+    heightSpan: row.height ? heightToSpan(row.height) : 0,
+  };
+}
+
+function normalizeLayoutRowSpans(
+  layout: SmartGridLayoutState,
+): SmartGridLayoutState {
+  const newSections = layout.sections.map((section) => ({
+    ...section,
+    rows: section.rows.map(normalizeRowHeight),
+  }));
+  return { ...layout, sections: newSections };
+}
+
 function normalizeRowSpans(
   desiredSpans: number[],
   maxColumns: number,
@@ -327,6 +364,9 @@ function normalizeLayout(
             : normalizeRowId(sectionDef.id as string, rowIndex),
         items: [],
         order: rowIndex,
+        heightSpan: rowDef.defaultHeightSpan !== undefined
+          ? Math.min(12, Math.max(0, Math.round(rowDef.defaultHeightSpan)))
+          : 0,
       };
 
       rowDef.itemIds.forEach((itemId, itemIndex) => {
@@ -395,7 +435,10 @@ function normalizeLayout(
     // Update orders
     updateSectionRowOrders(prunedLayout);
 
-    return prunedLayout;
+    // Normalize row spans from persisted layouts
+    const normalizedSpansLayout = normalizeLayoutRowSpans(prunedLayout);
+
+    return normalizedSpansLayout;
   }
 
   // Ensure auto-row-wrapping
@@ -412,7 +455,10 @@ function normalizeLayout(
   // Update orders
   updateSectionRowOrders(prunedLayout);
 
-  return prunedLayout;
+  // Normalize row spans from persisted layouts
+  const normalizedSpansLayout = normalizeLayoutRowSpans(prunedLayout);
+
+  return normalizedSpansLayout;
 }
 
 function updateSectionRowOrders(layout: SmartGridLayoutState): void {
@@ -922,15 +968,42 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
           return prev;
         }
 
-        const rowIndex = workingSections[sectionIndex].rows.findIndex(
-          (r) => r.id === rowId,
-        );
+        let section = workingSections[sectionIndex];
+        let rowIndex = section.rows.findIndex((r) => r.id === rowId);
+        const isEmptyRow = rowIndex !== -1 && section.rows[rowIndex].items.length === 0;
+        
         if (rowIndex === -1) {
-          console.log("[ADD ITEM] Row not found");
-          return prev;
+          console.log("[ADD ITEM] Row not found, creating it now");
+          rowIndex = section.rows.length;
+          const newItemHeightSpan = itemDef.defaultRowHeightSpan !== undefined 
+            ? Math.min(12, Math.max(0, Math.round(itemDef.defaultRowHeightSpan))) 
+            : 0;
+          const newSections = [...workingSections];
+          newSections[sectionIndex] = {
+            ...section,
+            rows: [
+              ...section.rows,
+              { id: rowId, items: [], order: rowIndex, heightSpan: newItemHeightSpan },
+            ],
+          };
+          workingSections = newSections;
+          section = workingSections[sectionIndex];
+        } else if (isEmptyRow) {
+          const existingRow = section.rows[rowIndex];
+          const newItemHeightSpan = itemDef.defaultRowHeightSpan !== undefined 
+            ? Math.min(12, Math.max(0, Math.round(itemDef.defaultRowHeightSpan))) 
+            : 0;
+          if (existingRow.heightSpan !== newItemHeightSpan) {
+            const newSections = [...workingSections];
+            const newSection = { ...section };
+            const newRow = { ...existingRow, heightSpan: newItemHeightSpan };
+            newSection.rows[rowIndex] = newRow;
+            newSections[sectionIndex] = newSection;
+            workingSections = newSections;
+            section = workingSections[sectionIndex];
+          }
         }
 
-        const section = workingSections[sectionIndex];
         const row = section.rows[rowIndex];
 
         console.log(
@@ -1031,7 +1104,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
           ...section,
           rows: [
             ...section.rows,
-            { id: rowId, items: [], order: section.rows.length },
+            { id: rowId, items: [], order: section.rows.length, heightSpan: 0 },
           ],
         };
 
@@ -1286,7 +1359,13 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                 movedItem,
                 ...row.items.slice(insertAt),
               ].map((item, i) => ({ ...item, order: i }));
-              return { ...row, items: nextItems };
+              
+              const itemDef = items.find(i => i.id === sourceItem.definitionId);
+              const newHeightSpan = itemDef?.defaultRowHeightSpan !== undefined
+                ? Math.min(12, Math.max(0, Math.round(itemDef.defaultRowHeightSpan)))
+                : row.heightSpan;
+              
+              return { ...row, items: nextItems, heightSpan: newHeightSpan };
             }
 
             return row;
@@ -1368,6 +1447,11 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
             newRowIdForEmptyTarget ?? targetSection.rows[targetRowIndex].id,
         };
 
+        const itemDef = items.find(i => i.id === sourceItem.definitionId);
+        const newItemHeightSpan = itemDef?.defaultRowHeightSpan !== undefined
+          ? Math.min(12, Math.max(0, Math.round(itemDef.defaultRowHeightSpan)))
+          : undefined;
+
         // Build next state immutably.
         const newSections = prev.sections.map((section, sIdx) => {
           if (sIdx !== sourceSectionIndex && sIdx !== targetSectionIndex) {
@@ -1395,6 +1479,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                     id: newRowIdForEmptyTarget,
                     items: [{ ...movedItem, order: 0 }],
                     order: rowsWithSourceRemoved.length,
+                    heightSpan: newItemHeightSpan ?? 0,
                   },
                 ],
               };
@@ -1407,7 +1492,8 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                 ...row.items,
                 { ...movedItem, order: row.items.length },
               ];
-              return { ...row, items: appended };
+              const targetRowHeightSpan = newItemHeightSpan ?? row.heightSpan;
+              return { ...row, items: appended, heightSpan: targetRowHeightSpan };
             });
             return { ...section, rows: rowsWithTarget };
           }
@@ -1435,6 +1521,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                     id: newRowIdForEmptyTarget,
                     items: [{ ...movedItem, order: 0 }],
                     order: section.rows.length,
+                    heightSpan: newItemHeightSpan ?? 0,
                   },
                 ],
               };
@@ -1446,7 +1533,8 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                 ...row.items,
                 { ...movedItem, order: row.items.length },
               ];
-              return { ...row, items: appended };
+              const targetRowHeightSpan = newItemHeightSpan ?? row.heightSpan;
+              return { ...row, items: appended, heightSpan: targetRowHeightSpan };
             });
             return { ...section, rows: newRows };
           }
@@ -1533,6 +1621,11 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
           span: maxColumns, // New row item takes full width
         };
 
+        const itemDef = items.find(i => i.id === sourceItem.definitionId);
+        const newHeightSpan = itemDef?.defaultRowHeightSpan !== undefined
+          ? Math.min(12, Math.max(0, Math.round(itemDef.defaultRowHeightSpan)))
+          : 0;
+
         const newSections = prev.sections.map((section, sIdx) => {
           if (sIdx !== sourceSectionIndex && sIdx !== targetSectionIndex)
             return section;
@@ -1553,6 +1646,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                 id: newRowId,
                 items: [movedItem],
                 order: newRows.length,
+                heightSpan: newHeightSpan,
               },
             ];
           }
@@ -1606,6 +1700,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
       rowId: string,
       sectionId: string,
       startHeight: number,
+      startHeightSpan: number,
     ) => {
       if (!isEditMode) return;
       event.preventDefault();
@@ -1617,6 +1712,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
         sectionId,
         startY: event.clientY,
         startHeight,
+        startHeightSpan,
       });
     },
     [isEditMode],
@@ -1717,7 +1813,15 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
 
     const onMouseMove = (event: MouseEvent) => {
       const deltaHeight = event.clientY - rowResizeState.startY;
-      const nextHeight = Math.max(60, rowResizeState.startHeight + deltaHeight);
+      const newHeight = rowResizeState.startHeight + deltaHeight;
+      
+      let newSpan = Math.round(newHeight / ROW_SPAN_SIZE);
+      
+      if (rowResizeState.startHeightSpan > 0) {
+        newSpan = Math.max(1, Math.min(MAX_ROW_SPANS, newSpan));
+      }
+      
+      const newHeightPx = newSpan * ROW_SPAN_SIZE;
 
       setLayout((prev) => {
         const targetSection = prev.sections.find(
@@ -1728,7 +1832,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
         const targetRow = targetSection.rows.find(
           (r) => r.id === rowResizeState.rowId,
         );
-        if (!targetRow || targetRow.height === nextHeight) return prev;
+        if (!targetRow || (targetRow.height === newHeightPx && targetRow.heightSpan === newSpan)) return prev;
 
         resizeChangedRef.current = true;
 
@@ -1738,7 +1842,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
             ...section,
             rows: section.rows.map((row) => {
               if (row.id !== rowResizeState.rowId) return row;
-              return { ...row, height: nextHeight };
+              return { ...row, height: newHeightPx, heightSpan: newSpan };
             }),
           };
         });
@@ -1802,35 +1906,6 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                 Add Items To Row
               </h3>
               <div className="flex items-center gap-2">
-                {isEditMode &&
-                  rowAddTarget &&
-                  (() => {
-                    const section = layout.sections.find(
-                      (s) => s.id === rowAddTarget.sectionId,
-                    );
-                    const targetRow = section?.rows.find(
-                      (r) => r.id === rowAddTarget.rowId,
-                    );
-                    const hasItems = targetRow && targetRow.items.length > 0;
-                    return hasItems ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        color="slate"
-                        size="xs"
-                        leadingIcon="Add"
-                        onClick={() => {
-                          addSpacerToRow(
-                            rowAddTarget.sectionId,
-                            rowAddTarget.rowId,
-                          );
-                          setIsAddModalOpen(false);
-                        }}
-                      >
-                        Add Spacer
-                      </Button>
-                    ) : null;
-                  })()}
                 <button
                   type="button"
                   onClick={() => {
@@ -1843,12 +1918,70 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                 </button>
               </div>
             </div>
-            {addableItems.length === 0 ? (
+            {addableItems.length === 0 && !isEditMode ? (
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
                 No items available to add.
               </p>
             ) : (
               <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
+                {isEditMode &&
+                  rowAddTarget &&
+                  (() => {
+                    const section = layout.sections.find(
+                      (s) => s.id === rowAddTarget.sectionId,
+                    );
+                    const targetRow = section?.rows.find(
+                      (r) => r.id === rowAddTarget.rowId,
+                    );
+                    const hasItems = targetRow && targetRow.items.length > 0;
+                    if (!hasItems) return null;
+                    return (
+                      <div
+                        className="flex items-center gap-3 rounded-md border border-neutral-200 p-2 dark:border-neutral-700"
+                      >
+                        {/* Thumbnail */}
+                        <div
+                          className="shrink-0 overflow-hidden rounded border border-neutral-200 dark:border-neutral-700"
+                          style={{ width: 100, height: 100 }}
+                        >
+                          <div className="flex h-full w-full items-center justify-center bg-white dark:bg-neutral-900">
+                            <CustomIcon
+                              icon="Dashboard"
+                              className="h-8 w-8 text-neutral-300 dark:text-neutral-600"
+                            />
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                              Spacer
+                            </span>
+                            <span className="text-[10px] text-neutral-400 dark:text-neutral-500">
+                              · Spacer
+                            </span>
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-neutral-500 dark:text-neutral-400">
+                            Flexible spacing between items
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!rowAddTarget) return;
+                            addSpacerToRow(
+                              rowAddTarget.sectionId,
+                              rowAddTarget.rowId,
+                            );
+                            setRowAddTarget(null);
+                            setIsAddModalOpen(false);
+                          }}
+                          className="shrink-0 rounded border border-emerald-300 px-2 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-800 dark:text-emerald-300"
+                        >
+                          Add Spacer
+                        </button>
+                      </div>
+                    );
+                  })()}
                 {addableItems.map((item) => {
                   return (
                     <div
@@ -1966,7 +2099,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                 </h2>
               )}
 
-              {isEditMode && (
+              {isEditMode && addableItems.length > 0 && (
                 <div className="flex items-center gap-2">
                   <Button
                     type="button"
@@ -1975,7 +2108,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                     size="xs"
                     leadingIcon="Add"
                     onClick={() => {
-                      const newRowId = createRow(sectionId);
+                      const newRowId = makeId(`row:${sectionId}`);
                       setRowAddTarget({ sectionId, rowId: newRowId });
                       setIsAddModalOpen(true);
                     }}
@@ -2195,18 +2328,18 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                   }));
                 })();
 
-                const rowHeight = row.height ?? 120;
+                const rowHeight = row.heightSpan === 0 ? undefined : spanToHeight(row.heightSpan);
                 const rowBorderClass = isEditMode
-                  ? `${editTheme.border} border border-dashed`
+                  ? `${editTheme.border} border border-dashed rounded-lg`
                   : "";
 
                 return (
-                  <div className="flex relative gap-1 flex-col items-center">
-                    <div
-                      key={row.id}
-                      className={`relative ${rowBorderClass}`}
-                      style={{ height: rowHeight }}
-                    >
+                  <div className="flex w-full relative gap-1 flex-col items-center">
+                  <div
+                    key={row.id}
+                    className={`relative w-full ${rowBorderClass}`}
+                    style={rowHeight ? { height: rowHeight } : {}}
+                  >
                       <div className="flex h-full gap-2 p-2">
                         {isEditMode && cells.length > 0 && (
                           <div className="z-20 flex w-7 shrink-0 items-start justify-center pt-1">
@@ -2434,12 +2567,32 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                         >
                           {cells.length === 0 && (
                             <div
-                              className={`rounded-md border border-dashed p-4 text-center text-xs transition ${emptyRowDropTarget === rowDomKey ? `${editTheme.border} ${editTheme.tint} text-neutral-900 dark:text-neutral-100` : "border-neutral-300 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400"}`}
+                              className={`flex h-full flex-col items-center justify-center rounded-md border border-dashed p-4 text-center transition ${emptyRowDropTarget === rowDomKey ? `${editTheme.border} ${editTheme.tint} text-neutral-900 dark:text-neutral-100` : "border-neutral-300 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400"}`}
                               style={{
                                 gridColumn: `span ${rowContentSpan} / span ${rowContentSpan}`,
                               }}
                             >
-                              Empty row. Drag a card here.
+                              {isEditMode && isManagedRow && (
+                                <div className="mb-2">
+                                  <IconButton
+                                    icon="Trash"
+                                    size="xs"
+                                    variant="ghost"
+                                    color="rose"
+                                    onClick={() =>
+                                      removeRowItems(
+                                        sectionId,
+                                        row.id,
+                                        row.items.map((item) => item.id),
+                                        isManagedRow,
+                                      )
+                                    }
+                                    aria-label="Remove row"
+                                    title="Remove row"
+                                  />
+                                </div>
+                              )}
+                              <p className="text-xs">Empty row. Drag a card here.</p>
                             </div>
                           )}
 
@@ -2801,7 +2954,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                     {isEditMode && (
                       <div
                         onMouseDown={(event) => {
-                          beginRowResize(event, row.id, sectionId, rowHeight);
+                          beginRowResize(event, row.id, sectionId, row.height ?? 120, row.heightSpan ?? 0);
                         }}
                         className={`flex flex-col items-center rounded-full group bottom-0 h-1 cursor-ns-resize opacity-0 hover:opacity-80 ${editTheme.solid} transition-opacity ${rowResizeState?.rowId === row.id ? "opacity-100" : "group-hover:opacity-50"}`}
                         style={{ top: "auto", bottom: 0, width: "95%" }}
@@ -2812,7 +2965,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                 );
               })}
 
-              {isEditMode && (
+              {isEditMode && addableItems.length > 0 && (
                 <div
                   className={`rounded-md border border-dashed px-3 py-2 text-center text-xs transition ${sectionBottomDropTarget === sectionId ? `${editTheme.border} ${editTheme.tint} text-neutral-900 dark:text-neutral-100` : "border-neutral-300 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400"}`}
                   onDragOver={(event) => {
