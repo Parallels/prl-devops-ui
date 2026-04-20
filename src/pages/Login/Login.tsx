@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import parallelsBars from '../../assets/images/parallels-bars-small.png';
 import { Alert, Button, FormField, FormLayout, Input, Modal, Panel, PasswordInput, Toggle } from '../../controls';
@@ -107,29 +107,30 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
   // Build a synthetic in-memory host when in locked mode
   const effectiveLockedUsername = username || lockedUsername || '';
 
-  const lockedHost = isLocked && hostUrl && lockedHostname
-    ? ({
-        id: `locked:${lockedHostname}`,
-        name: lockedHostName || undefined,
-        hostname: lockedHostname,
-        baseUrl: hostUrl,
-        authType: 'credentials' as const,
-        username: effectiveLockedUsername,
-        keepLoggedIn,
-        lastUsed: new Date().toISOString(),
-        type: 'Orchestrator' as const,
-      } satisfies HostConfig)
-    : null;
+  const lockedHost = useMemo(() => {
+    if (!isLocked || !hostUrl || !lockedHostname) return null;
+    return ({
+      id: `locked:${lockedHostname}`,
+      name: lockedHostName || undefined,
+      hostname: lockedHostname,
+      baseUrl: hostUrl,
+      authType: 'credentials' as const,
+      username: effectiveLockedUsername,
+      keepLoggedIn,
+      lastUsed: new Date().toISOString(),
+      type: 'Orchestrator' as const,
+    } satisfies HostConfig);
+  }, [isLocked, hostUrl, lockedHostname, effectiveLockedUsername, keepLoggedIn]);
 
   // Load all saved hosts on mount (skipped in locked mode)
   useEffect(() => {
     if (isLocked) {
       const loadLockedHost = async () => {
-        if (!lockedHost) return;
+        if (!hostUrl || !lockedHostname) return;
 
         const savedHosts = (await config.get<HostConfig[]>('hosts')) ?? [];
-        const savedHost = savedHosts.find((host) => host.hostname === lockedHost.hostname);
-        const savedPassword = await config.getSecret(getPasswordKey(lockedHost.hostname));
+        const savedHost = savedHosts.find((host) => host.hostname === lockedHostname);
+        const savedPassword = await config.getSecret(getPasswordKey(lockedHostname));
 
         setKeepLoggedIn(savedHost?.keepLoggedIn ?? !!savedPassword);
         setUsername(lockedUsername ?? savedHost?.username ?? '');
@@ -153,11 +154,14 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
       setHostsLoading(false);
     };
     void loadHosts();
-  }, [isLocked, config, getPasswordKey, lockedHost, lockedUsername, prefill, lockedHostname]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLocked, config, getPasswordKey, hostUrl, lockedHostname, lockedUsername, prefill]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Populate form fields whenever the selected host changes (normal mode only)
+  const lastSelectedHostRef = useRef<string>('');
   useEffect(() => {
     if (isLocked || !selectedHostId || hostsLoading) return;
+    if (lastSelectedHostRef.current === selectedHostId) return;
+    lastSelectedHostRef.current = selectedHostId;
     const host = hosts.find((h) => h.id === selectedHostId);
     if (!host) return;
 
@@ -178,7 +182,7 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
       }
     };
     void loadSecret();
-  }, [isLocked, selectedHostId, hosts, hostsLoading, hosts.find]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLocked, selectedHostId, hostsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-login when both VITE_DEFAULT_USERNAME and VITE_DEFAULT_PASSWORD are set
   useEffect(() => {
