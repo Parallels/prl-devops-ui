@@ -256,6 +256,39 @@ function normalizeLayoutRowSpans(
   return { ...layout, sections: newSections };
 }
 
+function serializeLayout(layout: SmartGridLayoutState): string {
+  return JSON.stringify(layout.sections.map((s) => ({
+    id: s.id,
+    title: s.title,
+    rows: s.rows.map((r) => ({
+      id: r.id,
+      itemCount: r.items.length,
+      spans: r.items.map((i) => ({ id: i.id, defId: i.definitionId, span: i.span, rowId: i.rowId })),
+    })),
+  })));
+}
+
+function normalizeColumnSpans(
+  layout: SmartGridLayoutState,
+  maxColumns: number,
+): SmartGridLayoutState {
+  const newSections = layout.sections.map((section) => ({
+    ...section,
+    rows: section.rows.map((row) => {
+      if (row.items.length <= 1) return row;
+      const currentSpans = row.items.map((i) => clampSpan(i.span, maxColumns));
+      const newSpans = normalizeRowSpans(currentSpans, maxColumns);
+      console.log('[SmartGrid.normalizeColumnSpans] Row', row.id, ':', currentSpans, '->', newSpans);
+      if (currentSpans.every((s, i) => s === newSpans[i])) return row;
+      return {
+        ...row,
+        items: row.items.map((item, idx) => ({ ...item, span: newSpans[idx] })),
+      };
+    }),
+  }));
+  return { ...layout, sections: newSections };
+}
+
 function normalizeRowSpans(
   desiredSpans: number[],
   maxColumns: number,
@@ -306,7 +339,6 @@ function normalizeLayout(
   defaultLayout: SmartGridSectionDefinition[],
   persistedLayout: SmartGridLayoutState | null | undefined,
   maxColumns: number,
-  onLayoutChange?: (layout: SmartGridLayoutState) => void,
 ): SmartGridLayoutState {
   const itemsMap = new Map(items.map((i) => [i.id, i]));
 
@@ -392,6 +424,7 @@ function normalizeLayout(
           removeLayoutItem(layout, existing.id);
         }
 
+        console.log('[SmartGrid] Seeding item:', itemId, 'with defaultSpan:', itemDef.defaultSpan, '(single:', itemDef.single, ')');
         const layoutItem: SmartGridItem = {
           definitionId: itemId,
           id: createSlug(),
@@ -421,13 +454,17 @@ function normalizeLayout(
 
   // Step 3: Use persisted layout if exists (no merging with default)
   if (persistedLayout && persistedLayout.version === 3) {
+    console.log('[SmartGrid] === PERSISTED LAYOUT PATH ===');
+    console.log('[SmartGrid] Persisted sections:', serializeLayout(persistedLayout));
+
     // Use persisted layout directly - don't merge with default
     const wrappedLayout = ensureAutoRowWrapping(
       persistedLayout,
       items,
       maxColumns,
-      onLayoutChange,
     );
+
+    console.log('[SmartGrid] After wrapping:', serializeLayout(wrappedLayout));
 
     // Remove empty sections/rows
     const prunedLayout = pruneEmptySectionsAndRows(wrappedLayout);
@@ -438,16 +475,26 @@ function normalizeLayout(
     // Normalize row spans from persisted layouts
     const normalizedSpansLayout = normalizeLayoutRowSpans(prunedLayout);
 
-    return normalizedSpansLayout;
+    // Normalize column spans so items fill the row evenly (prevents drift)
+    const normalizedColLayout = normalizeColumnSpans(normalizedSpansLayout, maxColumns);
+
+    console.log('[SmartGrid] Final normalized:', serializeLayout(normalizedColLayout));
+
+    return normalizedColLayout;
   }
 
   // Ensure auto-row-wrapping
+  console.log('[SmartGrid] === DEFAULT LAYOUT PATH ===');
+  console.log('[SmartGrid] Default layout items per row:', JSON.stringify(defaultLayout.flatMap(s => s.rows.map(r => ({ section: s.title, row: r.id, itemIds: r.itemIds })))));
+  console.log('[SmartGrid] Item defs:', JSON.stringify(items.map(i => ({ id: i.id, defaultSpan: i.defaultSpan, single: i.single, active: i.active }))));
+
   const wrappedLayout = ensureAutoRowWrapping(
     layout,
     items,
     maxColumns,
-    onLayoutChange,
   );
+
+  console.log('[SmartGrid] After wrapping (default):', serializeLayout(wrappedLayout));
 
   // Remove empty sections/rows
   const prunedLayout = pruneEmptySectionsAndRows(wrappedLayout);
@@ -458,7 +505,12 @@ function normalizeLayout(
   // Normalize row spans from persisted layouts
   const normalizedSpansLayout = normalizeLayoutRowSpans(prunedLayout);
 
-  return normalizedSpansLayout;
+  // Normalize column spans so items fill the row evenly (prevents drift)
+  const normalizedColLayout = normalizeColumnSpans(normalizedSpansLayout, maxColumns);
+
+  console.log('[SmartGrid] Final normalized (default):', serializeLayout(normalizedColLayout));
+
+  return normalizedColLayout;
 }
 
 function updateSectionRowOrders(layout: SmartGridLayoutState): void {
@@ -477,20 +529,41 @@ function ensureAutoRowWrapping(
   layout: SmartGridLayoutState,
   items: SmartGridItemDefinition[],
   maxColumns: number,
-  onLayoutChange?: (layout: SmartGridLayoutState) => void,
 ): SmartGridLayoutState {
   const itemsMap = new Map(items.map((i) => [i.id, i]));
-  let hasChanges = false;
+
+  console.log('[SmartGrid.ensureAutoRowWrapping] Input sections:', serializeLayout(layout));
 
   // Wrap decisions must be based on the ACTUAL stored item.span (which reflects
   // user resizes), NOT the item definition's defaultSpan. Falling back to
   // defaultSpan only when item.span is unset (e.g. a freshly-seeded item from
   // the default layout that hasn't been persisted yet).
   const getSpan = (item: SmartGridItem): number => {
-    const fallback = itemsMap.get(item.id)?.defaultSpan ?? 4;
+    const fallback = itemsMap.get(item.definitionId)?.defaultSpan ?? 4;
     const raw = Number.isFinite(item.span) ? (item.span as number) : fallback;
     return Math.max(1, Math.min(maxColumns, Math.round(raw)));
   };
+
+  // Early exit: if all rows already fit within maxColumns, no wrapping needed
+  let needsWrapping = false;
+  for (const section of layout.sections) {
+    for (const row of section.rows) {
+      let total = 0;
+      for (const item of row.items) {
+        total += getSpan(item);
+        if (total > maxColumns) {
+          needsWrapping = true;
+          break;
+        }
+      }
+      if (needsWrapping) break;
+    }
+    if (needsWrapping) break;
+  }
+  if (!needsWrapping) {
+    console.log('[SmartGrid.ensureAutoRowWrapping] SKIP: all rows fit, returning unchanged');
+    return layout;
+  }
 
   const newSections = layout.sections.map((section) => {
     const newRows: SmartGridRow[] = [];
@@ -522,7 +595,6 @@ function ensureAutoRowWrapping(
             };
             newRows.push(newRow);
             currentRow = newRow;
-            hasChanges = true;
           } else {
             currentRow.items.push(item);
           }
@@ -535,9 +607,7 @@ function ensureAutoRowWrapping(
 
   const result = { ...layout, sections: newSections };
 
-  if (hasChanges && onLayoutChange) {
-    onLayoutChange(result);
-  }
+  console.log('[SmartGrid.ensureAutoRowWrapping] Output:', serializeLayout(result));
 
   return result;
 }
@@ -642,6 +712,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
 
   // Compute normalized layout only when defaultLayout or persistedLayout changes (not on every items change)
   const normalizedLayout = useMemo(() => {
+    console.log('[SmartGrid.Component] useMemo called, persistedLayout:', persistedLayout ? persistedLayout.sections.length + ' sections' : 'null');
     // Create a copy of items to avoid mutating props
     const itemsCopy = items.map((item) => ({ ...item }));
     return normalizeLayout(
@@ -649,13 +720,13 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
       defaultLayout,
       persistedLayout,
       maxColumns,
-      onLayoutChange,
     );
-  }, [defaultLayout, persistedLayout, maxColumns, onLayoutChange]);
+  }, [defaultLayout, persistedLayout, maxColumns]);
 
-  const [layout, setLayout] = useState<SmartGridLayoutState>(
-    () => normalizedLayout,
-  );
+  const [layout, setLayout] = useState<SmartGridLayoutState>(() => {
+    console.log('[SmartGrid.Component] useState init with normalizedLayout');
+    return normalizedLayout;
+  });
   const hasInitializedLayout = useRef(false);
   const layoutLoadCounter = useRef(0);
 
@@ -670,8 +741,11 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
   // Only update layout when persistedLayout or defaultLayout changes (not on every render)
   // AND only on first load - don't recalculate after initialization
   useEffect(() => {
+    console.log('[SmartGrid.Component] layout update effect, hasInitialized:', hasInitializedLayout.current, 'counter:', layoutLoadCounter.current, 'persistedLayout:', !!persistedLayout, 'editMode:', isEditMode);
+
     // Reset initialization flag when persistedLayout changes (user saved new layout)
     if (persistedLayout && layoutLoadCounter.current > 0) {
+      console.log('[SmartGrid.Component] Resetting init flag (persistedLayout changed)');
       hasInitializedLayout.current = false;
       layoutLoadCounter.current = 0;
     }
@@ -700,8 +774,11 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
         );
       });
 
+    console.log('[SmartGrid.Component] sectionsEqual:', sectionsEqual, 'prevSections:', prevSections.length, 'nextSections:', nextSections.length, 'prevRows:', prevSections.flatMap(s => s.rows.map(r => r.id)).join(','), 'nextRows:', nextSections.flatMap(s => s.rows.map(r => r.id)).join(','));
+
     // Only update layout if sections are different AND we're not in the middle of drag operations
     if (!sectionsEqual && !isEditMode) {
+      console.log('[SmartGrid.Component] Updating layout (sections differ)');
       setLayout(normalizedLayout);
     }
 
@@ -2567,6 +2644,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                         >
                           {cells.length === 0 && (
                             <div
+                              key={`empty-row-${row.id}`}
                               className={`flex h-full flex-col items-center justify-center rounded-md border border-dashed p-4 text-center transition ${emptyRowDropTarget === rowDomKey ? `${editTheme.border} ${editTheme.tint} text-neutral-900 dark:text-neutral-100` : "border-neutral-300 text-neutral-500 dark:border-neutral-700 dark:text-neutral-400"}`}
                               style={{
                                 gridColumn: `span ${rowContentSpan} / span ${rowContentSpan}`,
@@ -2600,7 +2678,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                             if (renderCell.kind === "ghost") {
                               return (
                                 <div
-                                  key="__ghost__"
+                                  key={`ghost-${renderCell.id}`}
                                   className={`relative z-10 min-h-28 rounded-xl border-2 border-dashed ${editTheme.border} ${editTheme.tint}`}
                                   style={{
                                     gridColumn: `span ${renderCell.span} / span ${renderCell.span}`,
