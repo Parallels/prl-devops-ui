@@ -1,11 +1,23 @@
-import { forwardRef, type InputHTMLAttributes, type ReactNode, useCallback, useEffect, useId, useRef } from 'react';
-import classNames from 'classnames';
-import { getCheckboxColorClasses, ThemeColor, ThemeSize } from '../theme/Theme';
+import {
+  forwardRef,
+  type InputHTMLAttributes,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+} from "react";
+import classNames from "classnames";
+import { getCheckboxColorClasses, ThemeColor, ThemeSize } from "../theme/Theme";
 
-type CheckboxDescriptionPlacement = 'bottom' | 'inline';
-type CheckboxAlign = 'left' | 'right';
+type CheckboxDescriptionPlacement = "bottom" | "inline";
+type CheckboxAlign = "left" | "right";
 
-export interface CheckboxProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size' | 'color' | 'children'> {
+export interface CheckboxProps
+  extends Omit<
+    InputHTMLAttributes<HTMLInputElement>,
+    "size" | "color" | "children"
+  > {
   /**
    * Optional label rendered next to the checkbox control.
    */
@@ -60,84 +72,84 @@ const sizeTokens: Record<
   }
 > = {
   xs: {
-    gap: 'gap-1',
-    control: 'h-3 w-3',
-    label: 'text-xs',
-    description: 'text-xs',
-    descriptionOffset: '',
-    checkboxOffset: 'mt-0.5',
+    gap: "gap-1",
+    control: "h-3 w-3",
+    label: "text-xs",
+    description: "text-xs",
+    descriptionOffset: "",
+    checkboxOffset: "mt-0.5",
   },
   sm: {
-    gap: 'gap-1.5',
-    control: 'h-4 w-4',
-    label: 'text-sm',
-    description: 'text-xs',
-    descriptionOffset: '',
-    checkboxOffset: 'mt-1',
+    gap: "gap-1.5",
+    control: "h-4 w-4",
+    label: "text-sm",
+    description: "text-xs",
+    descriptionOffset: "",
+    checkboxOffset: "mt-1",
   },
   md: {
-    gap: 'gap-1.5',
-    control: 'h-5 w-5',
-    label: 'text-md',
-    description: 'text-xs',
-    descriptionOffset: 'mt-0.5',
-    checkboxOffset: 'mt-0.5',
+    gap: "gap-1.5",
+    control: "h-5 w-5",
+    label: "text-md",
+    description: "text-xs",
+    descriptionOffset: "mt-0.5",
+    checkboxOffset: "mt-0.5",
   },
   lg: {
-    gap: 'gap-1.5',
-    control: 'h-6 w-6',
-    label: 'text-base',
-    description: 'text-sm',
-    descriptionOffset: 'mt-1',
-    checkboxOffset: 'mt-0.2',
+    gap: "gap-1.5",
+    control: "h-6 w-6",
+    label: "text-base",
+    description: "text-sm",
+    descriptionOffset: "mt-1",
+    checkboxOffset: "mt-0.2",
   },
   xl: {
-    gap: 'gap-2',
-    control: 'h-7 w-7',
-    label: 'text-lg',
-    description: 'text-sm',
-    descriptionOffset: 'mt-1.5',
-    checkboxOffset: 'mt-0.5',
+    gap: "gap-2",
+    control: "h-7 w-7",
+    label: "text-lg",
+    description: "text-sm",
+    descriptionOffset: "mt-1.5",
+    checkboxOffset: "mt-0.5",
   },
   xxl: {
-    gap: 'gap-2.5',
-    control: 'h-8 w-8',
-    label: 'text-xl',
-    description: 'text-sm',
-    descriptionOffset: 'mt-2',
-    checkboxOffset: 'mt-0.5',
+    gap: "gap-2.5",
+    control: "h-8 w-8",
+    label: "text-xl",
+    description: "text-sm",
+    descriptionOffset: "mt-2",
+    checkboxOffset: "mt-0.5",
   },
   xxxl: {
-    gap: 'gap-2.5',
-    control: 'h-8 w-8',
-    label: 'text-xl',
-    description: 'text-sm',
-    descriptionOffset: 'mt-2',
-    checkboxOffset: 'mt-0.5',
+    gap: "gap-2.5",
+    control: "h-8 w-8",
+    label: "text-xl",
+    description: "text-sm",
+    descriptionOffset: "mt-2",
+    checkboxOffset: "mt-0.5",
   },
-  '2xl': {
-    gap: 'gap-2.5',
-    control: 'h-8 w-8',
-    label: 'text-xl',
-    description: 'text-sm',
-    descriptionOffset: 'mt-2',
-    checkboxOffset: 'mt-0.5',
+  "2xl": {
+    gap: "gap-2.5",
+    control: "h-8 w-8",
+    label: "text-xl",
+    description: "text-sm",
+    descriptionOffset: "mt-2",
+    checkboxOffset: "mt-0.5",
   },
-  '3xl': {
-    gap: 'gap-2.5',
-    control: 'h-8 w-8',
-    label: 'text-xl',
-    description: 'text-sm',
-    descriptionOffset: 'mt-2',
-    checkboxOffset: 'mt-0.5',
+  "3xl": {
+    gap: "gap-2.5",
+    control: "h-8 w-8",
+    label: "text-xl",
+    description: "text-sm",
+    descriptionOffset: "mt-2",
+    checkboxOffset: "mt-0.5",
   },
   full: {
-    gap: 'gap-2.5',
-    control: 'h-8 w-8',
-    label: 'text-xl',
-    description: 'text-sm',
-    descriptionOffset: 'mt-2',
-    checkboxOffset: 'mt-0.5',
+    gap: "gap-2.5",
+    control: "h-8 w-8",
+    label: "text-xl",
+    description: "text-sm",
+    descriptionOffset: "mt-2",
+    checkboxOffset: "mt-0.5",
   },
 };
 
@@ -150,12 +162,12 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
       id,
       label,
       description,
-      descriptionPlacement = 'bottom',
-      size = 'md',
-      color = 'blue',
+      descriptionPlacement = "bottom",
+      size = "md",
+      color = "blue",
       indeterminate = false,
       fullWidth = false,
-      controlAlign = 'left',
+      controlAlign = "left",
       className,
       inputClassName,
       disabled,
@@ -176,7 +188,7 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     const setRefs = useCallback(
       (node: HTMLInputElement | null) => {
         innerRef.current = node;
-        if (typeof forwardedRef === 'function') {
+        if (typeof forwardedRef === "function") {
           forwardedRef(node);
         } else if (forwardedRef) {
           forwardedRef.current = node;
@@ -189,14 +201,26 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     const colorStyles = getCheckboxColorClasses(color);
 
     const descriptionNode = description ? (
-      descriptionPlacement === 'inline' ? (
-        <span id={descriptionId} className={classNames(sizeStyles.description, 'text-neutral-500 dark:text-neutral-400', disabled && 'text-neutral-400 dark:text-neutral-500')}>
+      descriptionPlacement === "inline" ? (
+        <span
+          id={descriptionId}
+          className={classNames(
+            sizeStyles.description,
+            "text-neutral-500 dark:text-neutral-400",
+            disabled && "text-neutral-400 dark:text-neutral-500",
+          )}
+        >
           {description}
         </span>
       ) : (
         <span
           id={descriptionId}
-          className={classNames(sizeStyles.description, sizeStyles.descriptionOffset, 'block text-neutral-500 dark:text-neutral-400', disabled && 'text-neutral-400 dark:text-neutral-500')}
+          className={classNames(
+            sizeStyles.description,
+            sizeStyles.descriptionOffset,
+            "block text-neutral-500 dark:text-neutral-400",
+            disabled && "text-neutral-400 dark:text-neutral-500",
+          )}
         >
           {description}
         </span>
@@ -212,10 +236,10 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
         disabled={disabled}
         className={classNames(
           `peer ${sizeStyles.checkboxOffset} shrink-0 rounded border border-neutral-300 bg-white text-white transition-colors duration-150`,
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-          'checked:border-transparent hover:border-neutral-400',
-          'dark:border-neutral-600 dark:bg-neutral-900 dark:hover:border-neutral-500',
-          'disabled:border-neutral-200 disabled:bg-neutral-100 disabled:hover:border-neutral-200',
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+          "checked:border-transparent hover:border-neutral-400",
+          "dark:border-neutral-600 dark:bg-neutral-900 dark:hover:border-neutral-500",
+          "disabled:border-neutral-200 disabled:bg-neutral-100 disabled:hover:border-neutral-200",
           sizeStyles.control,
           colorStyles,
           inputClassName,
@@ -228,12 +252,24 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
       label || descriptionNode ? (
         <span
           className={classNames(
-            'min-w-0',
-            descriptionPlacement === 'inline' && Boolean(label) && 'flex flex-wrap items-center gap-1',
-            descriptionPlacement === 'inline' && !label && 'flex items-center',
+            "min-w-0",
+            descriptionPlacement === "inline" &&
+              Boolean(label) &&
+              "flex flex-wrap items-center gap-1",
+            descriptionPlacement === "inline" && !label && "flex items-center",
           )}
         >
-          {label && <span className={classNames(sizeStyles.label, 'font-medium text-neutral-900 dark:text-neutral-100', disabled && 'text-neutral-500 dark:text-neutral-400')}>{label}</span>}
+          {label && (
+            <span
+              className={classNames(
+                sizeStyles.label,
+                "font-medium text-neutral-900 dark:text-neutral-100",
+                disabled && "text-neutral-500 dark:text-neutral-400",
+              )}
+            >
+              {label}
+            </span>
+          )}
           {descriptionNode}
         </span>
       ) : null;
@@ -241,12 +277,12 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
     return (
       <label
         className={classNames(
-          'group flex items-start',
-          controlAlign === 'right' && 'flex-row-reverse',
+          "group flex items-start",
+          controlAlign === "right" && "flex-row-reverse",
           sizeStyles.gap,
-          fullWidth && 'w-full',
-          disabled && 'cursor-not-allowed opacity-60',
-          !disabled && 'cursor-pointer',
+          fullWidth && "w-full",
+          disabled && "cursor-not-allowed opacity-60",
+          !disabled && "cursor-pointer",
           className,
         )}
       >
@@ -257,6 +293,6 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
   },
 );
 
-Checkbox.displayName = 'Checkbox';
+Checkbox.displayName = "Checkbox";
 
 export default Checkbox;

@@ -1,14 +1,32 @@
-import React, { type ButtonHTMLAttributes, type ReactNode, forwardRef } from "react";
+import React, {
+  type ButtonHTMLAttributes,
+  type ReactNode,
+  forwardRef,
+} from "react";
 import classNames from "classnames";
 import { type IconSize } from "../types/Icon";
 import { useIconRenderer } from "../contexts/IconContext";
-import { getButtonColorClasses, getButtonBaseClasses, getButtonHoverClasses, getButtonActiveClasses, getButtonActiveHoverClasses, type ThemeColor } from "../theme/Theme";
+import {
+  getButtonColorClasses,
+  getButtonBaseClasses,
+  getButtonHoverClasses,
+  getButtonActiveClasses,
+  getButtonActiveHoverClasses,
+  type ThemeColor,
+} from "../theme/Theme";
 import { iconAccentHover, iconAccentRing } from "../theme/ButtonTypes";
 import TooltipWrapper from "./TooltipWrapper";
 import type { TooltipPosition } from "./Tooltip";
 
 export type ButtonColor = ThemeColor;
-export type ButtonVariant = "solid" | "soft" | "outline" | "ghost" | "link" | "clear" | "icon";
+export type ButtonVariant =
+  | "solid"
+  | "soft"
+  | "outline"
+  | "ghost"
+  | "link"
+  | "clear"
+  | "icon";
 
 export type ButtonSize = "xs" | "sm" | "md" | "lg" | "xl";
 export type ButtonWeight = "normal" | "medium" | "semibold" | "bold";
@@ -38,7 +56,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const baseClasses =
   "inline-flex items-center justify-center rounded-md transition-colors duration-150 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 select-none";
 
-const sizeStyles: Record<ButtonSize, { base: string; iconOnly: string; gap: string; icon: string; spinner: string }> = {
+const sizeStyles: Record<
+  ButtonSize,
+  { base: string; iconOnly: string; gap: string; icon: string; spinner: string }
+> = {
   xs: {
     base: "px-2 py-1 text-xs",
     iconOnly: "p-1.5 text-xs",
@@ -106,7 +127,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       tooltipPosition,
       ...props
     },
-    ref
+    ref,
   ) => {
     const renderIcon = useIconRenderer();
     const sizeConfig = sizeStyles[size] ?? sizeStyles.md;
@@ -114,13 +135,14 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const isIconMode = iconOnly || variant === "icon";
     const accentTone = accentColor ?? color;
     const accentRingClass = iconAccentRing[accentTone] ?? iconAccentRing.blue;
-    const accentHoverClass = iconAccentHover[accentTone] ?? iconAccentHover.blue;
+    const accentHoverClass =
+      iconAccentHover[accentTone] ?? iconAccentHover.blue;
     const accentClasses =
       isIconMode && accent
         ? classNames(
             "bg-transparent text-inherit hover:bg-transparent focus-visible:ring-2 focus-visible:ring-offset-2",
             accentRingClass,
-            accentHoverClass
+            accentHoverClass,
           )
         : null;
 
@@ -133,10 +155,16 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         const activeBase = getButtonActiveClasses(variant, activeColor);
         return isEffectivelyDisabled
           ? activeBase
-          : classNames(activeBase, getButtonActiveHoverClasses(variant, activeColor));
+          : classNames(
+              activeBase,
+              getButtonActiveHoverClasses(variant, activeColor),
+            );
       }
       if (!isIconMode && accentColor && !isEffectivelyDisabled)
-        return classNames(getButtonBaseClasses(variant, color), getButtonHoverClasses(variant, accentColor));
+        return classNames(
+          getButtonBaseClasses(variant, color),
+          getButtonHoverClasses(variant, accentColor),
+        );
       return baseColorClasses;
     })();
 
@@ -147,19 +175,27 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       accentClasses ?? colorClasses,
       weightClasses[weight],
       fullWidth && "w-full",
-      className
+      className,
     );
 
     const spinner = (
       <span
-        className={classNames("inline-flex animate-spin rounded-full border-2 border-current border-t-transparent", sizeConfig.spinner)}
+        className={classNames(
+          "inline-flex animate-spin rounded-full border-2 border-current border-t-transparent",
+          sizeConfig.spinner,
+        )}
         aria-hidden="true"
       />
     );
 
     const isDisabled = disabled ?? false;
     const ariaLabel = (props as { "aria-label"?: string })["aria-label"];
-    const srOnlyContent = typeof children === "string" ? children : ariaLabel ? ariaLabel : undefined;
+    const srOnlyContent =
+      typeof children === "string"
+        ? children
+        : ariaLabel
+          ? ariaLabel
+          : undefined;
 
     const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
@@ -177,9 +213,24 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         onClick={handleClick}
         {...props}
       >
-        {loading ? spinner : renderIcon(leadingIcon, size as IconSize, classNames(" flex-shrink-0", sizeConfig.icon))}
-        {isIconMode ? <span className="sr-only">{srOnlyContent ?? "Button"}</span> : children}
-        {!loading && renderIcon(trailingIcon, size as IconSize, classNames("flex-shrink-0", sizeConfig.icon))}
+        {loading
+          ? spinner
+          : renderIcon(
+              leadingIcon,
+              size as IconSize,
+              classNames(" flex-shrink-0", sizeConfig.icon),
+            )}
+        {isIconMode ? (
+          <span className="sr-only">{srOnlyContent ?? "Button"}</span>
+        ) : (
+          children
+        )}
+        {!loading &&
+          renderIcon(
+            trailingIcon,
+            size as IconSize,
+            classNames("flex-shrink-0", sizeConfig.icon),
+          )}
       </button>
     );
 
@@ -192,7 +243,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     }
 
     return button;
-  }
+  },
 );
 
 Button.displayName = "Button";

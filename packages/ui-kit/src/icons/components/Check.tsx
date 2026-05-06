@@ -1,11 +1,21 @@
-import { forwardRef, type SVGProps } from 'react';
+import { forwardRef, type SVGProps } from "react";
 
-export const Check = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
-<svg viewBox="-2.88 -2.88 29.76 29.76" fill="none" version="1.1" xmlns="http://www.w3.org/2000/svg" {...props} ref={ref}>
+export const Check = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
+  (props, ref) => (
+    <svg
+      viewBox="-2.88 -2.88 29.76 29.76"
+      fill="none"
+      version="1.1"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+      ref={ref}
+    >
       <path
-         fill="currentColor"
-         d="M 19.556641,5.34375 A 1,1 0 0 0 18.849609,5.6367187 L 8.9492188,15.535156 4.7070312,11.292969 a 1,1 0 0 0 -1.4140624,0 1,1 0 0 0 0,1.414062 l 4.9492187,4.949219 a 1.0001,1.0001 0 0 0 1.4140625,0 L 20.263672,7.0507812 a 1,1 0 0 0 0,-1.4140625 A 1,1 0 0 0 19.556641,5.34375 Z"/>
-</svg>
-));
+        fill="currentColor"
+        d="M 19.556641,5.34375 A 1,1 0 0 0 18.849609,5.6367187 L 8.9492188,15.535156 4.7070312,11.292969 a 1,1 0 0 0 -1.4140624,0 1,1 0 0 0 0,1.414062 l 4.9492187,4.949219 a 1.0001,1.0001 0 0 0 1.4140625,0 L 20.263672,7.0507812 a 1,1 0 0 0 0,-1.4140625 A 1,1 0 0 0 19.556641,5.34375 Z"
+      />
+    </svg>
+  ),
+);
 
-Check.displayName = 'Check';
+Check.displayName = "Check";

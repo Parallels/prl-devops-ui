@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, Button, DeleteConfirmModal, FormField, FormLayout, Input, Modal, ModalActions, Panel, Select, TagPicker, Toggle } from '@prl/ui-kit';
+import { Alert, Button, DeleteConfirmModal, FormField, FormLayout, Input, Modal, ModalActions, Panel, PasswordInput, Select, TagPicker, Toggle } from '@prl/ui-kit';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { CatalogManager } from '@/interfaces/CatalogManager';
 import { CatalogManagerFormData } from '../CatalogModels';
@@ -75,12 +75,12 @@ export const CatalogManagerEditorModal: React.FC<CatalogManagerEditorModalProps>
                   <Input tone={themeColor} placeholder="Username" value={managerForm.username} onChange={(e) => onFormChange({ ...managerForm, username: e.target.value })} />
                 </FormField>
                 <FormField label="Password" required width="full">
-                  <Input tone={themeColor} type="password" placeholder="Password" value={managerForm.password} onChange={(e) => onFormChange({ ...managerForm, password: e.target.value })} />
+                  <PasswordInput tone={themeColor} placeholder="Password" value={managerForm.password} onChange={(e) => onFormChange({ ...managerForm, password: e.target.value })} />
                 </FormField>
               </>
             ) : (
               <FormField label="API Key" required width="full">
-                <Input tone={themeColor} type="password" placeholder="API Key" value={managerForm.api_key} onChange={(e) => onFormChange({ ...managerForm, api_key: e.target.value })} />
+                <PasswordInput tone={themeColor} placeholder="API Key" value={managerForm.api_key} onChange={(e) => onFormChange({ ...managerForm, api_key: e.target.value })} />
               </FormField>
             )}
           </FormLayout>

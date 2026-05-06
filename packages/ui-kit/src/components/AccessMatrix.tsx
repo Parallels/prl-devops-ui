@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import classNames from 'classnames';
-import Table, { TableColumn } from './Table';
-import Button from './Button';
-import Badge from './Badge';
-import type { TableVariant } from './Table';
-import type { PanelTone } from './Panel';
+import React, { useMemo, useState } from "react";
+import classNames from "classnames";
+import Table, { TableColumn } from "./Table";
+import Button from "./Button";
+import Badge from "./Badge";
+import type { TableVariant } from "./Table";
+import type { PanelTone } from "./Panel";
 
 export interface AccessMatrixPermission {
   group: string;
@@ -46,8 +46,21 @@ interface MatrixRow {
 
 function ChevronSvg({ expanded }: { expanded: boolean }) {
   return (
-    <svg viewBox="0 0 16 16" fill="none" width="14" height="14" className={`flex-shrink-0 text-current transition-transform duration-200${expanded ? ' rotate-90' : ''}`} aria-hidden="true">
-      <path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      width="14"
+      height="14"
+      className={`flex-shrink-0 text-current transition-transform duration-200${expanded ? " rotate-90" : ""}`}
+      aria-hidden="true"
+    >
+      <path
+        d="M6 4l4 4-4 4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -56,15 +69,30 @@ const EnabledCell: React.FC = () => (
   <span className="flex items-center justify-center" aria-label="Enabled">
     <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5 text-emerald-500">
       <circle cx="10" cy="10" r="9" fill="currentColor" fillOpacity="0.12" />
-      <path d="M6.5 10.5l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M6.5 10.5l2.5 2.5 4.5-5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   </span>
 );
 
 const DisabledCell: React.FC = () => (
   <span className="flex items-center justify-center" aria-label="Disabled">
-    <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5 text-slate-300 dark:text-slate-600">
-      <path d="M6 10h8" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      className="h-5 w-5 text-slate-300 dark:text-slate-600"
+    >
+      <path
+        d="M6 10h8"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
     </svg>
   </span>
 );
@@ -72,8 +100,8 @@ const DisabledCell: React.FC = () => (
 const AccessMatrix: React.FC<AccessMatrixProps> = ({
   permissions,
   limit = 5,
-  variant = 'default',
-  tone = 'neutral',
+  variant = "default",
+  tone = "neutral",
   striped = false,
   noBorders = false,
   fullHeight = false,
@@ -82,7 +110,9 @@ const AccessMatrix: React.FC<AccessMatrixProps> = ({
   hoverable = false,
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Unique actions in insertion order → become the action columns
   const actions = useMemo(() => {
@@ -149,7 +179,8 @@ const AccessMatrix: React.FC<AccessMatrixProps> = ({
             _resource: resource,
           };
           for (const action of actions) {
-            row[action] = lookup.get(`${group}::${resource}::${action}`) ?? false;
+            row[action] =
+              lookup.get(`${group}::${resource}::${action}`) ?? false;
           }
           result.push(row);
         }
@@ -185,25 +216,32 @@ const AccessMatrix: React.FC<AccessMatrixProps> = ({
   const columns = useMemo((): TableColumn<MatrixRow>[] => {
     // Resource column — sticky left, no expand-spacer sibling so it lands at left-0
     const resourceCol: TableColumn<MatrixRow> = {
-      id: '_resource',
-      header: 'Resource',
+      id: "_resource",
+      header: "Resource",
       minWidth: 140,
-      sticky: 'left',
+      sticky: "left",
       sortable: false,
       resizable: false,
       hideable: false,
-      stickyBackgroundFn: (row) => (row._isGroupHeader ? 'bg-neutral-50 dark:bg-neutral-800/40' : undefined),
+      stickyBackgroundFn: (row) =>
+        row._isGroupHeader ? "bg-neutral-50 dark:bg-neutral-800/40" : undefined,
       render: (row) => {
         if (row._isGroupHeader) {
           return (
             <span className="inline-flex items-center gap-2">
               <ChevronSvg expanded={!collapsedGroups.has(row._group)} />
-              <span className="font-semibold text-neutral-700 dark:text-neutral-200">{row._resource}</span>
+              <span className="font-semibold text-neutral-700 dark:text-neutral-200">
+                {row._resource}
+              </span>
               <Badge count={row._groupCount as number} tone={tone} />
             </span>
           );
         }
-        return <span className="pl-2 text-sm text-neutral-700 dark:text-neutral-200">{row._resource}</span>;
+        return (
+          <span className="pl-2 text-sm text-neutral-700 dark:text-neutral-200">
+            {row._resource}
+          </span>
+        );
       },
     };
 
@@ -211,7 +249,7 @@ const AccessMatrix: React.FC<AccessMatrixProps> = ({
     const actionCols: TableColumn<MatrixRow>[] = actions.map((action) => ({
       id: action,
       header: action,
-      align: 'center' as const,
+      align: "center" as const,
       sortable: false,
       resizable: false,
       hideable: false,
@@ -226,7 +264,9 @@ const AccessMatrix: React.FC<AccessMatrixProps> = ({
   }, [actions, stickyBackground, tone, collapsedGroups]);
 
   return (
-    <div className={classNames(fullHeight && 'h-full flex flex-col', className)}>
+    <div
+      className={classNames(fullHeight && "h-full flex flex-col", className)}
+    >
       <Table<MatrixRow>
         columns={columns}
         data={rows}
@@ -237,22 +277,32 @@ const AccessMatrix: React.FC<AccessMatrixProps> = ({
         noBorders={noBorders}
         hoverable={hoverable}
         fullHeight={fullHeight}
-        className={fullHeight ? 'flex-1 min-h-0' : undefined}
+        className={fullHeight ? "flex-1 min-h-0" : undefined}
         stickyHeader
         onRowClick={(row) => {
           if (row._isGroupHeader) toggleGroup(row._group);
         }}
         rowClassName={(row) => {
           if (row._isGroupHeader) {
-            return 'cursor-pointer select-none border-b border-neutral-100 bg-neutral-50 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800/40 dark:hover:bg-neutral-700/50';
+            return "cursor-pointer select-none border-b border-neutral-100 bg-neutral-50 hover:bg-neutral-100 dark:border-neutral-800 dark:bg-neutral-800/40 dark:hover:bg-neutral-700/50";
           }
-          return striped && stripeMap.get(row._key) ? 'bg-neutral-100 dark:bg-neutral-800/40' : '';
+          return striped && stripeMap.get(row._key)
+            ? "bg-neutral-100 dark:bg-neutral-800/40"
+            : "";
         }}
       />
       {hiddenCount > 0 && (
         <div className="mt-3 flex justify-center">
-          <Button variant="ghost" color="brand" size="sm" trailingIcon={expanded ? 'ArrowUp' : 'ArrowDown'} onClick={() => setExpanded((prev) => !prev)}>
-            {expanded ? 'Show less' : `Show ${hiddenCount} more ${hiddenCount === 1 ? 'group' : 'groups'}`}
+          <Button
+            variant="ghost"
+            color="brand"
+            size="sm"
+            trailingIcon={expanded ? "ArrowUp" : "ArrowDown"}
+            onClick={() => setExpanded((prev) => !prev)}
+          >
+            {expanded
+              ? "Show less"
+              : `Show ${hiddenCount} more ${hiddenCount === 1 ? "group" : "groups"}`}
           </Button>
         </div>
       )}

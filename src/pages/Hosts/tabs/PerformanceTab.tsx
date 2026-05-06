@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { EmptyState, StatGraphTile } from '@prl/ui-kit';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
 import { useHostStats } from '@/contexts/EventsHubContext';
+import { formatTimeRange } from '@/utils/timeRange';
 
 function autoScaleBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
@@ -43,6 +44,7 @@ export function PerformanceTab({ host }: { host: DevOpsRemoteHost }) {
   );
 
   const latestGraph = graphData[graphData.length - 1];
+  const timeRange = formatTimeRange(graphData.map((d) => (typeof d.timestamp === 'number' ? d.timestamp : 0)));
 
   if (!latest) {
     return (
@@ -62,7 +64,7 @@ export function PerformanceTab({ host }: { host: DevOpsRemoteHost }) {
         <StatGraphTile
           title="CPU Usage"
           value={`${(latestGraph?.cpuPercent ?? 0).toFixed(2)}%`}
-          subtitle="Agent process"
+          subtitle={`Agent process (${timeRange})`}
           data={graphData}
           variant="sparkline"
           series={[{ key: 'cpuPercent', label: 'CPU %', color: 'blue' }]}
@@ -81,7 +83,7 @@ export function PerformanceTab({ host }: { host: DevOpsRemoteHost }) {
         <StatGraphTile
           title="Memory"
           value={autoScaleBytes(latestGraph?.memoryBytes ?? 0)}
-          subtitle={totalMemoryBytes > 0 ? `of ${autoScaleBytes(totalMemoryBytes)} total` : 'Agent process heap'}
+          subtitle={totalMemoryBytes > 0 ? `of ${autoScaleBytes(totalMemoryBytes)} total (${timeRange})` : `Agent process heap (${timeRange})`}
           data={graphData}
           variant="sparkline"
           series={[{ key: 'memoryBytes', label: 'Bytes', color: 'amber' }]}
@@ -100,7 +102,7 @@ export function PerformanceTab({ host }: { host: DevOpsRemoteHost }) {
         <StatGraphTile
           title="Goroutines"
           value={String(latestGraph?.goroutines ?? 0)}
-          subtitle="Active Go routines"
+          subtitle={`Active Go routines (${timeRange})`}
           data={graphData}
           variant="sparkline"
           series={[{ key: 'goroutines', label: 'Goroutines', color: 'violet' }]}

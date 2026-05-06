@@ -24,27 +24,29 @@ A hybrid desktop and web application for managing Parallels DevOps products. Bui
 
 ### Required (all platforms)
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| Node.js | v24+ | Use nvm or fnm for version management |
-| npm | bundled with Node | Workspaces support required |
-| Git | any | |
+| Tool    | Version           | Notes                                 |
+| ------- | ----------------- | ------------------------------------- |
+| Node.js | v24+              | Use nvm or fnm for version management |
+| npm     | bundled with Node | Workspaces support required           |
+| Git     | any               |                                       |
 
 ### Required for desktop (Tauri) builds
 
-| Tool | Notes |
-|------|-------|
+| Tool          | Notes                                    |
+| ------------- | ---------------------------------------- |
 | Rust (stable) | Install via [rustup](https://rustup.rs/) |
-| Tauri CLI | Installed automatically via npm |
+| Tauri CLI     | Installed automatically via npm          |
 
 #### Platform-specific Tauri requirements
 
 **macOS**
+
 ```bash
 xcode-select --install
 ```
 
 **Linux (Debian/Ubuntu)**
+
 ```bash
 sudo apt update
 sudo apt install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
@@ -52,6 +54,7 @@ sudo apt install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-
 ```
 
 **Windows**
+
 - Install [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 - Install WebView2 (bundled on Windows 11; download for Windows 10)
 
@@ -129,12 +132,14 @@ See [Environment Variables](#environment-variables) for the full list.
 ### 4. Start the development server
 
 **Web only (fastest):**
+
 ```bash
 npm run dev
 # App runs at http://localhost:1421
 ```
 
 **Tauri desktop app:**
+
 ```bash
 make dev
 # or: npm run tauri dev
@@ -148,30 +153,30 @@ Create a `.env` file in the project root. All variables are prefixed with `VITE_
 
 ### Required
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `VITE_DEVOPS_API_URL` | Backend API base URL | `http://localhost:5680` |
-| `VITE_DEVOPS_USERNAME` | Default API username | `admin` |
-| `VITE_DEVOPS_PASSWORD` | Default API password | `changeme` |
-| `VITE_DEVOPS_EMAIL` | Default API user email | `admin@example.com` |
+| Variable               | Description            | Example                 |
+| ---------------------- | ---------------------- | ----------------------- |
+| `VITE_DEVOPS_API_URL`  | Backend API base URL   | `http://localhost:5680` |
+| `VITE_DEVOPS_USERNAME` | Default API username   | `admin`                 |
+| `VITE_DEVOPS_PASSWORD` | Default API password   | `changeme`              |
+| `VITE_DEVOPS_EMAIL`    | Default API user email | `admin@example.com`     |
 
 ### Optional
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `VITE_DEV_PORT` | Dev server port | `1421` |
-| `VITE_DEFAULT_HOST_URL` | Locks the host URL field in the UI | _(unset)_ |
-| `VITE_DEFAULT_USERNAME` | Pre-fills username for locked deployment | _(unset)_ |
-| `VITE_DEFAULT_PASSWORD` | Pre-fills password for locked deployment | _(unset)_ |
-| `VITE_IS_DEVELOPMENT` | Enables development-mode features | _(unset)_ |
-| `VITE_CHANNEL` | Release channel (`stable`, `beta`, `canary`) | _(unset)_ |
+| Variable                | Description                                  | Default   |
+| ----------------------- | -------------------------------------------- | --------- |
+| `VITE_DEV_PORT`         | Dev server port                              | `1421`    |
+| `VITE_DEFAULT_HOST_URL` | Locks the host URL field in the UI           | _(unset)_ |
+| `VITE_DEFAULT_USERNAME` | Pre-fills username for locked deployment     | _(unset)_ |
+| `VITE_DEFAULT_PASSWORD` | Pre-fills password for locked deployment     | _(unset)_ |
+| `VITE_IS_DEVELOPMENT`   | Enables development-mode features            | _(unset)_ |
+| `VITE_CHANNEL`          | Release channel (`stable`, `beta`, `canary`) | _(unset)_ |
 
 > **Note:** The dev server proxies all `/api` requests to `VITE_DEVOPS_API_URL` (default: `http://localhost:5680`). You need the Parallels DevOps backend running locally or pointed at via that variable.
 
 ### Docker-only
 
-| Variable | Description | Values |
-|----------|-------------|--------|
+| Variable  | Description         | Values                                        |
+| --------- | ------------------- | --------------------------------------------- |
 | `APP_ENV` | Runtime environment | `production`, `canary`, `beta`, `development` |
 
 ---
@@ -321,7 +326,7 @@ npm run lint -w packages/ui-kit
 ### Importing in the app
 
 ```typescript
-import { Button, Card } from '@prl/ui-kit';
+import { Button, Card } from "@prl/ui-kit";
 ```
 
 The root `tsconfig.json` and Vite config resolve `@prl/ui-kit` directly from `packages/ui-kit/src` via path aliases — no build step needed during development.

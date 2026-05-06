@@ -6,14 +6,14 @@
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 /** Approximate minutes per calendar month (30 days). */
-const MINUTES_PER_MONTH = 43_200;  // 30 * 24 * 60
+const MINUTES_PER_MONTH = 43_200; // 30 * 24 * 60
 
 const DURATION_UNITS = [
-  { singular: 'year',   plural: 'years',   minutes: 525_960 }, // 365.25 * 24 * 60
-  { singular: 'month',  plural: 'months',  minutes: MINUTES_PER_MONTH },
-  { singular: 'day',    plural: 'days',    minutes: 1_440 },
-  { singular: 'hour',   plural: 'hours',   minutes: 60 },
-  { singular: 'minute', plural: 'minutes', minutes: 1 },
+  { singular: "year", plural: "years", minutes: 525_960 }, // 365.25 * 24 * 60
+  { singular: "month", plural: "months", minutes: MINUTES_PER_MONTH },
+  { singular: "day", plural: "days", minutes: 1_440 },
+  { singular: "hour", plural: "hours", minutes: 60 },
+  { singular: "minute", plural: "minutes", minutes: 1 },
 ] as const;
 
 // ── Options ────────────────────────────────────────────────────────────────────
@@ -52,8 +52,11 @@ export interface FormatDurationOptions {
  * formatDuration(0)            // "0 minutes"
  * formatDuration(-5)           // "0 minutes"
  */
-export function formatDuration(totalMinutes: number, options?: FormatDurationOptions): string {
-  const { maxParts = 3, zeroLabel = '0 minutes' } = options ?? {};
+export function formatDuration(
+  totalMinutes: number,
+  options?: FormatDurationOptions,
+): string {
+  const { maxParts = 3, zeroLabel = "0 minutes" } = options ?? {};
 
   const minutes = Math.floor(totalMinutes);
   if (minutes <= 0) return zeroLabel;
@@ -76,7 +79,7 @@ export function formatDuration(totalMinutes: number, options?: FormatDurationOpt
   if (parts.length === 1) return parts[0];
 
   // "a, b and c"  or  "a and b"
-  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
 }
 
 // ── Convenience wrappers ───────────────────────────────────────────────────────
@@ -89,7 +92,7 @@ export function formatDurationFromSeconds(
   totalSeconds: number,
   options?: FormatDurationOptions & { subMinuteLabel?: string },
 ): string {
-  const { subMinuteLabel = 'less than a minute', ...rest } = options ?? {};
+  const { subMinuteLabel = "less than a minute", ...rest } = options ?? {};
   const mins = Math.floor(totalSeconds / 60);
   if (mins < 1 && totalSeconds > 0) return subMinuteLabel;
   return formatDuration(mins, rest);

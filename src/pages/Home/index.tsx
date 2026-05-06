@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, IconButton } from '@prl/ui-kit';
+import { Button, IconButton, Loader } from '@prl/ui-kit';
 import { useSystemStats } from '@/contexts/SystemStatsContext';
 import { useSession } from '@/contexts/SessionContext';
 import { useConfig } from '@/contexts/ConfigContext';
@@ -11,7 +11,7 @@ import { HostConfig } from '@/interfaces/Host';
 import { devopsService } from '@/services/devops';
 import { useModuleView } from '@/components/HostSwitcher/ModuleViewSwitcher';
 import { drainUnseenMessages } from '@/utils/messageQueue';
-import { SmartGridLayout, type SmartGridItemDefinition, type SmartGridLayoutState } from '@prl/ui-kit/components/SmartGridLayout';
+import { SmartGridLayout, type SmartGridItemDefinition, type SmartGridLayoutState, type SmartGridSectionDefinition } from '@prl/ui-kit/components/SmartGridLayout';
 import {
   ARCH_META,
   UNKNOWN_META,
@@ -161,7 +161,24 @@ export const Home: React.FC = () => {
   const memTotalDisplay = `${memTotal.value} ${memTotal.unit}`;
   const hasGraphData = history.length > 0;
 
-  const persistedLayout = getConfig<SmartGridLayoutState | null>(HOME_SMART_GRID_LAYOUT_SLUG, null);
+  const [persistedLayout, setPersistedLayout] = useState<SmartGridLayoutState | null>(null);
+  const hasLoadedConfigOnce = useRef(false);
+
+  // Load persisted layout when config is loaded - only do this once per session
+  useEffect(() => {
+    if (userConfigLoaded && !hasLoadedConfigOnce.current) {
+      hasLoadedConfigOnce.current = true;
+      const layout = getConfig<SmartGridLayoutState | null>(HOME_SMART_GRID_LAYOUT_SLUG, null);
+      setPersistedLayout(layout);
+    }
+  }, [userConfigLoaded, getConfig]);
+
+  // Reset the flag when leaving the page (component unmounts)
+  useEffect(() => {
+    return () => {
+      hasLoadedConfigOnce.current = false;
+    };
+  }, []);
 
   const handleLayoutChange = useCallback(
     (layout: SmartGridLayoutState) => {
@@ -179,8 +196,15 @@ export const Home: React.FC = () => {
   }, []);
 
   const saveLayoutEdit = useCallback(() => {
-    if (pendingLayoutRef.current) {
-      void setConfig(HOME_SMART_GRID_LAYOUT_SLUG, pendingLayoutRef.current);
+    // Capture the in-progress layout BEFORE any async work. getConfig can't be
+    // trusted immediately after setConfig because setConfig is async — reading
+    // back would return the pre-edit value and clobber the user's changes.
+    const layoutToPersist = pendingLayoutRef.current;
+    if (layoutToPersist) {
+      void setConfig(HOME_SMART_GRID_LAYOUT_SLUG, layoutToPersist);
+      setPersistedLayout(layoutToPersist);
+      // Reset the config loaded flag so we reload on next navigation
+      hasLoadedConfigOnce.current = false;
     }
     pendingLayoutRef.current = null;
     setIsLayoutEditMode(false);
@@ -198,65 +222,96 @@ export const Home: React.FC = () => {
       {
         id: 'system-info-host',
         title: 'Host Information',
-        group: 'System Info',
         defaultSpan: hasModule('host') ? 4 : 12,
+        active: true,
+        single: true,
         render: () => <HostInformationPanel hw={hw} />,
       },
       {
         id: 'system-info-resources',
         title: 'Available Resources',
-        group: 'System Info',
-        defaultHidden: !hasModule('host') || !hasModule('orchestrator'),
         defaultSpan: hasModule('host') ? 8 : 12,
+        active: hasModule('host') || hasModule('orchestrator'),
+        single: true,
         render: () => <AvailableResourcesPanel resourcePages={resourcePages} orchLoading={orchLoading} orchError={orchError} />,
       },
       {
         id: 'agent-resources-cpu',
         title: 'CPU Utilization',
-        group: 'Agent Resources',
         defaultSpan: 4,
-        defaultHidden: !hasGraphData,
+        active: true,
+        single: true,
         render: () => <CpuUtilizationPanel hasGraphData={hasGraphData} cpuTotal={cpuTotal} graphData={graphData} />,
       },
       {
         id: 'agent-resources-memory',
         title: 'Memory Usage',
-        group: 'Agent Resources',
         defaultSpan: 4,
-        defaultHidden: !hasGraphData,
+        active: true,
+        single: true,
         render: () => <MemoryUsagePanel hasGraphData={hasGraphData} memUsedDisplay={memUsedDisplay} memTotalDisplay={memTotalDisplay} graphData={graphData} />,
       },
       {
         id: 'agent-resources-goroutines',
         title: 'Goroutines',
-        group: 'Agent Resources',
         defaultSpan: 4,
-        defaultHidden: !hasGraphData,
+        active: true,
+        single: true,
         render: () => <GoroutinesPanel hasGraphData={hasGraphData} goroutinesSmoothed={currentStats?.goroutinesSmoothed} graphData={graphData} />,
       },
       {
         id: 'overview-vms',
         title: 'Virtual Machines',
         description: 'Combined list of all virtual machines from local host and orchestrator, deduplicated.',
-        group: 'Overview',
         defaultSpan: 12,
-        defaultHidden: true,
-        defaultRemoved: !hasModule('host') && !hasModule('orchestrator'),
+        defaultRowHeightSpan: 3,
+        active: hasModule('host') || hasModule('orchestrator'),
+        single: true,
         render: () => <VmsPanel />,
       },
       {
         id: 'overview-hosts',
         title: 'Hosts',
         description: 'All remote hosts registered in the orchestrator with their addresses and health state.',
-        group: 'Overview',
         defaultSpan: 12,
-        defaultHidden: true,
-        defaultRemoved: !hasModule('orchestrator'),
+        defaultRowHeightSpan: 3,
+        active: hasModule('orchestrator'),
+        single: true,
         render: () => <HostsPanel />,
       },
     ],
     [cpuTotal, currentStats?.goroutinesSmoothed, graphData, hasGraphData, hasModule, hw, memTotalDisplay, memUsedDisplay, orchError, orchLoading, resourcePages],
   );
+
+  const defaultLayout = useMemo(() => {
+    if (!showLocal && !showOrchestrator) {
+      return [];
+    }
+
+    const sections: SmartGridSectionDefinition[] = [];
+    const systemInfoSection: SmartGridSectionDefinition = {
+      id: 'system-info',
+      title: 'System Information',
+      rows: [
+        {
+          itemIds: ['system-info-host', 'system-info-resources'] as const
+        }
+      ] as const
+    };
+    const resourcesSection: SmartGridSectionDefinition = {
+      id: 'agent-resources',
+      title: 'Agent Resources',
+      rows: [
+        {
+          itemIds: ['agent-resources-cpu', 'agent-resources-memory', 'agent-resources-goroutines'] as const
+        }
+      ] as const
+    };
+
+    sections.push(systemInfoSection);
+    sections.push(resourcesSection);
+    return sections;
+  }, [showLocal, showOrchestrator, hw, orchResources]) as SmartGridSectionDefinition[];
 
   return (
     <div className="flex flex-col w-full h-full bg-neutral-50 dark:bg-neutral-950">
@@ -285,19 +340,30 @@ export const Home: React.FC = () => {
         )}
       </div>
 
+      {/* ── Loading overlay ─────────────────────────────────────── */}
+      {!userConfigLoaded && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-[inherit] bg-white/70 backdrop-blur-lg dark:bg-neutral-900/60">
+          <Loader size="lg" label="Loading..." color={themeColor} variant="spinner" title="Loading dashboard" spinnerThickness="thick" spinnerVariant="segments" />
+        </div>
+      )}
+
       {/* ── Scrollable body ─────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto flex flex-col gap-6 p-6">
-        <SmartGridLayout
-          key={layoutRenderKey}
-          items={smartGridItems}
-          persistedLayout={userConfigLoaded ? persistedLayout : null}
-          onLayoutChange={handleLayoutChange}
-          maxColumns={12}
-          editThemeColor={themeColor}
-          isEditMode={isLayoutEditMode}
-          onEditModeChange={setIsLayoutEditMode}
-        />
-      </div>
+      {/* Only render SmartGridLayout after config is loaded to avoid flash of default layout */}
+      {userConfigLoaded && (
+        <div className="flex-1 overflow-y-auto flex flex-col gap-6 p-6">
+          <SmartGridLayout
+            key={layoutRenderKey}
+            items={smartGridItems}
+            defaultLayout={defaultLayout}
+            persistedLayout={persistedLayout}
+            onLayoutChange={handleLayoutChange}
+            maxColumns={12}
+            editThemeColor={themeColor}
+            isEditMode={isLayoutEditMode}
+            onEditModeChange={setIsLayoutEditMode}
+          />
+        </div>
+      )}
       {/* end scrollable body */}
     </div>
   );

@@ -6,6 +6,7 @@ import type { HttpRouteFormData } from '../ReverseProxyModals';
 import RouteConfigBody from './HttpRoutes/RouteConfigBody';
 import RouteRow from './HttpRoutes/RouteRow';
 import { healthToTone, type VmHealth } from './HttpRoutes/routeTypes';
+import { buildAccessUrl } from '@/utils/accessUrlBuilder';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -100,6 +101,9 @@ export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
         const showVmAction = hasVmTarget && (health === 'stopped' || health === 'paused' || health === 'suspended');
         const targetLabel = route.target_vm_id ? (route.target_vm_details?.name ?? availableVms.find((v) => v.ID === route.target_vm_id)?.Name ?? route.target_vm_id) : (route.target_host ?? '—');
 
+        const accessUrl = buildAccessUrl(proxyHost, route, availableVms);
+        const hasPublicAccess = accessUrl?.hasPublicAccess ?? false;
+
         return {
           id: route.id ?? String(i),
           tone,
@@ -114,6 +118,27 @@ export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
               <span className="font-mono font-semibold truncate">{route.path ?? '/'}</span>
             </div>
           ),
+          description:
+            hasPublicAccess && !isProxyDown ? (
+              <div className="flex items-center gap-2 px-2 py-1">
+                <span className="text-[10px] font-medium uppercase tracking-wider text-emerald-600 dark:text-emerald-400 shrink-0">Access</span>
+                <span className="text-xs font-mono text-emerald-800 dark:text-emerald-300 truncate flex-1" title={accessUrl.url}>
+                  {accessUrl.url}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(accessUrl.url)}
+                  className="shrink-0 rounded px-1 py-0.5 text-emerald-600 hover:bg-emerald-100 dark:text-emerald-400 dark:hover:bg-emerald-900/40 transition-colors"
+                  aria-label="Copy access URL"
+                >
+                  {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                  <svg aria-hidden="true" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                </button>
+              </div>
+            ) : undefined,
           titleClassName: '!overflow-visible',
           subtitle: `${targetLabel}:${route.target_port ?? '—'}`,
 
@@ -181,7 +206,7 @@ export const HttpRoutesTab: React.FC<HttpRoutesTabProps> = ({
           body: canUpdate || canDelete ? <RouteConfigBody route={route} canUpdate={canUpdate} availableVms={availableVms} onSave={onUpdateRoute} /> : undefined,
         };
       }),
-    [routes, routeHealthList, routeActionLoadings, proxyEnabled, canDelete, canUpdate, deleting, availableVms, onUpdateRoute, handleDelete],
+    [routes, routeHealthList, routeActionLoadings, proxyHost, proxyEnabled, canDelete, canUpdate, deleting, availableVms, onUpdateRoute, handleDelete],
   );
 
   // ── Render ────────────────────────────────────────────────────────────────

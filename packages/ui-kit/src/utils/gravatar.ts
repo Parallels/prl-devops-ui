@@ -10,8 +10,12 @@ import CryptoJS from "crypto-js";
  *   `'identicon'` (geometric pattern), `'retro'` (8-bit style).
  *   Defaults to `'mp'` so a valid image is always returned.
  */
-export const getGravatarUrl = (email: string, size: number = 200, defaultImage: string = "mp"): string => {
-    const trimmedEmail = email.trim().toLowerCase();
-    const hash = CryptoJS.MD5(trimmedEmail).toString();
-    return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=${defaultImage}`;
+export const getGravatarUrl = (
+  email: string,
+  size: number = 200,
+  defaultImage: string = "mp",
+): string => {
+  const trimmedEmail = email.trim().toLowerCase();
+  const hash = CryptoJS.MD5(trimmedEmail).toString();
+  return `https://www.gravatar.com/avatar/${hash}?s=${size}&d=${defaultImage}`;
 };

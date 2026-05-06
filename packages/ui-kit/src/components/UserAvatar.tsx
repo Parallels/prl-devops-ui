@@ -15,7 +15,12 @@ export interface UserAvatarProps {
   variant?: "circle" | "rounded" | "square";
 }
 
-export const UserAvatar = ({ user, size = 32, className = "", variant = "circle" }: UserAvatarProps) => {
+export const UserAvatar = ({
+  user,
+  size = 32,
+  className = "",
+  variant = "circle",
+}: UserAvatarProps) => {
   const renderIcon = useIconRenderer();
   const [hasError, setHasError] = useState(false);
   const [imgSrc, setImgSrc] = useState<string | null>(null);
@@ -29,7 +34,12 @@ export const UserAvatar = ({ user, size = 32, className = "", variant = "circle"
     }
   }, [user?.avatarUrl, size]);
 
-  const roundedClass = variant === "circle" ? "rounded-full" : variant === "rounded" ? "rounded-md" : "rounded-none";
+  const roundedClass =
+    variant === "circle"
+      ? "rounded-full"
+      : variant === "rounded"
+        ? "rounded-md"
+        : "rounded-none";
   const baseClasses = `flex items-center justify-center font-bold text-slate-600 overflow-hidden ${roundedClass} ${className}`;
 
   const renderFallback = () => {
@@ -61,7 +71,10 @@ export const UserAvatar = ({ user, size = 32, className = "", variant = "circle"
   }
 
   return (
-    <div className={`${baseClasses} bg-transparent`} style={{ width: size, height: size }}>
+    <div
+      className={`${baseClasses} bg-transparent`}
+      style={{ width: size, height: size }}
+    >
       {!hasError && imgSrc ? (
         <img
           src={imgSrc}

@@ -30,7 +30,8 @@ export type StepperConnector = "line" | "progress" | "none";
 export type StepperProgressBarPosition = "top" | "bottom";
 export type StepperConnectorAlign = "left" | "center" | "right";
 
-export interface StepperProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
+export interface StepperProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange"> {
   steps: StepperStep[];
   currentIndex?: number;
   currentStepId?: string;
@@ -117,9 +118,27 @@ const sizeTokens: Record<
   },
 };
 
-const variantConfig: Record<StepperVariant, { headerPadding: string; showDescription: boolean; emphasizeActiveTitle: boolean; showUnderline: boolean }> = {
-  card:    { headerPadding: "px-2 py-1.5", showDescription: true,  emphasizeActiveTitle: true, showUnderline: false },
-  minimal: { headerPadding: "px-1 py-1",   showDescription: false, emphasizeActiveTitle: true, showUnderline: false },
+const variantConfig: Record<
+  StepperVariant,
+  {
+    headerPadding: string;
+    showDescription: boolean;
+    emphasizeActiveTitle: boolean;
+    showUnderline: boolean;
+  }
+> = {
+  card: {
+    headerPadding: "px-2 py-1.5",
+    showDescription: true,
+    emphasizeActiveTitle: true,
+    showUnderline: false,
+  },
+  minimal: {
+    headerPadding: "px-1 py-1",
+    showDescription: false,
+    emphasizeActiveTitle: true,
+    showUnderline: false,
+  },
 };
 
 const statusIcon: Record<StepStatus, IconName | undefined> = {
@@ -221,12 +240,17 @@ export const Stepper: React.FC<StepperProps> = ({
   const verticalConnectorThicknessClass = verticalConnectorThickness[size];
   const variantToken = variantConfig[variant];
   const isInteractive = interactive && !readOnly;
-  const loaderSet = useMemo(() => new Set(loaderStepIds ?? []), [loaderStepIds]);
+  const loaderSet = useMemo(
+    () => new Set(loaderStepIds ?? []),
+    [loaderStepIds],
+  );
   const connectorBaseClasses = convertToBg(palette.underlineBase);
   const connectorActiveClasses = convertToBg(palette.activeBg);
 
   const progressPercent = Math.min(100, Math.max(0, state.progressPercent));
-  const formattedProgress = Math.round(progressPercent * Math.pow(10, progressPrecision)) / Math.pow(10, progressPrecision);
+  const formattedProgress =
+    Math.round(progressPercent * Math.pow(10, progressPrecision)) /
+    Math.pow(10, progressPrecision);
 
   const activeStep = steps[state.currentIndex];
 
@@ -234,11 +258,15 @@ export const Stepper: React.FC<StepperProps> = ({
     const resolvedId = step.id ?? String(index);
     const derivedActive = state.isActive(resolvedId, index);
     const derivedCompleted = state.isCompleted(resolvedId, index);
-    const status: StepStatus = step.status ?? (derivedActive ? "active" : derivedCompleted ? "completed" : "pending");
+    const status: StepStatus =
+      step.status ??
+      (derivedActive ? "active" : derivedCompleted ? "completed" : "pending");
 
     // A step that is active is never "completed" for connector-fill purposes,
     // even if its id appears in completedStepIds or its explicit status is "completed".
-    const isCompleted = (step.status ? step.status === "completed" : derivedCompleted) && !derivedActive;
+    const isCompleted =
+      (step.status ? step.status === "completed" : derivedCompleted) &&
+      !derivedActive;
 
     const nodeBaseClass =
       variant === "minimal"
@@ -250,15 +278,43 @@ export const Stepper: React.FC<StepperProps> = ({
       sizeToken.node,
       sizeToken.nodeText,
       step.disabled && "opacity-60",
-      status === "active" && [palette.activeBg, palette.activeText, "border-transparent shadow-sm"],
-      status === "completed" && [palette.completedBg, palette.completedText, "border-transparent shadow-sm"],
-      status === "pending" && ["bg-white dark:bg-neutral-900", palette.pendingBorder, palette.pendingText],
-      status === "error" && "bg-rose-500 text-white border-transparent shadow-sm",
+      status === "active" && [
+        palette.activeBg,
+        palette.activeText,
+        "border-transparent shadow-sm",
+      ],
+      status === "completed" && [
+        palette.completedBg,
+        palette.completedText,
+        "border-transparent shadow-sm",
+      ],
+      status === "pending" && [
+        "bg-white dark:bg-neutral-900",
+        palette.pendingBorder,
+        palette.pendingText,
+      ],
+      status === "error" &&
+        "bg-rose-500 text-white border-transparent shadow-sm",
     );
 
-    const underlineClasses = connector !== "none" ? classNames("w-full transition-all duration-200 ease-out rounded-full", sizeToken.underlineHeight, palette.underlineBase) : "";
+    const underlineClasses =
+      connector !== "none"
+        ? classNames(
+            "w-full transition-all duration-200 ease-out rounded-full",
+            sizeToken.underlineHeight,
+            palette.underlineBase,
+          )
+        : "";
 
-    const textStyle = stepMaxHeight !== undefined ? { maxHeight: typeof stepMaxHeight === "number" ? `${stepMaxHeight}px` : stepMaxHeight } : undefined;
+    const textStyle =
+      stepMaxHeight !== undefined
+        ? {
+            maxHeight:
+              typeof stepMaxHeight === "number"
+                ? `${stepMaxHeight}px`
+                : stepMaxHeight,
+          }
+        : undefined;
 
     const nodeIcon = step.icon ?? statusIcon[status];
     const isLoadingStep = loaderSet.has(resolvedId);
@@ -303,9 +359,14 @@ export const Stepper: React.FC<StepperProps> = ({
         const rect = node.getBoundingClientRect();
         centers.push(rect.top + rect.height / 2 - containerRect.top);
       }
-      const segments = centers.slice(0, -1).map((value, idx) => centers[idx + 1] - value);
+      const segments = centers
+        .slice(0, -1)
+        .map((value, idx) => centers[idx + 1] - value);
       setVerticalSegments((prev) => {
-        if (prev.length === segments.length && prev.every((value, idx) => value === segments[idx])) {
+        if (
+          prev.length === segments.length &&
+          prev.every((value, idx) => value === segments[idx])
+        ) {
           return prev;
         }
         return segments;
@@ -328,7 +389,13 @@ export const Stepper: React.FC<StepperProps> = ({
         )}
         {showProgressBar && (
           <div className="relative h-1 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
-            <div className={classNames("absolute inset-y-0 left-0 rounded-full transition-all duration-300 ease-out", palette.completedBg)} style={{ width: `${progressPercent}%` }} />
+            <div
+              className={classNames(
+                "absolute inset-y-0 left-0 rounded-full transition-all duration-300 ease-out",
+                palette.completedBg,
+              )}
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
         )}
       </div>
@@ -338,13 +405,30 @@ export const Stepper: React.FC<StepperProps> = ({
     const rowGapClass = connectNodes ? "gap-0" : "gap-2";
     const nodeRadius = nodeRadii[size];
     let connectorWidth = `calc(50% + ${nodeRadius}px)`;
-    let leftNodeStyle = connectorAlign === "left" ? "calc(50% * -1)" : connectorAlign === "right" ? `${nodeRadius * 4}px` : `-${nodeRadius}px`;
-    let rightNodeStyle = connectorAlign === "left" ? "unset" : connectorAlign === "right" ? "calc(50% * -1)" : `-${nodeRadius}px`;
+    let leftNodeStyle =
+      connectorAlign === "left"
+        ? "calc(50% * -1)"
+        : connectorAlign === "right"
+          ? `${nodeRadius * 4}px`
+          : `-${nodeRadius}px`;
+    let rightNodeStyle =
+      connectorAlign === "left"
+        ? "unset"
+        : connectorAlign === "right"
+          ? "calc(50% * -1)"
+          : `-${nodeRadius}px`;
 
     return (
       <div className={classNames("flex items-center", rowGapClass)}>
         {stepMeta.map((meta, idx) => {
-          const { resolvedId, nodeClasses, nodeIcon, isLoadingStep, step, isCompleted } = meta;
+          const {
+            resolvedId,
+            nodeClasses,
+            nodeIcon,
+            isLoadingStep,
+            step,
+            isCompleted,
+          } = meta;
           const NodeTag = isInteractive && !step.disabled ? "button" : "div";
 
           const handleClick = () => {
@@ -354,7 +438,8 @@ export const Stepper: React.FC<StepperProps> = ({
           };
 
           let showLeft = connectNodes && connector !== "none" && idx > 0;
-          let showRight = connectNodes && connector !== "none" && idx < stepMeta.length - 1;
+          let showRight =
+            connectNodes && connector !== "none" && idx < stepMeta.length - 1;
           let segmentSize = "pl-4 pr-2";
           if (!connectNodes) {
             if (connectorAlign === "left") {
@@ -382,15 +467,28 @@ export const Stepper: React.FC<StepperProps> = ({
           const previousCompleted = previousStep?.isCompleted ?? false;
           const currentCompleted = isCompleted;
           // For right-align the absolute left-connector handles the line; the flex segment would push the node off the right edge.
-          const detachedSegment = !connectNodes && connector !== "none" && connectorAlign !== "right" && idx < stepMeta.length - 1;
+          const detachedSegment =
+            !connectNodes &&
+            connector !== "none" &&
+            connectorAlign !== "right" &&
+            idx < stepMeta.length - 1;
           const segmentIsCompleted = isCompleted;
 
           const connectorSegment = detachedSegment ? (
             <div className={`flex items-center  ${segmentSize}`}>
-              <div className={classNames("relative w-full overflow-hidden rounded-full transition-colors duration-200", connectorThicknessClass, connectorBaseClasses)}>
+              <div
+                className={classNames(
+                  "relative w-full overflow-hidden rounded-full transition-colors duration-200",
+                  connectorThicknessClass,
+                  connectorBaseClasses,
+                )}
+              >
                 {connector === "progress" && (
                   <div
-                    className={classNames("absolute inset-y-0 left-0 rounded-full transition-all duration-300 ease-out", connectorActiveClasses)}
+                    className={classNames(
+                      "absolute inset-y-0 left-0 rounded-full transition-all duration-300 ease-out",
+                      connectorActiveClasses,
+                    )}
                     style={{ width: segmentIsCompleted ? "100%" : "0%" }}
                   />
                 )}
@@ -403,7 +501,9 @@ export const Stepper: React.FC<StepperProps> = ({
               className={classNames(
                 "pointer-events-none  absolute top-1/2 -translate-y-1/2 rounded-full transition-colors duration-200",
                 connectorThicknessClass,
-                connector === "progress" && previousCompleted ? connectorActiveClasses : connectorBaseClasses,
+                connector === "progress" && previousCompleted
+                  ? connectorActiveClasses
+                  : connectorBaseClasses,
               )}
               style={{ left: `${leftNodeStyle}`, width: connectorWidth }}
             />
@@ -414,7 +514,9 @@ export const Stepper: React.FC<StepperProps> = ({
               className={classNames(
                 "pointer-events-none absolute top-1/2 -translate-y-1/2 rounded-full transition-colors duration-200",
                 connectorThicknessClass,
-                connector === "progress" && currentCompleted ? connectorActiveClasses : connectorBaseClasses,
+                connector === "progress" && currentCompleted
+                  ? connectorActiveClasses
+                  : connectorBaseClasses,
               )}
               style={{ right: `${rightNodeStyle}`, width: connectorWidth }}
             />
@@ -431,15 +533,30 @@ export const Stepper: React.FC<StepperProps> = ({
                 className={classNames(
                   "relative z-10 flex items-center justify-center focus-visible:outline-none",
                   nodeClasses,
-                  NodeTag === "button" && !step.disabled && "hover:brightness-95",
-                  NodeTag === "button" && step.disabled && "cursor-not-allowed opacity-60",
+                  NodeTag === "button" &&
+                    !step.disabled &&
+                    "hover:brightness-95",
+                  NodeTag === "button" &&
+                    step.disabled &&
+                    "cursor-not-allowed opacity-60",
                 )}
                 onClick={handleClick}
-                aria-current={state.isActive(resolvedId, idx) ? "step" : undefined}
+                aria-current={
+                  state.isActive(resolvedId, idx) ? "step" : undefined
+                }
                 disabled={step.disabled}
               >
                 {nodeIcon ? renderIcon(nodeIcon, "sm") : idx + 1}
-                {isLoadingStep && <Loader overlay variant="spinner" size="sm" className="rounded-full" title={null} label={null} />}
+                {isLoadingStep && (
+                  <Loader
+                    overlay
+                    variant="spinner"
+                    size="sm"
+                    className="rounded-full"
+                    title={null}
+                    label={null}
+                  />
+                )}
               </NodeTag>
               {rightConnector}
               {connectorSegment}
@@ -456,9 +573,21 @@ export const Stepper: React.FC<StepperProps> = ({
     return (
       <div className={classNames("relative flex flex-col", headerClassName)}>
         {renderNodeRow()}
-        <div className="mt-4 grid items-stretch gap-2" style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
+        <div
+          className="mt-4 grid items-stretch gap-2"
+          style={{
+            gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))`,
+          }}
+        >
           {stepMeta.map((meta) => {
-            const { resolvedId, status, textStyle, underlineClasses, step, index } = meta;
+            const {
+              resolvedId,
+              status,
+              textStyle,
+              underlineClasses,
+              step,
+              index,
+            } = meta;
             const TextTag = isInteractive && !step.disabled ? "button" : "div";
 
             const handleClick = () => {
@@ -474,20 +603,49 @@ export const Stepper: React.FC<StepperProps> = ({
                 className={classNames(
                   "flex h-full flex-col justify-between rounded-xl px-2 text-left transition-colors duration-150 focus-visible:outline-none",
                   step.disabled && "cursor-not-allowed opacity-60",
-                  isInteractive && !step.disabled && "hover:bg-neutral-50 dark:hover:bg-neutral-800/30",
+                  isInteractive &&
+                    !step.disabled &&
+                    "hover:bg-neutral-50 dark:hover:bg-neutral-800/30",
                 )}
                 onClick={handleClick}
-                aria-current={state.isActive(resolvedId, index) ? "step" : undefined}
+                aria-current={
+                  state.isActive(resolvedId, index) ? "step" : undefined
+                }
                 disabled={step.disabled}
               >
-                <div className="flex min-w-0 flex-col gap-1 overflow-hidden break-words" style={textStyle}>
-                  <div className={classNames(sizeToken.title, variantToken.emphasizeActiveTitle && status === "active" && "text-neutral-900 dark:text-neutral-100")}>{step.title}</div>
-                  {step.subtitle && <div className={sizeToken.subtitle}>{step.subtitle}</div>}
-                  {variantToken.showDescription && step.description ? <div className={sizeToken.description}>{step.description}</div> : null}
+                <div
+                  className="flex min-w-0 flex-col gap-1 overflow-hidden break-words"
+                  style={textStyle}
+                >
+                  <div
+                    className={classNames(
+                      sizeToken.title,
+                      variantToken.emphasizeActiveTitle &&
+                        status === "active" &&
+                        "text-neutral-900 dark:text-neutral-100",
+                    )}
+                  >
+                    {step.title}
+                  </div>
+                  {step.subtitle && (
+                    <div className={sizeToken.subtitle}>{step.subtitle}</div>
+                  )}
+                  {variantToken.showDescription && step.description ? (
+                    <div className={sizeToken.description}>
+                      {step.description}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="mt-3 flex flex-col gap-1">
-                  {step.optionalLabel ? <div className={sizeToken.optional}>{step.optionalLabel}</div> : null}
-                  {connector !== "none" && (showStepUnderline ?? variantToken.showUnderline) && <div className={underlineClasses} />}
+                  {step.optionalLabel ? (
+                    <div className={sizeToken.optional}>
+                      {step.optionalLabel}
+                    </div>
+                  ) : null}
+                  {connector !== "none" &&
+                    (showStepUnderline ?? variantToken.showUnderline) && (
+                      <div className={underlineClasses} />
+                    )}
                 </div>
               </TextTag>
             );
@@ -498,16 +656,38 @@ export const Stepper: React.FC<StepperProps> = ({
   };
 
   const renderVertical = () => (
-    <div ref={verticalContainerRef} className={classNames("relative flex flex-col gap-0", headerClassName)}>
+    <div
+      ref={verticalContainerRef}
+      className={classNames("relative flex flex-col gap-0", headerClassName)}
+    >
       {stepMeta.map((meta, index) => {
-        const { step, resolvedId, nodeClasses, textStyle, nodeIcon, isLoadingStep, isCompleted } = meta;
+        const {
+          step,
+          resolvedId,
+          nodeClasses,
+          textStyle,
+          nodeIcon,
+          isLoadingStep,
+          isCompleted,
+        } = meta;
         const StepTag = isInteractive && !step.disabled ? "button" : "div";
         const NodeTag = isInteractive && !step.disabled ? "button" : "div";
         const segmentLength = verticalSegments[index] ?? 0;
-        const showConnector = connector !== "none" && index < stepMeta.length - 1 && segmentLength > 0;
+        const showConnector =
+          connector !== "none" &&
+          index < stepMeta.length - 1 &&
+          segmentLength > 0;
 
         return (
-          <div key={resolvedId} className={classNames("relative flex items-start gap-4 py-4", index === 0 && "pt-0", index === stepMeta.length - 1 && "pb-0", stepClassName)}>
+          <div
+            key={resolvedId}
+            className={classNames(
+              "relative flex items-start gap-4 py-4",
+              index === 0 && "pt-0",
+              index === stepMeta.length - 1 && "pb-0",
+              stepClassName,
+            )}
+          >
             <div className="relative flex flex-col items-center">
               <div
                 className="relative flex items-center justify-center"
@@ -522,30 +702,56 @@ export const Stepper: React.FC<StepperProps> = ({
                   className={classNames(
                     "relative z-10 flex items-center justify-center focus-visible:outline-none",
                     nodeClasses,
-                    NodeTag === "button" && !step.disabled && "hover:brightness-95",
-                    NodeTag === "button" && step.disabled && "cursor-not-allowed opacity-60",
+                    NodeTag === "button" &&
+                      !step.disabled &&
+                      "hover:brightness-95",
+                    NodeTag === "button" &&
+                      step.disabled &&
+                      "cursor-not-allowed opacity-60",
                   )}
                   onClick={() => {
                     if (!isInteractive || step.disabled) return;
                     state.goToIndex(index);
                     onStepClick?.(step, index);
                   }}
-                  aria-current={state.isActive(resolvedId, index) ? "step" : undefined}
+                  aria-current={
+                    state.isActive(resolvedId, index) ? "step" : undefined
+                  }
                   disabled={step.disabled}
                 >
                   {nodeIcon ? renderIcon(nodeIcon, "sm") : index + 1}
-                  {isLoadingStep && <Loader overlay variant="spinner" size="sm" className="rounded-full" title={null} label={null} />}
+                  {isLoadingStep && (
+                    <Loader
+                      overlay
+                      variant="spinner"
+                      size="sm"
+                      className="rounded-full"
+                      title={null}
+                      label={null}
+                    />
+                  )}
                 </NodeTag>
               </div>
               {showConnector && (
                 <span
-                  className={classNames("pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full transition-colors duration-200", verticalConnectorThicknessClass, connectorBaseClasses)}
+                  className={classNames(
+                    "pointer-events-none absolute left-1/2 -translate-x-1/2 rounded-full transition-colors duration-200",
+                    verticalConnectorThicknessClass,
+                    connectorBaseClasses,
+                  )}
                   style={{
                     top: `${nodeRadii[size]}px`,
                     height: `${segmentLength}px`,
                   }}
                 >
-                  {connector === "progress" && isCompleted && <span className={classNames("absolute inset-0 rounded-full", connectorActiveClasses)} />}
+                  {connector === "progress" && isCompleted && (
+                    <span
+                      className={classNames(
+                        "absolute inset-0 rounded-full",
+                        connectorActiveClasses,
+                      )}
+                    />
+                  )}
                 </span>
               )}
             </div>
@@ -557,15 +763,23 @@ export const Stepper: React.FC<StepperProps> = ({
                 state.goToIndex(index);
                 onStepClick?.(step, index);
               }}
-              aria-current={state.isActive(resolvedId, index) ? "step" : undefined}
+              aria-current={
+                state.isActive(resolvedId, index) ? "step" : undefined
+              }
               disabled={step.disabled}
             >
               <div className={sizeToken.title} style={textStyle}>
                 {step.title}
               </div>
-              {step.subtitle && <div className={sizeToken.subtitle}>{step.subtitle}</div>}
-              {step.description && <div className={sizeToken.description}>{step.description}</div>}
-              {step.optionalLabel && <div className={sizeToken.optional}>{step.optionalLabel}</div>}
+              {step.subtitle && (
+                <div className={sizeToken.subtitle}>{step.subtitle}</div>
+              )}
+              {step.description && (
+                <div className={sizeToken.description}>{step.description}</div>
+              )}
+              {step.optionalLabel && (
+                <div className={sizeToken.optional}>{step.optionalLabel}</div>
+              )}
             </StepTag>
           </div>
         );
@@ -575,12 +789,32 @@ export const Stepper: React.FC<StepperProps> = ({
 
   const horizontal = orientation === "horizontal";
 
-  const content = activeStep?.content ?? <div className="space-y-2 text-sm text-neutral-600 dark:text-neutral-300">{activeStep?.description}</div>;
+  const content = activeStep?.content ?? (
+    <div className="space-y-2 text-sm text-neutral-600 dark:text-neutral-300">
+      {activeStep?.description}
+    </div>
+  );
 
-  const alignmentMarginClass = connectorAlign === "left" ? "mr-auto" : connectorAlign === "right" ? "ml-auto" : "mx-auto";
+  const alignmentMarginClass =
+    connectorAlign === "left"
+      ? "mr-auto"
+      : connectorAlign === "right"
+        ? "ml-auto"
+        : "mx-auto";
 
   return (
-    <div className={classNames("relative flex w-full flex-col", horizontal ? "gap-6" : "gap-4", alignmentMarginClass, wrapperClassName, className)} aria-busy={loading} style={style} {...rest}>
+    <div
+      className={classNames(
+        "relative flex w-full flex-col",
+        horizontal ? "gap-6" : "gap-4",
+        alignmentMarginClass,
+        wrapperClassName,
+        className,
+      )}
+      aria-busy={loading}
+      style={style}
+      {...rest}
+    >
       {horizontal ? (
         <>
           {renderHorizontal()}
@@ -593,9 +827,25 @@ export const Stepper: React.FC<StepperProps> = ({
         </>
       )}
 
-      <div className={classNames("rounded-2xl border border-neutral-200 bg-white/95 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/80", contentClassName)}>{content}</div>
+      <div
+        className={classNames(
+          "rounded-2xl border border-neutral-200 bg-white/95 p-5 shadow-sm dark:border-neutral-800 dark:bg-neutral-900/80",
+          contentClassName,
+        )}
+      >
+        {content}
+      </div>
 
-      {loading && <Loader overlay title={loaderTitle} label={loaderMessage} variant={loaderType} progress={loaderProgress} color={loaderColor} />}
+      {loading && (
+        <Loader
+          overlay
+          title={loaderTitle}
+          label={loaderMessage}
+          variant={loaderType}
+          progress={loaderProgress}
+          color={loaderColor}
+        />
+      )}
     </div>
   );
 };

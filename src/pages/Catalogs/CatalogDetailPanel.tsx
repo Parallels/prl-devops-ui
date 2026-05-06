@@ -2,8 +2,8 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Button, CatalogVersion, ConfirmInlinePanel, DeleteConfirmInlinePanel, IconButton, InfoRow, InlinePanel, Picker, Pill, Section, TagPanel, TagPanelTag, TagPicker, Textarea, type PickerItem, type TagPickerItem } from '@prl/ui-kit';
 import { type CatalogManifestItem, type CatalogManifestVersion, type CatalogRow, type CatalogSource } from './CatalogModels';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
-import { devopsService } from '@/services/devops';
-import { DevOpsClaim } from '@/interfaces/devops';
+import { devopsService, rolesService } from '@/services/devops';
+import { DevOpsClaim, DevOpsRole } from '@/interfaces/devops';
 
 const valueOrDash = (value?: string): string => {
   if (!value || value.trim().length === 0 || value === '-') return '—';
@@ -214,6 +214,40 @@ export const CatalogDetailContent: React.FC<CatalogDetailContentProps> = ({
   const [rolesValue, setRolesValue] = useState<string[]>([]);
   const [rolesSaving, setRolesSaving] = useState(false);
   const [rolesError, setRolesError] = useState<string | null>(null);
+  const [availableRoles, setAvailableRoles] = useState<TagPickerItem[]>([]);
+
+  // ── Merge current roles into available items so they appear in the dropdown ──
+  const rolesPickerItems = useMemo((): TagPickerItem[] => {
+    const seen = new Set<string>();
+    const result: TagPickerItem[] = [];
+    for (const role of availableRoles) {
+      if (!seen.has(role.id)) {
+        seen.add(role.id);
+        result.push(role);
+      }
+    }
+    for (const r of rolesValue) {
+      if (!seen.has(r)) {
+        seen.add(r);
+        result.push({ id: r, label: r });
+      }
+    }
+    return result;
+  }, [availableRoles, rolesValue]);
+
+  // ── Load available roles when roles panel opens ────────────────────────────
+  useEffect(() => {
+    if (!rolesPanelOpen || !hostname) return;
+    rolesService
+      .getRoles(hostname)
+      .then((all) =>
+        setAvailableRoles(
+          all
+            .map((r: DevOpsRole) => ({ id: r.name, label: r.name, ...(r.description ? { description: r.description } : {}) })),
+        ),
+      )
+      .catch(() => setAvailableRoles([]));
+  }, [rolesPanelOpen, hostname]);
 
   // ── Claims state ───────────────────────────────────────────────────────────
   const [claimsPanelOpen, setClaimsPanelOpen] = useState(false);
@@ -221,6 +255,25 @@ export const CatalogDetailContent: React.FC<CatalogDetailContentProps> = ({
   const [claimsSaving, setClaimsSaving] = useState(false);
   const [claimsError, setClaimsError] = useState<string | null>(null);
   const [availableClaims, setAvailableClaims] = useState<TagPickerItem[]>([]);
+
+  // ── Merge current claims into available items so they appear in the dropdown ──
+  const claimsPickerItems = useMemo((): TagPickerItem[] => {
+    const seen = new Set<string>();
+    const result: TagPickerItem[] = [];
+    for (const claim of availableClaims) {
+      if (!seen.has(claim.id)) {
+        seen.add(claim.id);
+        result.push(claim);
+      }
+    }
+    for (const c of claimsValue) {
+      if (!seen.has(c)) {
+        seen.add(c);
+        result.push({ id: c, label: c });
+      }
+    }
+    return result;
+  }, [availableClaims, claimsValue]);
 
   // ── Load available claims when claims panel opens ──────────────────────────
   useEffect(() => {
@@ -230,7 +283,6 @@ export const CatalogDetailContent: React.FC<CatalogDetailContentProps> = ({
       .then((all) =>
         setAvailableClaims(
           all
-            .filter((c: DevOpsClaim) => !!c.internal)
             .map((c: DevOpsClaim) => ({ id: c.name, label: c.name, ...(c.description ? { description: c.description } : {}) })),
         ),
       )
@@ -409,7 +461,7 @@ export const CatalogDetailContent: React.FC<CatalogDetailContentProps> = ({
     } finally {
       setDeleteLoading(false);
     }
-  }, [hostname, source, manifest, selectedVersion, onReload]);
+  }, [hostname, source, manifest, selectedVersion, onClose]);
 
   // First active row in the selected version — used for pull
   const firstActiveRow = useMemo(
@@ -770,7 +822,7 @@ export const CatalogDetailContent: React.FC<CatalogDetailContentProps> = ({
       >
         <div className="p-3">
           <TagPicker
-            items={[]}
+            items={rolesPickerItems}
             value={rolesValue}
             onChange={setRolesValue}
             allowCreate
@@ -801,7 +853,7 @@ export const CatalogDetailContent: React.FC<CatalogDetailContentProps> = ({
       >
         <div className="p-3">
           <TagPicker
-            items={availableClaims}
+            items={claimsPickerItems}
             value={claimsValue}
             onChange={setClaimsValue}
             allowCreate

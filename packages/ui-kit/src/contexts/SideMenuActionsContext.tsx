@@ -24,24 +24,38 @@ export interface SideMenuActionsProviderProps {
   children: React.ReactNode;
 }
 
-export const SideMenuActionsProvider: React.FC<SideMenuActionsProviderProps> = ({
-  initialSideItemActions,
-  initialSidePanelActions,
-  children,
-}) => {
-  const [sideItemActions, setSideItemActionsState] = useState<React.ReactNode>(initialSideItemActions);
-  const [sidePanelActions, setSidePanelActionsState] = useState<React.ReactNode>(initialSidePanelActions);
+export const SideMenuActionsProvider: React.FC<
+  SideMenuActionsProviderProps
+> = ({ initialSideItemActions, initialSidePanelActions, children }) => {
+  const [sideItemActions, setSideItemActionsState] = useState<React.ReactNode>(
+    initialSideItemActions,
+  );
+  const [sidePanelActions, setSidePanelActionsState] =
+    useState<React.ReactNode>(initialSidePanelActions);
 
-  const setSideItemActions = useCallback((actions: React.ReactNode | undefined) => {
-    setSideItemActionsState(actions);
-  }, []);
+  const setSideItemActions = useCallback(
+    (actions: React.ReactNode | undefined) => {
+      setSideItemActionsState(actions);
+    },
+    [],
+  );
 
-  const setSidePanelActions = useCallback((actions: React.ReactNode | undefined) => {
-    setSidePanelActionsState(actions);
-  }, []);
+  const setSidePanelActions = useCallback(
+    (actions: React.ReactNode | undefined) => {
+      setSidePanelActionsState(actions);
+    },
+    [],
+  );
 
   return (
-    <SideMenuActionsContext.Provider value={{ sideItemActions, sidePanelActions, setSideItemActions, setSidePanelActions }}>
+    <SideMenuActionsContext.Provider
+      value={{
+        sideItemActions,
+        sidePanelActions,
+        setSideItemActions,
+        setSidePanelActions,
+      }}
+    >
       {children}
     </SideMenuActionsContext.Provider>
   );
