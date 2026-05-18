@@ -4,19 +4,18 @@
 export interface JwtTokenPayload {
   /** Array of permission claims (e.g., "CREATE_USER", "DELETE_VM") */
   claims: string[];
-
   /** User email address */
   email: string;
+  /** Username */
   username: string;
-
   /** Token expiration timestamp (Unix epoch in seconds) */
   exp: number;
-
   /** Array of user roles (e.g., "SUPER_USER") */
   roles: string[];
-
   /** User unique identifier */
   uid: string;
+  /** API key identifier (when authenticated with API key) */
+  api_key_id: string | null;
 }
 
 /**

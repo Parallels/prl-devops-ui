@@ -3,7 +3,8 @@ import classNames from "classnames";
 import { useIconRenderer } from "../contexts/IconContext";
 import type { ThemeColor } from "../theme/Theme";
 
-export interface CollapsibleHelpTextProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface CollapsibleHelpTextProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   title?: string;
   text: string;
   maxLength?: number;
@@ -16,14 +17,25 @@ export interface CollapsibleHelpTextProps extends React.HTMLAttributes<HTMLDivEl
 }
 
 const toneTokens: Partial<
-  Record<ThemeColor, { border: string; accent: string; iconBg: string; text: string; focusRing: string; hover: string }>
+  Record<
+    ThemeColor,
+    {
+      border: string;
+      accent: string;
+      iconBg: string;
+      text: string;
+      focusRing: string;
+      hover: string;
+    }
+  >
 > = {
   blue: {
     border: "border-blue-100 dark:border-blue-500/40",
     accent: "text-blue-600 dark:text-blue-300",
     iconBg: "bg-blue-50 dark:bg-blue-500/10",
     text: "text-blue-700 dark:text-blue-200",
-    focusRing: "focus-visible:ring-blue-200 dark:focus-visible:ring-blue-500/40",
+    focusRing:
+      "focus-visible:ring-blue-200 dark:focus-visible:ring-blue-500/40",
     hover: "hover:bg-blue-50/60 dark:hover:bg-blue-500/5",
   },
   indigo: {
@@ -31,7 +43,8 @@ const toneTokens: Partial<
     accent: "text-indigo-600 dark:text-indigo-300",
     iconBg: "bg-indigo-50 dark:bg-indigo-500/10",
     text: "text-indigo-700 dark:text-indigo-200",
-    focusRing: "focus-visible:ring-indigo-200 dark:focus-visible:ring-indigo-500/40",
+    focusRing:
+      "focus-visible:ring-indigo-200 dark:focus-visible:ring-indigo-500/40",
     hover: "hover:bg-indigo-50/60 dark:hover:bg-indigo-500/5",
   },
   emerald: {
@@ -39,7 +52,8 @@ const toneTokens: Partial<
     accent: "text-emerald-600 dark:text-emerald-300",
     iconBg: "bg-emerald-50 dark:bg-emerald-500/10",
     text: "text-emerald-700 dark:text-emerald-200",
-    focusRing: "focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-500/40",
+    focusRing:
+      "focus-visible:ring-emerald-200 dark:focus-visible:ring-emerald-500/40",
     hover: "hover:bg-emerald-50/60 dark:hover:bg-emerald-500/5",
   },
   amber: {
@@ -47,7 +61,8 @@ const toneTokens: Partial<
     accent: "text-amber-600 dark:text-amber-300",
     iconBg: "bg-amber-50 dark:bg-amber-500/10",
     text: "text-amber-700 dark:text-amber-200",
-    focusRing: "focus-visible:ring-amber-200 dark:focus-visible:ring-amber-500/40",
+    focusRing:
+      "focus-visible:ring-amber-200 dark:focus-visible:ring-amber-500/40",
     hover: "hover:bg-amber-50/60 dark:hover:bg-amber-500/5",
   },
   rose: {
@@ -55,7 +70,8 @@ const toneTokens: Partial<
     accent: "text-rose-600 dark:text-rose-300",
     iconBg: "bg-rose-50 dark:bg-rose-500/10",
     text: "text-rose-700 dark:text-rose-200",
-    focusRing: "focus-visible:ring-rose-200 dark:focus-visible:ring-rose-500/40",
+    focusRing:
+      "focus-visible:ring-rose-200 dark:focus-visible:ring-rose-500/40",
     hover: "hover:bg-rose-50/60 dark:hover:bg-rose-500/5",
   },
   slate: {
@@ -110,7 +126,8 @@ export const CollapsibleHelpText: React.FC<CollapsibleHelpTextProps> = ({
   const [expanded, setExpanded] = useState(false);
 
   const colorTokens = toneTokens[tone] ?? toneTokens.theme!;
-  const displayText = expanded || !needsTruncation ? sanitized : truncate(sanitized, maxLength);
+  const displayText =
+    expanded || !needsTruncation ? sanitized : truncate(sanitized, maxLength);
 
   const textContent = renderMarkdown ? (
     renderMarkdown(displayText)
@@ -127,25 +144,36 @@ export const CollapsibleHelpText: React.FC<CollapsibleHelpTextProps> = ({
           className={classNames(
             "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full",
             colorTokens.iconBg,
-            colorTokens.accent
+            colorTokens.accent,
           )}
         >
           {renderIcon(icon, "sm", "text-inherit")}
         </span>
       )}
       <div className="flex flex-1 flex-col gap-1 text-left">
-        {title && <p className={classNames("text-sm font-semibold", colorTokens.text)}>{title}</p>}
+        {title && (
+          <p className={classNames("text-sm font-semibold", colorTokens.text)}>
+            {title}
+          </p>
+        )}
         {textContent}
       </div>
       {needsTruncation && (
         <span
           className={classNames(
             "ml-2 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition dark:border-slate-700 dark:text-slate-200",
-            colorTokens.accent
+            colorTokens.accent,
           )}
           aria-hidden="true"
         >
-          {renderIcon("ArrowDown", "sm", classNames("transition-transform duration-200", expanded && "rotate-180"))}
+          {renderIcon(
+            "ArrowDown",
+            "sm",
+            classNames(
+              "transition-transform duration-200",
+              expanded && "rotate-180",
+            ),
+          )}
         </span>
       )}
     </>
@@ -154,16 +182,19 @@ export const CollapsibleHelpText: React.FC<CollapsibleHelpTextProps> = ({
   const containerClasses = classNames(
     "w-full transition",
     variant === "card"
-      ? classNames("rounded-2xl border bg-white/90 p-4 shadow-sm dark:bg-slate-900/80", colorTokens.border)
+      ? classNames(
+          "rounded-2xl border bg-white/90 p-4 shadow-sm dark:bg-slate-900/80",
+          colorTokens.border,
+        )
       : "rounded-xl border border-transparent bg-transparent p-0 shadow-none",
-    className
+    className,
   );
 
   const triggerClasses = classNames(
     "flex w-full items-start gap-3 rounded-2xl px-1 py-1 text-left transition",
     variant === "plain" && "rounded-xl px-0 py-0",
     colorTokens.hover,
-    colorTokens.focusRing
+    colorTokens.focusRing,
   );
 
   return (
@@ -180,7 +211,11 @@ export const CollapsibleHelpText: React.FC<CollapsibleHelpTextProps> = ({
       ) : (
         <div className="flex items-start gap-3">{headerContent}</div>
       )}
-      {children && <div className="mt-3 text-sm text-slate-500 dark:text-slate-300">{children}</div>}
+      {children && (
+        <div className="mt-3 text-sm text-slate-500 dark:text-slate-300">
+          {children}
+        </div>
+      )}
     </div>
   );
 };

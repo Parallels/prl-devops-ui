@@ -51,7 +51,10 @@ export const SmartInput: React.FC<SmartInputProps> = ({
 
   const handleBlur = (e: React.FocusEvent) => {
     // Only stop editing if we didn't click into the picker or the toggle button
-    if (!containerRef.current?.contains(e.relatedTarget as Node) && !pickerRef.current?.contains(e.relatedTarget as Node)) {
+    if (
+      !containerRef.current?.contains(e.relatedTarget as Node) &&
+      !pickerRef.current?.contains(e.relatedTarget as Node)
+    ) {
       setIsEditing(false);
       setShowPicker(false);
     }
@@ -82,7 +85,8 @@ export const SmartInput: React.FC<SmartInputProps> = ({
     if (input) {
       const start = input.selectionStart || 0;
       const end = input.selectionEnd || 0;
-      newValue = value.substring(0, start) + variable.fullToken + value.substring(end);
+      newValue =
+        value.substring(0, start) + variable.fullToken + value.substring(end);
 
       // Restore focus and cursor?
       // Setting state is async, so cursor restoration is tricky without effect.
@@ -106,7 +110,13 @@ export const SmartInput: React.FC<SmartInputProps> = ({
   // Close picker if clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (showPicker && pickerRef.current && !pickerRef.current.contains(event.target as Node) && containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      if (
+        showPicker &&
+        pickerRef.current &&
+        !pickerRef.current.contains(event.target as Node) &&
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
         setShowPicker(false);
       }
     };
@@ -117,7 +127,11 @@ export const SmartInput: React.FC<SmartInputProps> = ({
     };
   }, [showPicker]);
 
-  const resolveVariable = (type: string, source: string, name: string): { value: string; isResolved: boolean; isRuntime?: boolean } => {
+  const resolveVariable = (
+    type: string,
+    source: string,
+    name: string,
+  ): { value: string; isResolved: boolean; isRuntime?: boolean } => {
     if (source === "global" || source === "env") {
       // NOTE: Current regex match groups: 1=type, 2=source, 3=name
       // But typically we see {{ var::global::NAME }}.
@@ -127,7 +141,9 @@ export const SmartInput: React.FC<SmartInputProps> = ({
       let param = globalParameters.find((p) => p.key === name);
       if (!param) {
         // Fallback: Try case-insensitive comparison
-        param = globalParameters.find((p) => p.key.toLowerCase() === name.toLowerCase());
+        param = globalParameters.find(
+          (p) => p.key.toLowerCase() === name.toLowerCase(),
+        );
       }
 
       if (param) {
@@ -162,7 +178,16 @@ export const SmartInput: React.FC<SmartInputProps> = ({
       }
 
       // Runtime Variables
-      const runtimeVars = ["name", "reverse_proxy_host", "ip_address", "host_gateway_ip", "capsule_id", "capsule_name", "host_ip", "app_url"];
+      const runtimeVars = [
+        "name",
+        "reverse_proxy_host",
+        "ip_address",
+        "host_gateway_ip",
+        "capsule_id",
+        "capsule_name",
+        "host_ip",
+        "app_url",
+      ];
       if (runtimeVars.includes(lowerName)) {
         return { value: `[${lowerName}]`, isResolved: true, isRuntime: true };
       }
@@ -176,7 +201,9 @@ export const SmartInput: React.FC<SmartInputProps> = ({
   // Render parsed view
   const renderView = () => {
     if (!value) {
-      return <span className="text-slate-400 italic">{placeholder || "Empty"}</span>;
+      return (
+        <span className="text-slate-400 italic">{placeholder || "Empty"}</span>
+      );
     }
 
     const parts = [];
@@ -188,7 +215,11 @@ export const SmartInput: React.FC<SmartInputProps> = ({
     while ((match = regex.exec(value)) !== null) {
       // Text before match
       if (match.index > lastIndex) {
-        parts.push(<span key={`text-${lastIndex}`}>{value.substring(lastIndex, match.index)}</span>);
+        parts.push(
+          <span key={`text-${lastIndex}`}>
+            {value.substring(lastIndex, match.index)}
+          </span>,
+        );
       }
 
       // The variable token
@@ -198,7 +229,11 @@ export const SmartInput: React.FC<SmartInputProps> = ({
       const name = match[3];
 
       if (viewMode === "value") {
-        const { value: resolvedVal, isResolved, isRuntime } = resolveVariable(type, source, name);
+        const {
+          value: resolvedVal,
+          isResolved,
+          isRuntime,
+        } = resolveVariable(type, source, name);
         const isEmpty = !resolvedVal;
 
         let badgeClass = "bg-green-50 text-green-700 border-green-200";
@@ -233,8 +268,10 @@ export const SmartInput: React.FC<SmartInputProps> = ({
             badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
           }
         }
-        if (source === "system") badgeClass = "bg-amber-50 text-amber-900 border-amber-200";
-        if (source === "service") badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+        if (source === "system")
+          badgeClass = "bg-amber-50 text-amber-900 border-amber-200";
+        if (source === "service")
+          badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
 
         let labelPrefix = "G";
         if (source === "global") {
@@ -261,7 +298,9 @@ export const SmartInput: React.FC<SmartInputProps> = ({
 
     // Remaining text
     if (lastIndex < value.length) {
-      parts.push(<span key={`text-${lastIndex}`}>{value.substring(lastIndex)}</span>);
+      parts.push(
+        <span key={`text-${lastIndex}`}>{value.substring(lastIndex)}</span>,
+      );
     }
 
     return <div className="truncate">{parts}</div>;
@@ -283,7 +322,10 @@ export const SmartInput: React.FC<SmartInputProps> = ({
           autoComplete="off"
         />
       ) : (
-        <div onClick={handleContainerClick} className="flex-1 px-3 py-2 text-sm cursor-text h-full flex items-center">
+        <div
+          onClick={handleContainerClick}
+          className="flex-1 px-3 py-2 text-sm cursor-text h-full flex items-center"
+        >
           {renderView()}
         </div>
       )}
@@ -303,7 +345,18 @@ export const SmartInput: React.FC<SmartInputProps> = ({
             title={viewMode === "token" ? "Show Values" : "Show Tokens"}
           />
         )}
-        <IconButton icon="Plus" variant="ghost" size="sm" onClick={togglePicker} className={showPicker ? "text-blue-600 bg-blue-50" : "text-slate-400 hover:text-slate-600"} title="Insert Variable" />
+        <IconButton
+          icon="Plus"
+          variant="ghost"
+          size="sm"
+          onClick={togglePicker}
+          className={
+            showPicker
+              ? "text-blue-600 bg-blue-50"
+              : "text-slate-400 hover:text-slate-600"
+          }
+          title="Insert Variable"
+        />
       </div>
 
       {/* Portal for Variable Picker to avoid z-index/overflow issues */}
@@ -318,7 +371,12 @@ export const SmartInput: React.FC<SmartInputProps> = ({
               zIndex: 9999,
             }}
           >
-            <VariablePicker onSelect={handleSelectVariable} onClose={() => setShowPicker(false)} globalParameters={globalParameters} serviceNames={serviceNames} />
+            <VariablePicker
+              onSelect={handleSelectVariable}
+              onClose={() => setShowPicker(false)}
+              globalParameters={globalParameters}
+              serviceNames={serviceNames}
+            />
           </div>,
           document.body,
         )}

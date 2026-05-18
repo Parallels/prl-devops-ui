@@ -2,11 +2,12 @@ import { Subject } from 'rxjs';
 import { ApiError, ApiErrorResponse } from '../interfaces/api';
 
 /**
- * Login request matching API specification
- */
+  * Login request matching API specification
+  */
 interface LoginRequest {
   email: string;
   password: string;
+  api_key?: string;
 }
 
 /**
@@ -177,10 +178,11 @@ class AuthService {
   private async performLogin(hostname: string, credentials: HostCredentials): Promise<string> {
     const loginUrl = this.buildLoginUrl(credentials.url);
 
-    const loginCredentials: LoginRequest = {
-      email: credentials.email,
-      password: credentials.password,
-    };
+  const loginCredentials: LoginRequest = {
+    email: credentials.email,
+    password: credentials.password,
+    api_key: credentials.api_key,
+  };
 
     try {
       const response = await fetch(loginUrl, {

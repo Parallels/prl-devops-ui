@@ -1,8 +1,8 @@
-import React, { useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import classNames from 'classnames';
+import React, { useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import classNames from "classnames";
 
-export type TooltipPosition = 'top' | 'bottom';
+export type TooltipPosition = "top" | "bottom";
 
 export interface TooltipProps {
   /** Text shown in the tooltip. When omitted the component renders children as-is. */
@@ -19,7 +19,7 @@ export interface TooltipProps {
 const Tooltip: React.FC<TooltipProps> = ({
   text,
   delay = 500,
-  position = 'top',
+  position = "top",
   wrapperClassName,
   children,
 }) => {
@@ -36,7 +36,7 @@ const Tooltip: React.FC<TooltipProps> = ({
         const rect = wrapperRef.current.getBoundingClientRect();
         setCoords({
           x: rect.left + rect.width / 2,
-          y: position === 'top' ? rect.top : rect.bottom,
+          y: position === "top" ? rect.top : rect.bottom,
         });
       }
       setVisible(true);
@@ -52,17 +52,18 @@ const Tooltip: React.FC<TooltipProps> = ({
     setCoords(null);
   };
 
-  const isTop = position === 'top';
+  const isTop = position === "top";
 
   return (
     <div
       ref={wrapperRef}
-      className={classNames('relative inline-flex', wrapperClassName)}
+      className={classNames("relative inline-flex", wrapperClassName)}
       onMouseEnter={show}
       onMouseLeave={hide}
     >
       {children}
-      {visible && coords &&
+      {visible &&
+        coords &&
         createPortal(
           <div
             role="tooltip"
@@ -70,23 +71,24 @@ const Tooltip: React.FC<TooltipProps> = ({
             style={{
               left: coords.x,
               top: coords.y,
-              transform: isTop ? 'translate(-50%, calc(-100% - 6px))' : 'translate(-50%, 6px)',
+              transform: isTop
+                ? "translate(-50%, calc(-100% - 6px))"
+                : "translate(-50%, 6px)",
             }}
           >
             {text}
             {/* caret */}
             <span
               className={classNames(
-                'absolute left-1/2 -translate-x-1/2 border-4 border-transparent',
+                "absolute left-1/2 -translate-x-1/2 border-4 border-transparent",
                 isTop
-                  ? 'top-full border-t-neutral-900 dark:border-t-neutral-700'
-                  : 'bottom-full border-b-neutral-900 dark:border-b-neutral-700',
+                  ? "top-full border-t-neutral-900 dark:border-t-neutral-700"
+                  : "bottom-full border-b-neutral-900 dark:border-b-neutral-700",
               )}
             />
           </div>,
           document.body,
-        )
-      }
+        )}
     </div>
   );
 };

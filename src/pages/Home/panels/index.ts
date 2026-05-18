@@ -7,3 +7,4 @@ export { MemoryUsagePanel } from './MemoryUsagePanel';
 export { GoroutinesPanel } from './GoroutinesPanel';
 export { VmsPanel } from './VmsPanel';
 export { HostsPanel } from './HostsPanel';
+export { formatTimeRange } from '@/utils/timeRange';

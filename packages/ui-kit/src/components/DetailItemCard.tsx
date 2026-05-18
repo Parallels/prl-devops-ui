@@ -43,7 +43,10 @@ const DetailItemCard: React.FC<DetailItemCardProps> = ({
   };
 
   return (
-    <div className={`flex w-full flex-col gap-2.5 ${expanded ? "expanded" : ""} ${className}`} onClick={handleClick}>
+    <div
+      className={`flex w-full flex-col gap-2.5 ${expanded ? "expanded" : ""} ${className}`}
+      onClick={handleClick}
+    >
       <div className="flex flex-1 flex-row items-center justify-between gap-1.5">
         {hasDetails && (
           <div className="flex-shrink-0">
@@ -63,18 +66,36 @@ const DetailItemCard: React.FC<DetailItemCardProps> = ({
           </div>
         )}
         <div className="flex flex-1 flex-col leading-normal">
-          <div className="text-base font-normal text-neutral-900 dark:text-neutral-100">{title}</div>
-          {subtitle && <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">{subtitle}</div>}
-          {description && <div className="text-xs text-neutral-500 dark:text-neutral-400">{description}</div>}
-          {badgesAlignment == "bottom" && <div className="flex flex-row justify-start gap-px">{badges}</div>}
-          {badgesAlignment == "bottom-end" && <div className="flex flex-row justify-end gap-px">{badges}</div>}
+          <div className="text-base font-normal text-neutral-900 dark:text-neutral-100">
+            {title}
+          </div>
+          {subtitle && (
+            <div className="text-xs font-semibold text-neutral-500 dark:text-neutral-400">
+              {subtitle}
+            </div>
+          )}
+          {description && (
+            <div className="text-xs text-neutral-500 dark:text-neutral-400">
+              {description}
+            </div>
+          )}
+          {badgesAlignment == "bottom" && (
+            <div className="flex flex-row justify-start gap-px">{badges}</div>
+          )}
+          {badgesAlignment == "bottom-end" && (
+            <div className="flex flex-row justify-end gap-px">{badges}</div>
+          )}
         </div>
 
-        {badgesAlignment == "right" && <div className="flex flex-col justify-end gap-px">{badges}</div>}
+        {badgesAlignment == "right" && (
+          <div className="flex flex-col justify-end gap-px">{badges}</div>
+        )}
       </div>
 
       {hasDetails && expanded && (
-        <div className="flex flex-col gap-2.5 px-[30px] text-sm text-neutral-500 dark:text-neutral-400">{children}</div>
+        <div className="flex flex-col gap-2.5 px-[30px] text-sm text-neutral-500 dark:text-neutral-400">
+          {children}
+        </div>
       )}
     </div>
   );

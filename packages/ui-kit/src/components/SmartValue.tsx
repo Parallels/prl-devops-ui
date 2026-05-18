@@ -14,7 +14,13 @@ export interface SmartValueProps {
   className?: string;
 }
 
-export const SmartValue: React.FC<SmartValueProps> = ({ value = "", globalParameters = [], serviceNames = [], context = {}, className = "" }) => {
+export const SmartValue: React.FC<SmartValueProps> = ({
+  value = "",
+  globalParameters = [],
+  serviceNames = [],
+  context = {},
+  className = "",
+}) => {
   const [viewMode, setViewMode] = useState<"token" | "value">("token");
 
   // Case insensitive regex match
@@ -35,7 +41,11 @@ export const SmartValue: React.FC<SmartValueProps> = ({ value = "", globalParame
     while ((match = regex.exec(value)) !== null) {
       // Text before match
       if (match.index > lastIndex) {
-        parts.push(<span key={`text-${lastIndex}`}>{value.substring(lastIndex, match.index)}</span>);
+        parts.push(
+          <span key={`text-${lastIndex}`}>
+            {value.substring(lastIndex, match.index)}
+          </span>,
+        );
       }
 
       const fullToken = match[0];
@@ -47,7 +57,11 @@ export const SmartValue: React.FC<SmartValueProps> = ({ value = "", globalParame
         const ctx = { globalParameters, serviceNames, context };
         // resolveVariable expects the full token usually, or we can adapt logic.
         // The utils resolveVariable expects the full token string to match its regex.
-        const { value: resolvedVal, isResolved, isRuntime } = resolveVariable(fullToken, ctx);
+        const {
+          value: resolvedVal,
+          isResolved,
+          isRuntime,
+        } = resolveVariable(fullToken, ctx);
         const isEmpty = !resolvedVal;
 
         let badgeClass = "bg-green-50 text-green-700 border-green-200";
@@ -72,9 +86,12 @@ export const SmartValue: React.FC<SmartValueProps> = ({ value = "", globalParame
         );
       } else {
         let badgeClass = "bg-slate-100 text-slate-700 border-slate-200";
-        if (source === "global") badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
-        if (source === "system") badgeClass = "bg-amber-50 text-amber-900 border-amber-200";
-        if (source === "service") badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
+        if (source === "global")
+          badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
+        if (source === "system")
+          badgeClass = "bg-amber-50 text-amber-900 border-amber-200";
+        if (source === "service")
+          badgeClass = "bg-emerald-50 text-emerald-700 border-emerald-200";
 
         parts.push(
           <span
@@ -82,7 +99,8 @@ export const SmartValue: React.FC<SmartValueProps> = ({ value = "", globalParame
             className={`mx-0.5 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono border ${badgeClass} select-none cursor-help align-middle`}
             title={`${type}::${source}`}
           >
-            {source === "global" ? "G" : source === "system" ? "S" : "SVC"}:{name}
+            {source === "global" ? "G" : source === "system" ? "S" : "SVC"}:
+            {name}
           </span>,
         );
       }
@@ -92,7 +110,9 @@ export const SmartValue: React.FC<SmartValueProps> = ({ value = "", globalParame
 
     // Remaining text
     if (lastIndex < value.length) {
-      parts.push(<span key={`text-${lastIndex}`}>{value.substring(lastIndex)}</span>);
+      parts.push(
+        <span key={`text-${lastIndex}`}>{value.substring(lastIndex)}</span>,
+      );
     }
 
     return parts;
@@ -104,7 +124,9 @@ export const SmartValue: React.FC<SmartValueProps> = ({ value = "", globalParame
 
   return (
     <div className={`flex items-start gap-1 group ${className}`}>
-      <div className="flex-1 min-w-0 flex flex-wrap items-center gap-y-1 max-h-[80px] overflow-y-auto">{renderParts()}</div>
+      <div className="flex-1 min-w-0 flex flex-wrap items-center gap-y-1 max-h-[80px] overflow-y-auto">
+        {renderParts()}
+      </div>
       <IconButton
         icon={viewMode === "token" ? "EyeOpen" : "EyeClosed"}
         variant="ghost"

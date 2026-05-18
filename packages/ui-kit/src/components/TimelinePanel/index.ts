@@ -1,4 +1,4 @@
-export { default as TimelinePanel } from './TimelinePanel';
+export { default as TimelinePanel } from "./TimelinePanel";
 export type {
   TimelinePanelProps,
   TimelinePanelItem,
@@ -8,4 +8,4 @@ export type {
   TimelinePanelVariant,
   TimelinePanelPadding,
   TimelinePanelCorner,
-} from './types';
+} from "./types";

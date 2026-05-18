@@ -45,12 +45,14 @@ export const Pill: React.FC<PillProps> = ({
     uppercase && "uppercase tracking-wide",
     dot && "px-0 h-2 w-2 min-w-[0.5rem]",
     dot && "rounded-full",
-    className
+    className,
   );
 
   return (
     <span className={pillClasses} {...rest}>
-      {icon && !dot ? <span className="mr-1.5 flex items-center text-inherit">{icon}</span> : null}
+      {icon && !dot ? (
+        <span className="mr-1.5 flex items-center text-inherit">{icon}</span>
+      ) : null}
       {!dot ? children : null}
     </span>
   );

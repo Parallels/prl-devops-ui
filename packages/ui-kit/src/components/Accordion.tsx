@@ -6,7 +6,12 @@ import { useAccordion, type UseAccordionOptions } from "../hooks/useAccordion";
 import type { PanelTone } from "./Panel";
 import { useIconRenderer } from "../contexts/IconContext";
 
-export type AccordionVariant = "default" | "bordered" | "minimal" | "tonal" | "ghost";
+export type AccordionVariant =
+  | "default"
+  | "bordered"
+  | "minimal"
+  | "tonal"
+  | "ghost";
 export type AccordionSize = "sm" | "md" | "lg";
 export type AccordionIndicator = "chevron" | "plus-minus" | "caret" | "none";
 export type AccordionChevronPlacement = "left" | "right";
@@ -24,7 +29,9 @@ export interface AccordionItem {
   loading?: boolean;
 }
 
-export interface AccordionProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange">, UseAccordionOptions {
+export interface AccordionProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "onChange">,
+    UseAccordionOptions {
   items: AccordionItem[];
   variant?: AccordionVariant;
   tone?: PanelTone;
@@ -136,14 +143,18 @@ const variantClasses: Record<
 };
 
 const toneClasses: Partial<
-  Record<PanelTone, { header: string; indicator: string; icon: string; badge: string }>
+  Record<
+    PanelTone,
+    { header: string; indicator: string; icon: string; badge: string }
+  >
 > = {
   neutral: {
     header:
       "bg-neutral-50/50 text-neutral-900 shadow-sm hover:bg-neutral-100/80 dark:bg-neutral-900/40 dark:text-neutral-100 dark:hover:bg-neutral-800/60",
     indicator: "text-neutral-400 dark:text-neutral-500",
     icon: "text-neutral-500 dark:text-neutral-400",
-    badge: "bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300",
+    badge:
+      "bg-neutral-200 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300",
   },
   info: {
     header:
@@ -157,14 +168,16 @@ const toneClasses: Partial<
       "bg-emerald-50/50 text-emerald-900 shadow-sm hover:bg-emerald-100/60 ring-1 ring-emerald-100/50 dark:bg-emerald-950/20 dark:text-emerald-100 dark:ring-emerald-900/30 dark:hover:bg-emerald-900/30",
     indicator: "text-emerald-500 dark:text-emerald-500",
     icon: "text-emerald-600 dark:text-emerald-400",
-    badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300",
+    badge:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300",
   },
   warning: {
     header:
       "bg-amber-50/50 text-amber-900 shadow-sm hover:bg-amber-100/60 ring-1 ring-amber-100/50 dark:bg-amber-950/20 dark:text-amber-100 dark:ring-amber-900/30 dark:hover:bg-amber-900/30",
     indicator: "text-amber-500 dark:text-amber-500",
     icon: "text-amber-600 dark:text-amber-400",
-    badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
+    badge:
+      "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300",
   },
   danger: {
     header:
@@ -178,7 +191,8 @@ const toneClasses: Partial<
       "bg-indigo-50/50 text-indigo-900 shadow-sm hover:bg-indigo-100/60 ring-1 ring-indigo-100/50 dark:bg-indigo-950/20 dark:text-indigo-100 dark:ring-indigo-900/30 dark:hover:bg-indigo-900/30",
     indicator: "text-indigo-400 dark:text-indigo-500",
     icon: "text-indigo-600 dark:text-indigo-400",
-    badge: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300",
+    badge:
+      "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300",
   },
 };
 
@@ -229,7 +243,12 @@ export const Accordion: React.FC<AccordionProps> = ({
   ...rest
 }) => {
   const renderIcon = useIconRenderer();
-  const accordion = useAccordion({ defaultOpenIds, openIds, onChange, multiple });
+  const accordion = useAccordion({
+    defaultOpenIds,
+    openIds,
+    onChange,
+    multiple,
+  });
 
   const sizeToken = sizeTokens[size];
   const variantToken = variantClasses[variant];
@@ -246,7 +265,7 @@ export const Accordion: React.FC<AccordionProps> = ({
         "relative flex w-full flex-col overflow-hidden",
         variantToken.root,
         divider && "divide-y divide-neutral-200 dark:divide-neutral-800",
-        className
+        className,
       )}
       style={style}
       aria-busy={loading}
@@ -260,7 +279,13 @@ export const Accordion: React.FC<AccordionProps> = ({
           const isLoading = Boolean(item.loading);
 
           const indicatorRotation =
-            indicator === "plus-minus" ? (isOpen ? "rotate-45" : "") : isOpen ? "-rotate-180" : "";
+            indicator === "plus-minus"
+              ? isOpen
+                ? "rotate-45"
+                : ""
+              : isOpen
+                ? "-rotate-180"
+                : "";
 
           const indicatorButton =
             showIndicator && indicatorIcon ? (
@@ -274,7 +299,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                   "pointer-events-none text-neutral-400 dark:text-neutral-300",
                   toneToken.indicator,
                   indicatorRotationClass[indicator],
-                  indicatorRotation
+                  indicatorRotation,
                 )}
                 aria-hidden="true"
                 tabIndex={-1}
@@ -289,7 +314,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                 "relative flex flex-col",
                 variantToken.item,
                 isDisabled && "opacity-60",
-                itemClassName
+                itemClassName,
               )}
             >
               <button
@@ -300,7 +325,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                   variantToken.header,
                   toneToken.header,
                   headerClassName,
-                  isDisabled && "cursor-not-allowed"
+                  isDisabled && "cursor-not-allowed",
                 )}
                 aria-expanded={isOpen}
                 aria-controls={`${item.id}-content`}
@@ -312,7 +337,9 @@ export const Accordion: React.FC<AccordionProps> = ({
                 }}
               >
                 {chevronPlacement === "left" && indicatorButton ? (
-                  <div className="mt-1 flex items-center">{indicatorButton}</div>
+                  <div className="mt-1 flex items-center">
+                    {indicatorButton}
+                  </div>
                 ) : null}
                 <div className="flex flex-1 items-start gap-3">
                   {item.icon ? (
@@ -320,7 +347,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                       className={classNames(
                         "mt-1 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-neutral-100 dark:bg-neutral-800",
                         toneToken.icon,
-                        iconClassName
+                        iconClassName,
                       )}
                     >
                       {renderIcon(item.icon, "md")}
@@ -334,15 +361,23 @@ export const Accordion: React.FC<AccordionProps> = ({
                           className={classNames(
                             "inline-flex items-center rounded-full px-2 py-0.5 font-medium",
                             sizeToken.badge,
-                            toneToken.badge
+                            toneToken.badge,
                           )}
                         >
                           {item.badge}
                         </span>
                       ) : null}
                     </div>
-                    {item.subtitle ? <div className={classNames(sizeToken.subtitle)}>{item.subtitle}</div> : null}
-                    {item.description ? <div className={classNames(sizeToken.description)}>{item.description}</div> : null}
+                    {item.subtitle ? (
+                      <div className={classNames(sizeToken.subtitle)}>
+                        {item.subtitle}
+                      </div>
+                    ) : null}
+                    {item.description ? (
+                      <div className={classNames(sizeToken.description)}>
+                        {item.description}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
                 {item.actions ? (
@@ -351,7 +386,9 @@ export const Accordion: React.FC<AccordionProps> = ({
                   </div>
                 ) : null}
                 {chevronPlacement === "right" && indicatorButton ? (
-                  <div className="mt-1 flex items-center">{indicatorButton}</div>
+                  <div className="mt-1 flex items-center">
+                    {indicatorButton}
+                  </div>
                 ) : null}
               </button>
               <div
@@ -362,7 +399,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                   "overflow-hidden",
                   animated && contentTransitionClass,
                   contentClassName,
-                  animated && `duration-[${transitionMs}ms]`
+                  animated && `duration-[${transitionMs}ms]`,
                 )}
                 style={animated ? { maxHeight: undefined } : undefined}
                 data-open={isOpen}
@@ -370,7 +407,9 @@ export const Accordion: React.FC<AccordionProps> = ({
                 <div
                   className={classNames(
                     "grid transition-all duration-200 ease-out",
-                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                    isOpen
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0",
                   )}
                 >
                   <div className={classNames("min-h-0", variantToken.content)}>
@@ -378,7 +417,7 @@ export const Accordion: React.FC<AccordionProps> = ({
                       className={classNames(
                         "overflow-hidden",
                         sizeToken.content,
-                        "text-sm leading-6 text-neutral-600 dark:text-neutral-300"
+                        "text-sm leading-6 text-neutral-600 dark:text-neutral-300",
                       )}
                     >
                       {item.content}
@@ -386,7 +425,15 @@ export const Accordion: React.FC<AccordionProps> = ({
                   </div>
                 </div>
               </div>
-              {isLoading && <Loader overlay title="Loading" className="rounded-none" size="md" color="blue" />}
+              {isLoading && (
+                <Loader
+                  overlay
+                  title="Loading"
+                  className="rounded-none"
+                  size="md"
+                  color="blue"
+                />
+              )}
             </div>
           );
         })}

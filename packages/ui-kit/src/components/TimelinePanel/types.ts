@@ -1,10 +1,14 @@
-import type React from 'react';
-import type { ButtonVariant, ButtonSize } from '../Button';
-import type { ThemeColor } from '../../theme/Theme';
-import type { PanelVariant, PanelPadding, PanelCorner } from '../Panel';
-import { LoaderProps } from '../Loader';
+import type React from "react";
+import type { ButtonVariant, ButtonSize } from "../Button";
+import type { ThemeColor } from "../../theme/Theme";
+import type { PanelVariant, PanelPadding, PanelCorner } from "../Panel";
+import { LoaderProps } from "../Loader";
 
-export type { PanelVariant as TimelinePanelVariant, PanelPadding as TimelinePanelPadding, PanelCorner as TimelinePanelCorner };
+export type {
+  PanelVariant as TimelinePanelVariant,
+  PanelPadding as TimelinePanelPadding,
+  PanelCorner as TimelinePanelCorner,
+};
 
 export interface TimelinePanelAction {
   label: React.ReactNode;
@@ -88,5 +92,5 @@ export interface TimelinePanelProps {
   /** Node to show when items is empty */
   emptyState?: React.ReactNode;
   className?: string;
-  loaderProps?: LoaderProps
+  loaderProps?: LoaderProps;
 }

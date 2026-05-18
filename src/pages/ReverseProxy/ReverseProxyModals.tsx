@@ -383,7 +383,13 @@ interface CreateProxyHostModalProps {
   onSubmit: (data: Partial<ReverseProxyHost>) => Promise<void>;
 }
 
-export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOpen, existingHosts = [], onClose, onSubmit }) => {
+export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({
+  isOpen,
+  existingHosts = [],
+  orchestratorHostId,
+  onClose,
+  onSubmit,
+}) => {
   const { session } = useSession();
   const { themeColor } = useSystemSettings();
   const hostname = session?.hostname ?? '';
@@ -460,14 +466,32 @@ export const CreateProxyHostModal: React.FC<CreateProxyHostModalProps> = ({ isOp
     setErrors({});
   }, [isOpen]);
 
-  // Fetch VMs when opened
+  // Fetch VMs when modal opens.
+  // - If orchestratorHostId is set → fetch only that host's VMs from the orchestrator.
+  // - Otherwise → fetch current session's VMs from /api/v1/machines.
   useEffect(() => {
+    let cancelled = false;
     if (!isOpen || !hostname) return;
-    devopsService.machines
-      .getVirtualMachines(hostname, false)
-      .then(setAvailableVms)
-      .catch(() => setAvailableVms([]));
-  }, [isOpen, hostname]);
+
+    const fetchVms = async () => {
+      try {
+        if (orchestratorHostId) {
+          return await devopsService.orchestrator.getOrchestratorVMs(hostname, orchestratorHostId);
+        }
+        return await devopsService.machines.getVirtualMachines(hostname, false);
+      } catch {
+        return [] as VirtualMachine[];
+      }
+    };
+
+    fetchVms().then((vms) => {
+      if (cancelled) return;
+      setAvailableVms(vms);
+    });
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, hostname, orchestratorHostId]);
 
   // Auto-adjust port when TLS toggled
   useEffect(() => {

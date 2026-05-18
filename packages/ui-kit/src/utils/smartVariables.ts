@@ -1,12 +1,19 @@
-import { type SmartVariable, type SmartVariableType, type SmartVariableSource } from "../types/Variables";
+import {
+  type SmartVariable,
+  type SmartVariableType,
+  type SmartVariableSource,
+} from "../types/Variables";
 
 // Regex to match {{ type::source::name }}
 // Captures: 1=type, 2=source, 3=name
-export const SMART_VAR_REGEX = /\{\{\s*(var|env)::(global|system|service)::([a-zA-Z0-9_\-.]+)\s*\}\}/g;
+export const SMART_VAR_REGEX =
+  /\{\{\s*(var|env)::(global|system|service)::([a-zA-Z0-9_\-.]+)\s*\}\}/g;
 
 export const parseSmartVariable = (token: string): SmartVariable | null => {
   // Reset regex index if reusing global regex, but here we just use match
-  const match = token.match(/^\{\{\s*(var|env)::(global|system|service)::([a-zA-Z0-9_\-.]+)\s*\}\}$/);
+  const match = token.match(
+    /^\{\{\s*(var|env)::(global|system|service)::([a-zA-Z0-9_\-.]+)\s*\}\}$/,
+  );
 
   if (!match) return null;
 
@@ -18,7 +25,11 @@ export const parseSmartVariable = (token: string): SmartVariable | null => {
   };
 };
 
-export const createSmartToken = (type: SmartVariableType, source: SmartVariableSource, name: string) => {
+export const createSmartToken = (
+  type: SmartVariableType,
+  source: SmartVariableSource,
+  name: string,
+) => {
   return `{{ ${type}::${source}::${name} }}`;
 };
 
@@ -61,9 +72,14 @@ interface VariableContext {
   };
 }
 
-export const resolveVariable = (value: string, ctx: VariableContext): { value: string; isResolved: boolean; isRuntime: boolean } => {
+export const resolveVariable = (
+  value: string,
+  ctx: VariableContext,
+): { value: string; isResolved: boolean; isRuntime: boolean } => {
   // Basic regex match for single variable
-  const match = value.match(/^\{\{\s*(var|env)::(global|system|service)::([a-zA-Z0-9_\-.]+)\s*\}\}$/);
+  const match = value.match(
+    /^\{\{\s*(var|env)::(global|system|service)::([a-zA-Z0-9_\-.]+)\s*\}\}$/,
+  );
   if (!match) return { value, isResolved: false, isRuntime: false };
 
   const [, , source, name] = match;
@@ -72,12 +88,18 @@ export const resolveVariable = (value: string, ctx: VariableContext): { value: s
     let param = ctx.globalParameters?.find((p) => p.key === name);
     if (!param) {
       // Fallback: Try case-insensitive comparison
-      param = ctx.globalParameters?.find((p) => p.key.toLowerCase() === name.toLowerCase());
+      param = ctx.globalParameters?.find(
+        (p) => p.key.toLowerCase() === name.toLowerCase(),
+      );
     }
 
     if (param) {
       const val = param.default ?? param.default_value;
-      return { value: val ? String(val) : "", isResolved: true, isRuntime: false };
+      return {
+        value: val ? String(val) : "",
+        isResolved: true,
+        isRuntime: false,
+      };
     }
     return { value: "", isResolved: false, isRuntime: false };
   }
@@ -88,7 +110,11 @@ export const resolveVariable = (value: string, ctx: VariableContext): { value: s
     const lowerName = name.toLowerCase();
     // Derived Variables
     if (lowerName === "sub_domain") {
-      return { value: ctx.context?.slug || "", isResolved: true, isRuntime: false };
+      return {
+        value: ctx.context?.slug || "",
+        isResolved: true,
+        isRuntime: false,
+      };
     }
     if (lowerName === "domain") {
       return { value: "parallels.private", isResolved: true, isRuntime: false };
@@ -98,13 +124,26 @@ export const resolveVariable = (value: string, ctx: VariableContext): { value: s
       const domain = "parallels.private";
       const sub = ctx.context?.slug || "";
       if (sub) {
-        return { value: `${protocol}://${sub}.${domain}`, isResolved: true, isRuntime: false };
+        return {
+          value: `${protocol}://${sub}.${domain}`,
+          isResolved: true,
+          isRuntime: false,
+        };
       }
       return { value: "", isResolved: false, isRuntime: false };
     }
 
     // Runtime Variables
-    const runtimeVars = ["name", "reverse_proxy_host", "ip_address", "host_gateway_ip", "capsule_id", "capsule_name", "host_ip", "app_url"];
+    const runtimeVars = [
+      "name",
+      "reverse_proxy_host",
+      "ip_address",
+      "host_gateway_ip",
+      "capsule_id",
+      "capsule_name",
+      "host_ip",
+      "app_url",
+    ];
     if (runtimeVars.includes(lowerName)) {
       return { value: `[${lowerName}]`, isResolved: true, isRuntime: true };
     }

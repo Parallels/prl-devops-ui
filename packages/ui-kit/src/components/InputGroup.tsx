@@ -1,5 +1,9 @@
 import classNames from "classnames";
-import React, { type ReactElement, type ReactNode, isValidElement } from "react";
+import React, {
+  type ReactElement,
+  type ReactNode,
+  isValidElement,
+} from "react";
 import type { ButtonColor } from "./Button";
 
 type InputGroupSize = "sm" | "md" | "lg";
@@ -133,7 +137,8 @@ const toneTokens: Partial<Record<ButtonColor, ToneTokens>> = {
     darkAddonText: "dark:text-slate-200",
   },
   theme: {
-    focusRing: "focus-within:ring-neutral-400 dark:focus-within:ring-neutral-500 focus-within:ring-2",
+    focusRing:
+      "focus-within:ring-neutral-400 dark:focus-within:ring-neutral-500 focus-within:ring-2",
     ring: "ring-neutral-200/80",
     background: "bg-white",
     addonBackground: "bg-neutral-50",
@@ -147,9 +152,14 @@ const toneTokens: Partial<Record<ButtonColor, ToneTokens>> = {
   },
 };
 
-const statusRing: Record<Exclude<InputGroupValidationStatus, "none">, string> = {
-  error: "focus-within:ring-rose-500 ring-rose-400/70 dark:ring-rose-400/40 dark:focus-within:ring-rose-400",
-  success: "focus-within:ring-emerald-500 ring-emerald-400/70 dark:ring-emerald-400/40 dark:focus-within:ring-emerald-400",
+const statusRing: Record<
+  Exclude<InputGroupValidationStatus, "none">,
+  string
+> = {
+  error:
+    "focus-within:ring-rose-500 ring-rose-400/70 dark:ring-rose-400/40 dark:focus-within:ring-rose-400",
+  success:
+    "focus-within:ring-emerald-500 ring-emerald-400/70 dark:ring-emerald-400/40 dark:focus-within:ring-emerald-400",
 };
 
 const isAttachableChild = (child: ReactNode) => {
@@ -160,7 +170,11 @@ const isAttachableChild = (child: ReactNode) => {
   return Boolean(type && (type.__UI_INPUT || type.__UI_SELECT));
 };
 
-const attachChildProps = (child: ReactNode, tone: ButtonColor, size: InputGroupSize): ReactNode => {
+const attachChildProps = (
+  child: ReactNode,
+  tone: ButtonColor,
+  size: InputGroupSize,
+): ReactNode => {
   if (!isValidElement(child) || !isAttachableChild(child)) {
     return child;
   }
@@ -185,14 +199,31 @@ export interface InputGroupProps {
   disabled?: boolean;
 }
 
-const addonBaseClasses = "inline-flex min-w-0 items-center whitespace-nowrap border border-transparent text-sm font-medium";
+const addonBaseClasses =
+  "inline-flex min-w-0 items-center whitespace-nowrap border border-transparent text-sm font-medium";
 
-const InputGroup: React.FC<InputGroupProps> = ({ leadingAddon, trailingAddon, children, tone = "blue", size = "md", className, validationStatus = "none", disabled = false }) => {
+const InputGroup: React.FC<InputGroupProps> = ({
+  leadingAddon,
+  trailingAddon,
+  children,
+  tone = "blue",
+  size = "md",
+  className,
+  validationStatus = "none",
+  disabled = false,
+}) => {
   const toneToken = (toneTokens[tone] ?? toneTokens.theme) as ToneTokens;
   const sizeToken = sizeTokens[size] ?? sizeTokens.md;
 
   const ringClasses =
-    validationStatus === "none" ? classNames("ring-1 ring-inset transition focus-within:ring-2", toneToken.ring, toneToken.darkRing, toneToken.focusRing) : statusRing[validationStatus];
+    validationStatus === "none"
+      ? classNames(
+          "ring-1 ring-inset transition focus-within:ring-2",
+          toneToken.ring,
+          toneToken.darkRing,
+          toneToken.focusRing,
+        )
+      : statusRing[validationStatus];
 
   const groupClasses = classNames(
     "flex w-full items-stretch overflow-hidden rounded-lg shadow-sm",
@@ -243,10 +274,16 @@ const InputGroup: React.FC<InputGroupProps> = ({ leadingAddon, trailingAddon, ch
       </span>
     ) : null;
 
-  const enhancedChildren = React.Children.map(children, (child) => attachChildProps(child, tone, size));
+  const enhancedChildren = React.Children.map(children, (child) =>
+    attachChildProps(child, tone, size),
+  );
 
   return (
-    <div className={groupClasses} data-disabled={disabled} data-status={validationStatus}>
+    <div
+      className={groupClasses}
+      data-disabled={disabled}
+      data-status={validationStatus}
+    >
       {leading}
       <div className="flex min-w-0 flex-1 items-center">{enhancedChildren}</div>
       {trailing}

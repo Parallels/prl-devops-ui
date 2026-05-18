@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import classNames from 'classnames';
-import Panel, { PanelProps } from './Panel';
-import { CustomIcon } from './CustomIcon';
+import React, { useState } from "react";
+import classNames from "classnames";
+import Panel, { PanelProps } from "./Panel";
+import { CustomIcon } from "./CustomIcon";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,7 +27,7 @@ export interface PagedPanelProps extends PanelProps {
 // ── Nav button ───────────────────────────────────────────────────────────────
 
 const NavBtn: React.FC<{
-  direction: 'left' | 'right';
+  direction: "left" | "right";
   disabled: boolean;
   onClick: () => void;
 }> = ({ direction, disabled, onClick }) => (
@@ -35,16 +35,19 @@ const NavBtn: React.FC<{
     type="button"
     onClick={onClick}
     disabled={disabled}
-    aria-label={direction === 'left' ? 'Previous page' : 'Next page'}
+    aria-label={direction === "left" ? "Previous page" : "Next page"}
     className={classNames(
-      'flex items-center justify-center w-7 h-7 rounded-lg transition-colors duration-150',
-      'text-neutral-400 dark:text-neutral-500',
-      'hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200',
-      'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-400 dark:disabled:hover:text-neutral-500',
-      'focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+      "flex items-center justify-center w-7 h-7 rounded-lg transition-colors duration-150",
+      "text-neutral-400 dark:text-neutral-500",
+      "hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200",
+      "disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-400 dark:disabled:hover:text-neutral-500",
+      "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
     )}
   >
-    <CustomIcon icon={direction === 'left' ? 'ArrowChevronLeft' : 'ArrowChevronRight'} size="sm" />
+    <CustomIcon
+      icon={direction === "left" ? "ArrowChevronLeft" : "ArrowChevronRight"}
+      size="sm"
+    />
   </button>
 );
 
@@ -120,7 +123,9 @@ const PagedPanel: React.FC<PagedPanelProps> = ({
       {error ? (
         <p className="text-sm text-rose-500 dark:text-rose-400">{error}</p>
       ) : total === 0 && !rest.loading ? (
-        <p className="text-sm text-neutral-400 dark:text-neutral-500">No data available.</p>
+        <p className="text-sm text-neutral-400 dark:text-neutral-500">
+          No data available.
+        </p>
       ) : (
         pages[safeCurrent]
       )}
@@ -129,7 +134,7 @@ const PagedPanel: React.FC<PagedPanelProps> = ({
 
   if (bare) {
     return (
-      <div className={classNames('relative overflow-hidden', rest.className)}>
+      <div className={classNames("relative overflow-hidden", rest.className)}>
         {header}
         {content}
       </div>
@@ -139,8 +144,8 @@ const PagedPanel: React.FC<PagedPanelProps> = ({
   return (
     <Panel
       {...rest}
-      bodyClassName={total === 0 && !rest.loading ? 'h-full' : ''}
-      className={classNames('relative overflow-hidden', rest.className)}
+      bodyClassName={total === 0 && !rest.loading ? "h-full" : ""}
+      className={classNames("relative overflow-hidden", rest.className)}
     >
       {header}
       {content}

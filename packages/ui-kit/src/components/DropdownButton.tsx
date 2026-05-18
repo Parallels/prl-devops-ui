@@ -8,7 +8,10 @@ export interface DropdownButtonOption extends DropdownMenuOption {
 }
 
 export interface DropdownButtonProps
-  extends Omit<ButtonProps, "children" | "leadingIcon" | "trailingIcon" | "iconOnly" | "fullWidth"> {
+  extends Omit<
+    ButtonProps,
+    "children" | "leadingIcon" | "trailingIcon" | "iconOnly" | "fullWidth"
+  > {
   label: React.ReactNode;
   options: DropdownButtonOption[];
   onPrimaryClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
@@ -46,7 +49,11 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
   const [open, setOpen] = useState(false);
   const caretRef = useRef<HTMLButtonElement>(null);
   const anchorRef = useRef<HTMLDivElement>(null);
-  const containerClasses = classNames("inline-flex items-stretch", fullWidth && "w-full", className);
+  const containerClasses = classNames(
+    "inline-flex items-stretch",
+    fullWidth && "w-full",
+    className,
+  );
 
   const handleSelect = (option: DropdownButtonOption) => {
     onOptionSelect?.(option);
@@ -106,7 +113,7 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
       className={classNames(
         "rounded-l-none border-l border-white/20 text-inherit dark:border-white/10",
         split && caretWidthMap[size],
-        caretIconClassMap[size]
+        caretIconClassMap[size],
       )}
       onClick={handleCaretToggle}
       disabled={disabled || options.length === 0}
@@ -119,7 +126,10 @@ export const DropdownButton: React.FC<DropdownButtonProps> = ({
       variant={variant}
       color={color}
       size={size}
-      className={classNames(split && showCaret && "rounded-r-none", fullWidth ? "flex-1" : "")}
+      className={classNames(
+        split && showCaret && "rounded-r-none",
+        fullWidth ? "flex-1" : "",
+      )}
       disabled={disabled}
       onClick={handlePrimaryClick}
       {...restButtonProps}

@@ -36,8 +36,25 @@ const alignItemsClasses: Record<FormLayoutColumns, string> = {
   3: "items-center",
 };
 
-const FormLayout: React.FC<FormLayoutProps> = ({ columns = 1, gap = "md", children, className, verticalPadding = "sm" }) => (
-  <div className={classNames("grid px-2", verticalPaddingClasses[verticalPadding], alignItemsClasses[columns], columnClasses[columns], gapClasses[gap], className)}>{children}</div>
+const FormLayout: React.FC<FormLayoutProps> = ({
+  columns = 1,
+  gap = "md",
+  children,
+  className,
+  verticalPadding = "sm",
+}) => (
+  <div
+    className={classNames(
+      "grid px-2",
+      verticalPaddingClasses[verticalPadding],
+      alignItemsClasses[columns],
+      columnClasses[columns],
+      gapClasses[gap],
+      className,
+    )}
+  >
+    {children}
+  </div>
 );
 
 export default FormLayout;

@@ -1,34 +1,34 @@
 {
-    "version": "0.2.0",
-    "configurations": [
-        {
-            "type": "pwa-chrome",
-            "request": "launch",
-            "name": "Launch Chrome",
-            "url": "http://localhost:1421",
-            "webRoot": "${workspaceFolder}/src",
-            "sourceMaps": true,
-            "preLaunchTask": "tauri: dev",
-            "envFile": "${workspaceFolder}/.env"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Tauri Development Debug",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--manifest-path=./src-tauri/Cargo.toml",
-                    "--no-default-features"
-                ]
-            },
-            "task": "tauri: dev",
-            "env": {
-                "VITE_DEVOPS_API_URL": "${env:VITE_DEVOPS_API_URL}",
-                "VITE_DEVOPS_USERNAME": "${env:VITE_DEVOPS_USERNAME}",
-                "VITE_DEVOPS_PASSWORD": "${env:VITE_DEVOPS_PASSWORD}",
-                "VITE_DEVOPS_EMAIL": "${env:VITE_DEVOPS_EMAIL}"
-            }
-        }
-    ]
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "pwa-chrome",
+      "request": "launch",
+      "name": "Launch Chrome",
+      "url": "http://localhost:1421",
+      "webRoot": "${workspaceFolder}/src",
+      "sourceMaps": true,
+      "preLaunchTask": "tauri: dev",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Tauri Development Debug",
+      "cargo": {
+        "args": [
+          "build",
+          "--manifest-path=./src-tauri/Cargo.toml",
+          "--no-default-features"
+        ]
+      },
+      "task": "tauri: dev",
+      "env": {
+        "VITE_DEVOPS_API_URL": "${env:VITE_DEVOPS_API_URL}",
+        "VITE_DEVOPS_USERNAME": "${env:VITE_DEVOPS_USERNAME}",
+        "VITE_DEVOPS_PASSWORD": "${env:VITE_DEVOPS_PASSWORD}",
+        "VITE_DEVOPS_EMAIL": "${env:VITE_DEVOPS_EMAIL}"
+      }
+    }
+  ]
 }

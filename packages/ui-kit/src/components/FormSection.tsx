@@ -10,7 +10,10 @@ export interface FormSectionProps {
   padding?: "sm" | "md" | "lg";
 }
 
-const paddingMap: Record<"sm" | "md" | "lg", { body: string; header: string; footer: string }> = {
+const paddingMap: Record<
+  "sm" | "md" | "lg",
+  { body: string; header: string; footer: string }
+> = {
   sm: {
     header: "px-4 py-4",
     body: "px-4 py-4",
@@ -28,20 +31,54 @@ const paddingMap: Record<"sm" | "md" | "lg", { body: string; header: string; foo
   },
 };
 
-const FormSection: React.FC<FormSectionProps> = ({ title, description, footer, children, className, padding = "md" }) => {
+const FormSection: React.FC<FormSectionProps> = ({
+  title,
+  description,
+  footer,
+  children,
+  className,
+  padding = "md",
+}) => {
   const pad = paddingMap[padding];
   return (
-    <section className={classNames("rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900", className)}>
+    <section
+      className={classNames(
+        "rounded-2xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-700 dark:bg-neutral-900",
+        className,
+      )}
+    >
       {(title || description) && (
-        <div className={classNames("border-b border-neutral-200 dark:border-neutral-700", pad.header)}>
+        <div
+          className={classNames(
+            "border-b border-neutral-200 dark:border-neutral-700",
+            pad.header,
+          )}
+        >
           <div>
-            {title && <h2 className="text-base font-semibold leading-6 text-neutral-900 dark:text-neutral-100">{title}</h2>}
-            {description && <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">{description}</p>}
+            {title && (
+              <h2 className="text-base font-semibold leading-6 text-neutral-900 dark:text-neutral-100">
+                {title}
+              </h2>
+            )}
+            {description && (
+              <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-300">
+                {description}
+              </p>
+            )}
           </div>
         </div>
       )}
       <div className={classNames("space-y-6", pad.body)}>{children}</div>
-      {footer && <div className={classNames("border-t border-neutral-200 dark:border-neutral-700", pad.footer)}>{footer}</div>}
+      {footer && (
+        <div
+          className={classNames(
+            "border-t border-neutral-200 dark:border-neutral-700",
+            pad.footer,
+          )}
+        >
+          {footer}
+        </div>
+      )}
     </section>
   );
 };

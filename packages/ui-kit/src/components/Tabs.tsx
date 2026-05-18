@@ -6,7 +6,12 @@ import IconButton from "./IconButton";
 import { iconAccentActive } from "../theme/ButtonTypes";
 import Badge from "./Badge";
 
-export type TabsVariant = "underline" | "soft" | "pill" | "segmented" | "minimal";
+export type TabsVariant =
+  | "underline"
+  | "soft"
+  | "pill"
+  | "segmented"
+  | "minimal";
 export type TabsSize = "sm" | "md" | "lg";
 export type TabsOrientation = "horizontal" | "vertical";
 export type TabsJustify = "start" | "center" | "end" | "between";
@@ -63,16 +68,21 @@ export interface TabsProps {
   scrollFadeFrom?: string;
 }
 
-const joinClasses = (...parts: Array<string | false | null | undefined>) => parts.filter(Boolean).join(" ");
+const joinClasses = (...parts: Array<string | false | null | undefined>) =>
+  parts.filter(Boolean).join(" ");
 
 const baseTabClasses =
   "group relative inline-flex items-center transition-all duration-150 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60";
 
-const focusOffset = "focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-0";
+const focusOffset =
+  "focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-0";
 
 const focusRing = (color: ThemeColor) => getTabsColorTokens(color).focusRing;
 
-const sizeStyles: Record<TabsSize, { padding: string; text: string; gap: string; icon: string }> = {
+const sizeStyles: Record<
+  TabsSize,
+  { padding: string; text: string; gap: string; icon: string }
+> = {
   sm: {
     padding: "px-3 py-1.5",
     text: "text-sm font-medium",
@@ -111,7 +121,7 @@ const buildVariantConfig = (
   variant: TabsVariant,
   color: ThemeColor,
   orientation: TabsOrientation,
-  hideUnderlineContainer?: boolean
+  hideUnderlineContainer?: boolean,
 ): VariantConfig => {
   const tokens = getTabsColorTokens(color);
   const hoverAccentText = tokens.hoverText;
@@ -129,13 +139,17 @@ const buildVariantConfig = (
   switch (variant) {
     case "soft":
       return {
-        container: joinClasses("rounded-full", subtleBg, orientation === "vertical" ? "p-1.5" : "p-1"),
+        container: joinClasses(
+          "rounded-full",
+          subtleBg,
+          orientation === "vertical" ? "p-1.5" : "p-1",
+        ),
         list: "gap-1",
         base: joinClasses(
           "rounded-full font-medium",
           neutralTextInactive,
           hoverAccentText,
-          "hover:bg-white/70 dark:hover:bg-white/10"
+          "hover:bg-white/70 dark:hover:bg-white/10",
         ),
         active: joinClasses("shadow-sm", accentBgStrong, activeOnAccent),
         inactive: "",
@@ -152,9 +166,13 @@ const buildVariantConfig = (
           "rounded-full border border-transparent font-medium",
           neutralTextInactive,
           hoverAccentText,
-          "hover:border-current"
+          "hover:border-current",
         ),
-        active: joinClasses(accentBgStrong, activeOnAccent, "shadow-sm border-transparent"),
+        active: joinClasses(
+          accentBgStrong,
+          activeOnAccent,
+          "shadow-sm border-transparent",
+        ),
         inactive: "border-slate-200 dark:border-slate-700",
         disabled: "text-slate-300 dark:text-slate-600 border-transparent",
         badge: badgeSubtle,
@@ -164,14 +182,23 @@ const buildVariantConfig = (
     case "segmented":
       return {
         container: joinClasses("rounded-lg border", segmentedContainer),
-        list: classNames("gap-0 overflow-hidden", orientation === "vertical" ? "flex-col" : "flex-row"),
+        list: classNames(
+          "gap-0 overflow-hidden",
+          orientation === "vertical" ? "flex-col" : "flex-row",
+        ),
         base: joinClasses(
           "font-medium border border-transparent first:rounded-l-lg last:rounded-r-lg first:rounded-t-lg last:rounded-b-lg",
           neutralTextInactive,
           hoverAccentText,
-          orientation === "horizontal" ? "-ml-px first:ml-0" : "-mt-px first:mt-0"
+          orientation === "horizontal"
+            ? "-ml-px first:ml-0"
+            : "-mt-px first:mt-0",
         ),
-        active: joinClasses(accentBgStrong, activeOnAccent, "shadow-sm border-transparent dark:shadow-none"),
+        active: joinClasses(
+          accentBgStrong,
+          activeOnAccent,
+          "shadow-sm border-transparent dark:shadow-none",
+        ),
         inactive: joinClasses("bg-transparent", subtleHoverBg),
         disabled: "text-slate-300 dark:text-slate-600 border-transparent",
         badge: badgeSubtle,
@@ -187,7 +214,7 @@ const buildVariantConfig = (
           neutralTextInactive,
           hoverAccentText,
           "hover:bg-neutral-900/5 dark:hover:bg-neutral-100/10",
-          "px-2 py-1"
+          "px-2 py-1",
         ),
         active: joinClasses(activeAccentText, "font-medium "),
         inactive: "text-neutral-900/20 dark:text-neutral-500",
@@ -209,9 +236,13 @@ const buildVariantConfig = (
           tokens.underlineActive,
           "group-hover:after:opacity-100",
           neutralTextInactive,
-          hoverAccentText
+          hoverAccentText,
         ),
-        active: joinClasses(activeAccentText, underlineActive, "after:opacity-100"),
+        active: joinClasses(
+          activeAccentText,
+          underlineActive,
+          "after:opacity-100",
+        ),
         inactive: "",
         disabled: "text-slate-300 dark:text-slate-600 border-transparent",
         badge: badgeSubtle,
@@ -244,7 +275,9 @@ const Tabs: React.FC<TabsProps> = ({
   scrollFadeFrom = "from-white dark:from-neutral-900",
 }) => {
   const renderIcon = useIconRenderer();
-  const [internalValue, setInternalValue] = useState<string | undefined>(defaultValue ?? items[0]?.id);
+  const [internalValue, setInternalValue] = useState<string | undefined>(
+    defaultValue ?? items[0]?.id,
+  );
   const activeId = value ?? internalValue;
 
   useEffect(() => {
@@ -257,29 +290,32 @@ const Tabs: React.FC<TabsProps> = ({
   }, [items, value, internalValue]);
 
   const config = useMemo(
-    () => buildVariantConfig(variant, color, orientation, hideUnderlineContainer),
-    [variant, color, orientation, hideUnderlineContainer]
+    () =>
+      buildVariantConfig(variant, color, orientation, hideUnderlineContainer),
+    [variant, color, orientation, hideUnderlineContainer],
   );
 
   const sizeConfig = sizeStyles[size] ?? sizeStyles.md;
   const iconClasses = classNames("flex-shrink-0", sizeConfig.icon);
 
-  const shouldShowDividers = showDividers && (variant === "underline" || variant === "minimal");
+  const shouldShowDividers =
+    showDividers && (variant === "underline" || variant === "minimal");
   const baseList = classNames(
     "relative flex",
     orientation === "vertical" ? "flex-col" : "items-center",
     justify === "center" && orientation === "horizontal" && "justify-center",
     justify === "end" && orientation === "horizontal" && "justify-end",
-    justify === "between" && orientation === "horizontal" && "justify-between w-full",
+    justify === "between" &&
+      orientation === "horizontal" &&
+      "justify-between w-full",
     fullWidth && "w-full",
     config.list,
     shouldShowDividers && "gap-0",
-    listClassName
+    listClassName,
   );
 
-  const resolvedContainer = containerClassName !== undefined
-    ? containerClassName
-    : config.container;
+  const resolvedContainer =
+    containerClassName !== undefined ? containerClassName : config.container;
 
   const rootClass = classNames(
     "tabs",
@@ -287,7 +323,7 @@ const Tabs: React.FC<TabsProps> = ({
     orientation === "vertical" ? "flex-row h-full" : "flex-col h-full",
     "overflow-hidden min-h-0",
     resolvedContainer,
-    className
+    className,
   );
 
   // const badgeBase = config.badge ?? "bg-slate-100 text-slate-600";
@@ -314,7 +350,11 @@ const Tabs: React.FC<TabsProps> = ({
 
   return (
     <div className={rootClass}>
-      <div role="tablist" aria-orientation={orientation} className={classNames(baseList, "flex-shrink-0 z-10")}>
+      <div
+        role="tablist"
+        aria-orientation={orientation}
+        className={classNames(baseList, "flex-shrink-0 z-10")}
+      >
         {items.map((item, index) => {
           const isActive = item.id === activeId;
           const isDisabled = item.disabled;
@@ -329,9 +369,10 @@ const Tabs: React.FC<TabsProps> = ({
             config.base,
             isActive ? config.active : config.inactive,
             isDisabled && config.disabled,
-            fullWidth && "flex-1 justify-center"
+            fullWidth && "flex-1 justify-center",
           );
-          const showDividerAfter = shouldShowDividers && index < items.length - 1;
+          const showDividerAfter =
+            shouldShowDividers && index < items.length - 1;
 
           return (
             <React.Fragment key={item.id}>
@@ -361,7 +402,9 @@ const Tabs: React.FC<TabsProps> = ({
                 <span className="flex min-w-0 flex-col text-left">
                   <span className="truncate">{item.label}</span>
                   {item.description ? (
-                    <span className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.description}</span>
+                    <span className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {item.description}
+                    </span>
                   ) : null}
                 </span>
                 {item.badge ? (
@@ -375,7 +418,7 @@ const Tabs: React.FC<TabsProps> = ({
                     "pointer-events-none",
                     orientation === "vertical"
                       ? "mx-0 my-2 h-[2px] rounded-full w-full bg-slate-200 dark:bg-neutral-100/2"
-                      : "mx-2 h-5 rounded-full w-[2px] bg-slate-300 dark:bg-neutral-400"
+                      : "mx-2 h-5 rounded-full w-[2px] bg-slate-300 dark:bg-neutral-400",
                   )}
                 />
               ) : null}
@@ -383,12 +426,17 @@ const Tabs: React.FC<TabsProps> = ({
           );
         })}
         <div className="flex-grow" />
-        <div id="tab-item-actions-end" className="flex items-center gap-1 pr-2 text-neutral-400 dark:text-neutral-500">
+        <div
+          id="tab-item-actions-end"
+          className="flex items-center gap-1 pr-2 text-neutral-400 dark:text-neutral-500"
+        >
           {items
             .find((item) => item.id === activeId)
             ?.actions?.map((action, idx) =>
               action.node ? (
-                <React.Fragment key={action.id ?? `tab-action-${idx}`}>{action.node}</React.Fragment>
+                <React.Fragment key={action.id ?? `tab-action-${idx}`}>
+                  {action.node}
+                </React.Fragment>
               ) : action.icon ? (
                 <IconButton
                   key={action.id ?? `tab-action-${idx}`}
@@ -398,11 +446,17 @@ const Tabs: React.FC<TabsProps> = ({
                   icon={action.icon}
                   size={size}
                   aria-pressed={action.active || undefined}
-                  aria-label={typeof action.label === "string" ? action.label : `Action ${idx + 1}`}
+                  aria-label={
+                    typeof action.label === "string"
+                      ? action.label
+                      : `Action ${idx + 1}`
+                  }
                   onClick={action.onClick ?? (() => undefined)}
-                  className={classNames(`${action.active && iconAccentActive[action.color ?? color]}`)}
+                  className={classNames(
+                    `${action.active && iconAccentActive[action.color ?? color]}`,
+                  )}
                 />
-              ) : null
+              ) : null,
             )}
         </div>
       </div>
@@ -422,8 +476,10 @@ const Tabs: React.FC<TabsProps> = ({
             aria-hidden={!isActive}
             className={classNames(
               "focus:outline-none flex-1 min-h-0",
-              scrollFade ? "relative overflow-hidden" : "overflow-auto scrollbar-thin",
-              isActive ? panelClassName : "hidden"
+              scrollFade
+                ? "relative overflow-hidden"
+                : "overflow-auto scrollbar-thin",
+              isActive ? panelClassName : "hidden",
             )}
           >
             {scrollFade ? (
@@ -432,14 +488,16 @@ const Tabs: React.FC<TabsProps> = ({
                   aria-hidden
                   className={classNames(
                     "pointer-events-none absolute inset-x-0 top-0 h-8 z-10 bg-gradient-to-b to-transparent",
-                    scrollFadeFrom
+                    scrollFadeFrom,
                   )}
                 />
                 <div className="overflow-auto h-full scrollbar-thin">
                   {item.panel}
                 </div>
               </>
-            ) : item.panel}
+            ) : (
+              item.panel
+            )}
           </div>
         );
       })}

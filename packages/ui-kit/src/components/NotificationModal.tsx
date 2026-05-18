@@ -17,14 +17,39 @@ export interface NotificationModalProps {
   onSecondaryAction?: () => void;
 }
 
-const typeConfig: Record<NotificationType, { icon: IconName; color: string; titleColor: string }> = {
-  success: { icon: "CheckCircle", color: "emerald", titleColor: "text-emerald-900" },
-  error: { icon: "Warning" as IconName, color: "rose", titleColor: "text-rose-900" },
-  warning: { icon: "Warning" as IconName, color: "amber", titleColor: "text-amber-900" },
+const typeConfig: Record<
+  NotificationType,
+  { icon: IconName; color: string; titleColor: string }
+> = {
+  success: {
+    icon: "CheckCircle",
+    color: "emerald",
+    titleColor: "text-emerald-900",
+  },
+  error: {
+    icon: "Warning" as IconName,
+    color: "rose",
+    titleColor: "text-rose-900",
+  },
+  warning: {
+    icon: "Warning" as IconName,
+    color: "amber",
+    titleColor: "text-amber-900",
+  },
   info: { icon: "Info", color: "blue", titleColor: "text-blue-900" },
 };
 
-export const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, onClose, title, message, type = "info", actionLabel = "Close", onAction, secondaryActionLabel, onSecondaryAction }) => {
+export const NotificationModal: React.FC<NotificationModalProps> = ({
+  isOpen,
+  onClose,
+  title,
+  message,
+  type = "info",
+  actionLabel = "Close",
+  onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+}) => {
   const config = typeConfig[type];
 
   const handleAction = () => {
@@ -45,7 +70,11 @@ export const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, on
       actions={
         <Modal.Actions>
           {secondaryActionLabel && (
-            <Button variant="soft" color="slate" onClick={onSecondaryAction || onClose}>
+            <Button
+              variant="soft"
+              color="slate"
+              onClick={onSecondaryAction || onClose}
+            >
               {secondaryActionLabel}
             </Button>
           )}

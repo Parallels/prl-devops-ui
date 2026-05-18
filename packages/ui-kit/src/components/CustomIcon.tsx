@@ -45,7 +45,7 @@ export const CustomIcon: React.FC<CustomIconProps> = ({
   onClick,
   colored = false,
   color,
-  hoverColor
+  hoverColor,
 }) => {
   const IconComponent = iconRegistry[icon];
 
@@ -74,7 +74,10 @@ export const CustomIcon: React.FC<CustomIconProps> = ({
     return style;
   }, [dimension, color, hoverColor, colored]);
 
-  const fallbackSizeClass = !dimension && !hasExplicitSize(className) ? SIZE_CLASS_MAP[size] : undefined;
+  const fallbackSizeClass =
+    !dimension && !hasExplicitSize(className)
+      ? SIZE_CLASS_MAP[size]
+      : undefined;
 
   const iconClass = mergeClassTokens(
     "inline-flex items-center justify-center flex-shrink-0 [&>svg]:h-full [&>svg]:w-full",
@@ -104,4 +107,3 @@ export const CustomIcon: React.FC<CustomIconProps> = ({
 };
 
 export default CustomIcon;
-

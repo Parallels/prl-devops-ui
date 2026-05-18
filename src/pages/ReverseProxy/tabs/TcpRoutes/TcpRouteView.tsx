@@ -49,6 +49,9 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
 
   useEffect(() => () => stopPolling(), [stopPolling]);
 
+  // Track whether we've fetched real state so Effect B doesn't reset it
+  const resolvedVmIdRef = useRef<string | null>(null);
+
   const lastOrchestratorEventIdRef = useRef<string | null>(null);
   const lastPdfmEventIdRef = useRef<string | null>(null);
 
@@ -68,6 +71,7 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
       if (event.vmId !== vmId || !event.currentState) continue;
 
       setLocalVmHealth(getVmHealth(event.currentState));
+      resolvedVmIdRef.current = vmId;
       stopPolling();
       setActionLoading(false);
     }
@@ -88,6 +92,7 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
 
       if (event.currentState) {
         setLocalVmHealth(getVmHealth(event.currentState));
+        resolvedVmIdRef.current = vmId;
         stopPolling();
         setActionLoading(false);
         continue;
@@ -97,12 +102,35 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
         .getVirtualMachine(hostname, vmId, !!orchestratorHostId)
         .then((vm) => {
           setLocalVmHealth(getVmHealth(vm.State));
+          resolvedVmIdRef.current = vmId;
           stopPolling();
           setActionLoading(false);
         })
         .catch((err) => console.warn('[TcpRouteView] Failed to refresh VM after state change:', err));
     }
   }, [containerMessages.pdfm, hostname, vmId, orchestratorHostId, stopPolling]);
+
+  // Only run once per vmId change — resolve missing state via VM API
+  const hasFetchedRef = useRef(false);
+  useEffect(() => {
+    hasFetchedRef.current = false;
+  }, [vmId, proxyHost]);
+
+  useEffect(() => {
+    if (!vmId || proxyHost.tcp_route?.target_vm_details?.state) return;
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    devopsService.machines
+      .getVirtualMachine(hostname, vmId, !!orchestratorHostId)
+      .then((vm) => {
+        if (vm.State) {
+          setLocalVmHealth(getVmHealth(vm.State));
+          resolvedVmIdRef.current = vmId;
+        }
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proxyHost.tcp_route?.target_vm_id]);
 
   const [targetType, setTargetType] = useState<TargetType>(() => resolveTargetType(tcpRoute));
   const [targetHost, setTargetHost] = useState(tcpRoute?.target_host ?? '');
@@ -113,18 +141,8 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
   const [saving, setSaving] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
 
-  // Fallback: if API didn't return target_vm_details.state, fetch VM directly once
-  useEffect(() => {
-    const vmId = proxyHost.tcp_route?.target_vm_id;
-    if (!vmId || proxyHost.tcp_route?.target_vm_details?.state) return;
-    devopsService.machines
-      .getVirtualMachine(hostname, vmId, !!orchestratorHostId)
-      .then((vm) => {
-        if (vm.State) setLocalVmHealth(getVmHealth(vm.State));
-      })
-      .catch(() => undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [proxyHost.tcp_route?.target_vm_id, proxyHost.tcp_route?.target_vm_details?.state]);
+  // Track last known vm_id so we detect vm changes
+  const prevVmIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     stopPolling();
@@ -133,7 +151,22 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
     lastPdfmEventIdRef.current = null;
 
     const route = proxyHost.tcp_route;
-    setLocalVmHealth(getVmHealth(route?.target_vm_details?.state));
+    const changedVm = prevVmIdRef.current !== route?.target_vm_id;
+    prevVmIdRef.current = route?.target_vm_id ?? null;
+
+    // Only reset localVmHealth when vm_id actually changes — don't overwrite resolved states
+    if (changedVm || !route?.target_vm_details?.state) {
+      // keep current localVmHealth if already resolved (prevents effect-A result from being clobbered)
+      if (!changedVm && !!localVmHealth && localVmHealth !== 'unknown') {
+        // keep as-is
+      } else if (!(resolvedVmIdRef.current === route?.target_vm_id)) {
+        setLocalVmHealth(getVmHealth(route?.target_vm_details?.state));
+      }
+      // else: vm_id same but state present — keep resolved state
+    } else {
+      setLocalVmHealth(getVmHealth(route?.target_vm_details?.state));
+    }
+    
     setTargetType(resolveTargetType(route));
     setTargetHost(route?.target_host ?? '');
     setTargetPort(route?.target_port ?? '');
@@ -172,6 +205,7 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
         const vm = await devopsService.machines.getVirtualMachine(hostname, routeVmId, !!orchestratorHostId);
         const health = getVmHealth(vm.State);
         setLocalVmHealth(health);
+        resolvedVmIdRef.current = routeVmId;
         if (health === 'running') {
           stopPolling();
           setActionLoading(false);
@@ -192,7 +226,7 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
   };
 
   const handleSave = useCallback(async () => {
-    if (!routeDirty && tcpRoute) return;
+    if (!tcpRoute) return;
     if (!validateRoute()) return;
 
     setSaving(true);
@@ -206,7 +240,7 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
     } finally {
       setSaving(false);
     }
-  }, [routeDirty, tcpRoute, targetType, targetHost, targetPort, targetVmId, onSaveRoute]);
+  }, [targetType, targetHost, targetPort, targetVmId, onSaveRoute, tcpRoute]);
 
   const handleDiscard = () => {
     const route = proxyHost.tcp_route;
@@ -221,7 +255,6 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
 
   const canEdit = canCreate || canUpdate;
   const canStartOrResume = canCreate && !!tcpRoute?.target_vm_id && ['stopped', 'paused', 'suspended'].includes(localVmHealth);
-  const showSaveButton = routeDirty || !tcpRoute;
 
   return (
     <div className="overflow-y-auto">
@@ -272,7 +305,7 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
           />
         </div>
 
-        {canEdit && (showSaveButton || !!tcpRoute) && (
+        {canEdit && (!!tcpRoute || routeDirty) && (
           <div className="flex items-center justify-between gap-2 pb-4 pt-3">
             <div>
               {canCreate && tcpRoute && (
@@ -282,12 +315,12 @@ export const TcpRouteView: React.FC<TcpRouteViewProps> = ({ proxyHost, available
               )}
             </div>
             <div className="flex items-center gap-2">
-              {showSaveButton && routeDirty && tcpRoute && (
+              {routeDirty && tcpRoute && (
                 <Button variant="soft" color="slate" size="sm" onClick={() => setShowDiscardConfirm(true)}>
                   Discard Changes
                 </Button>
               )}
-              {showSaveButton && (
+              {routeDirty && (
                 <Button variant="soft" color={themeColor} size="sm" loading={saving} onClick={() => void handleSave()}>
                   {tcpRoute ? 'Save Changes' : 'Save TCP Route'}
                 </Button>

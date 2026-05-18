@@ -1,11 +1,14 @@
 import classNames from "classnames";
 import React from "react";
-import Button, { type ButtonVariant, type ButtonSize, type ButtonColor } from "./Button";
+import Button, {
+  type ButtonVariant,
+  type ButtonSize,
+  type ButtonColor,
+} from "./Button";
 import { type IconSize } from "../types/Icon";
 import { useIconRenderer } from "../contexts/IconContext";
 import { ThemeSize, type ThemeColor } from "../theme/Theme";
 export type TextSize = "xs" | "sm" | "md" | "lg" | "xl";
-
 
 const iconSizes: Record<IconSize, string> = {
   xs: "h-6 w-6",
@@ -23,7 +26,6 @@ const textSizes: Record<TextSize, string> = {
   xl: "text-2xl",
 };
 
-
 /** Accepts all theme colors. The original five semantic names (neutral/info/success/warning/danger) are preserved unchanged. */
 export type EmptyStateTone = ThemeColor;
 
@@ -31,14 +33,22 @@ export type EmptyStateTone = ThemeColor;
 
 const resolveColor = (color: ThemeColor): string => {
   switch (color) {
-    case "brand": return "blue";
-    case "info": return "sky";
-    case "success": return "emerald";
-    case "warning": return "amber";
-    case "danger": return "rose";
-    case "theme": return "neutral";
-    case "parallels": return "red";
-    default: return color;
+    case "brand":
+      return "blue";
+    case "info":
+      return "sky";
+    case "success":
+      return "emerald";
+    case "warning":
+      return "amber";
+    case "danger":
+      return "rose";
+    case "theme":
+      return "neutral";
+    case "parallels":
+      return "red";
+    default:
+      return color;
   }
 };
 
@@ -142,7 +152,8 @@ function buildToneClasses(color: ThemeColor): ToneConfig {
 
 // ── Props ───────────────────────────────────────────────────────────────────
 
-export interface EmptyStateProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
+export interface EmptyStateProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   actionLabel?: string;
@@ -193,7 +204,16 @@ const EmptyState: React.FC<EmptyStateProps> = ({
   const palette = buildToneClasses(tone);
 
   // lets make the subtitle text size smaller than the title text size
-  const subtitleTextSize = textSize === "xs" ? "xs" : textSize === "sm" ? "xs" : textSize === "md" ? "sm" : textSize === "lg" ? "md" : "lg";
+  const subtitleTextSize =
+    textSize === "xs"
+      ? "xs"
+      : textSize === "sm"
+        ? "xs"
+        : textSize === "md"
+          ? "sm"
+          : textSize === "lg"
+            ? "md"
+            : "lg";
   const iconPallete = !iconColor ? palette : buildToneClasses(iconColor);
 
   return (
@@ -206,22 +226,48 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         sizes[size],
         fullWidth && "w-full",
         fullHeight && "h-full",
-        className
+        className,
       )}
       {...rest}
     >
       {showIcon && (
         <div className={classNames("p-2 dark:bg-white/5", iconPallete.icon)}>
-          {React.isValidElement(icon) ? icon : renderIcon(icon, iconSize, iconSizes[iconSize])}
+          {React.isValidElement(icon)
+            ? icon
+            : renderIcon(icon, iconSize, iconSizes[iconSize])}
         </div>
       )}
       <div className="space-y-1">
-        <p className={classNames(textSizes[textSize], "font-semibold", palette.text)}>{title}</p>
-        {subtitle && <p className={classNames(textSizes[subtitleTextSize], "leading-relaxed break-all", palette.text)}>{subtitle}</p>}
+        <p
+          className={classNames(
+            textSizes[textSize],
+            "font-semibold",
+            palette.text,
+          )}
+        >
+          {title}
+        </p>
+        {subtitle && (
+          <p
+            className={classNames(
+              textSizes[subtitleTextSize],
+              "leading-relaxed break-all",
+              palette.text,
+            )}
+          >
+            {subtitle}
+          </p>
+        )}
       </div>
       {actionLabel && onAction && (
         <div className="mt-4">
-          <Button size={actionSize} variant={actionVariant} color={actionColor} onClick={onAction} leadingIcon={actionLeadingIcon}>
+          <Button
+            size={actionSize}
+            variant={actionVariant}
+            color={actionColor}
+            onClick={onAction}
+            leadingIcon={actionLeadingIcon}
+          >
             {actionLabel}
           </Button>
         </div>

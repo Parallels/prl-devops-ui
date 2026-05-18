@@ -5,7 +5,10 @@ export interface HeaderGroupProps {
   className?: string;
 }
 
-export const HeaderGroup: React.FC<HeaderGroupProps> = ({ children, className = "" }) => {
+export const HeaderGroup: React.FC<HeaderGroupProps> = ({
+  children,
+  className = "",
+}) => {
   return (
     <div
       className={`flex

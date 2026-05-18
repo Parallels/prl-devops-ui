@@ -5,8 +5,8 @@
     <!-- Synchronously apply dark class before React mounts to prevent FOUC -->
     <script>
       try {
-        var t = localStorage.getItem('theme');
-        if (t === 'dark') document.documentElement.classList.add('dark');
+        var t = localStorage.getItem("theme");
+        if (t === "dark") document.documentElement.classList.add("dark");
       } catch (e) {}
     </script>
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />

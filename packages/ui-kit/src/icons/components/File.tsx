@@ -1,11 +1,23 @@
-import { forwardRef, type SVGProps } from 'react';
+import { forwardRef, type SVGProps } from "react";
 
-export const File = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
-<svg width="16px" height="16px" viewBox="0 0 16 16" version="1.1" xmlns="http://www.w3.org/2000/svg" {...props} ref={ref}>
-  <path
-    d="M5,2 C3.8954305,2 3,2.8954305 3,4 L3,12 C3,13.1045695 3.8954305,14 5,14 L11,14 C12.1045695,14 13,13.1045695 13,12 L13,5.73681369 C13,5.26122834 12.8305251,4.80120737 12.5219837,4.43929079 L10.4424373,2 L5,2 Z M5,3 L9.982,3 L11.7609918,5.08805224 C11.9152626,5.26901053 12,5.49902102 12,5.73681369 L12,12 C12,12.5522847 11.5522847,13 11,13 L5,13 C4.44771525,13 4,12.5522847 4,12 L4,4 C4,3.44771525 4.44771525,3 5,3 Z"
-    fill="currentColor" fill-rule="nonzero"></path>
-</svg>
-));
+export const File = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>(
+  (props, ref) => (
+    <svg
+      width="16px"
+      height="16px"
+      viewBox="0 0 16 16"
+      version="1.1"
+      xmlns="http://www.w3.org/2000/svg"
+      {...props}
+      ref={ref}
+    >
+      <path
+        d="M5,2 C3.8954305,2 3,2.8954305 3,4 L3,12 C3,13.1045695 3.8954305,14 5,14 L11,14 C12.1045695,14 13,13.1045695 13,12 L13,5.73681369 C13,5.26122834 12.8305251,4.80120737 12.5219837,4.43929079 L10.4424373,2 L5,2 Z M5,3 L9.982,3 L11.7609918,5.08805224 C11.9152626,5.26901053 12,5.49902102 12,5.73681369 L12,12 C12,12.5522847 11.5522847,13 11,13 L5,13 C4.44771525,13 4,12.5522847 4,12 L4,4 C4,3.44771525 4.44771525,3 5,3 Z"
+        fill="currentColor"
+        fillRule="nonzero"
+      ></path>
+    </svg>
+  ),
+);
 
-File.displayName = 'File';
+File.displayName = "File";

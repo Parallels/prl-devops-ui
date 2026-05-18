@@ -1,4 +1,11 @@
-import { forwardRef, type InputHTMLAttributes, type ReactNode, useCallback, useId, useRef } from "react";
+import {
+  forwardRef,
+  type InputHTMLAttributes,
+  type ReactNode,
+  useCallback,
+  useId,
+  useRef,
+} from "react";
 import classNames from "classnames";
 import { type ThemeColor, getToggleColorClasses } from "../theme/Theme";
 import { useIconRenderer } from "../contexts/IconContext";
@@ -12,14 +19,18 @@ export type TogglePadding = "none" | "xs" | "sm" | "md" | "lg" | "xl";
 
 const paddingStyles: Record<TogglePadding, string> = {
   none: "",
-  xs:   "p-0.5",
-  sm:   "p-1",
-  md:   "p-1.5",
-  lg:   "p-2",
-  xl:   "p-3",
+  xs: "p-0.5",
+  sm: "p-1",
+  md: "p-1.5",
+  lg: "p-2",
+  xl: "p-3",
 };
 
-export interface ToggleProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "color" | "children"> {
+export interface ToggleProps
+  extends Omit<
+    InputHTMLAttributes<HTMLInputElement>,
+    "size" | "color" | "children"
+  > {
   label?: ReactNode;
   description?: ReactNode;
   descriptionPlacement?: ToggleDescriptionPlacement;
@@ -105,7 +116,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
       tooltipPosition,
       ...inputProps
     },
-    forwardedRef
+    forwardedRef,
   ) => {
     const renderIcon = useIconRenderer();
     const generatedId = useId();
@@ -122,7 +133,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
           forwardedRef.current = node;
         }
       },
-      [forwardedRef]
+      [forwardedRef],
     );
 
     const sizeStyles = sizeTokens[size] ?? sizeTokens.md;
@@ -133,12 +144,22 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
         <span
           className={classNames(
             "min-w-0",
-            descriptionPlacement === "inline" ? "flex flex-wrap items-center gap-2 text-neutral-900 dark:text-neutral-100" : "flex flex-col",
-            descriptionPlacement === "inline" && !label && "text-neutral-400 dark:text-neutral-300"
+            descriptionPlacement === "inline"
+              ? "flex flex-wrap items-center gap-2 text-neutral-900 dark:text-neutral-100"
+              : "flex flex-col",
+            descriptionPlacement === "inline" &&
+              !label &&
+              "text-neutral-400 dark:text-neutral-300",
           )}
         >
           {label && (
-            <span className={classNames(sizeStyles.font, "font-medium text-neutral-900 dark:text-neutral-100", disabled && "text-neutral-400 dark:text-neutral-300")}>
+            <span
+              className={classNames(
+                sizeStyles.font,
+                "font-medium text-neutral-900 dark:text-neutral-100",
+                disabled && "text-neutral-400 dark:text-neutral-300",
+              )}
+            >
               {label}
             </span>
           )}
@@ -149,7 +170,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
                 sizeStyles.description,
                 "text-neutral-400 dark:text-neutral-300",
                 descriptionPlacement === "stacked" && "mt-1",
-                disabled && "text-neutral-300 dark:text-neutral-400"
+                disabled && "text-neutral-300 dark:text-neutral-400",
               )}
             >
               {description}
@@ -169,7 +190,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
           disabled && "cursor-not-allowed opacity-60",
           inputProps.readOnly && !disabled && "cursor-default",
           !disabled && !inputProps.readOnly && "cursor-pointer",
-          className
+          className,
         )}
         onClick={(e) => {
           if (inputProps.readOnly) {
@@ -183,7 +204,14 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
             ref={mergeRefs}
             type="checkbox"
             role="switch"
-            className={classNames("peer sr-only", disabled ? "cursor-not-allowed" : inputProps.readOnly ? "cursor-default" : "cursor-pointer")}
+            className={classNames(
+              "peer sr-only",
+              disabled
+                ? "cursor-not-allowed"
+                : inputProps.readOnly
+                  ? "cursor-default"
+                  : "cursor-pointer",
+            )}
             aria-describedby={descriptionId}
             disabled={disabled}
             onChange={onChange}
@@ -201,7 +229,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
               "block rounded-full border border-transparent bg-neutral-200 transition-colors duration-200 ease-in-out peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 dark:bg-neutral-600",
               sizeStyles.track,
               colorStyles,
-              disabled && "opacity-70 peer-checked:opacity-70 dark:opacity-50"
+              disabled && "opacity-70 peer-checked:opacity-70 dark:opacity-50",
             )}
           />
 
@@ -210,7 +238,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
               className={classNames(
                 "pointer-events-none absolute inset-y-0 left-1 flex items-center text-neutral-400 transition-opacity duration-200 ease-in-out",
                 iconWrapSize[size],
-                "peer-checked:opacity-0"
+                "peer-checked:opacity-0",
               )}
             >
               {renderIcon(iconOff, "sm")}
@@ -222,7 +250,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
               className={classNames(
                 "pointer-events-none text-black absolute inset-y-0 right-1 flex items-center text-black opacity-0 transition-opacity duration-200 ease-in-out",
                 iconWrapSize[size],
-                "peer-checked:opacity-100"
+                "peer-checked:opacity-100",
               )}
             >
               {renderIcon(iconOn, "sm")}
@@ -235,7 +263,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
               "translate-x-0",
               sizeStyles.thumb,
               sizeStyles.thumbOffset,
-              sizeStyles.thumbTranslate
+              sizeStyles.thumbTranslate,
             )}
           />
         </span>
@@ -252,7 +280,7 @@ const Toggle = forwardRef<HTMLInputElement, ToggleProps>(
     }
 
     return toggle;
-  }
+  },
 );
 
 Toggle.displayName = "Toggle";

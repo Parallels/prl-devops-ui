@@ -1,8 +1,26 @@
-import { forwardRef, type SVGProps } from 'react';
+import { forwardRef, type SVGProps } from "react";
 
-export const ReverseProxyTCP = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>>((props, ref) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%" {...props} ref={ref}>
-    <path d="M 40 90 H 15 V 15 H 85 V 35 H 15" stroke="currentColor" strokeWidth="10" strokeLinejoin="miter" strokeLinecap="square" strokeOpacity="0.5" fill="none" />
+export const ReverseProxyTCP = forwardRef<
+  SVGSVGElement,
+  SVGProps<SVGSVGElement>
+>((props, ref) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 100 100"
+    width="100%"
+    height="100%"
+    {...props}
+    ref={ref}
+  >
+    <path
+      d="M 40 90 H 15 V 15 H 85 V 35 H 15"
+      stroke="currentColor"
+      strokeWidth="10"
+      strokeLinejoin="miter"
+      strokeLinecap="square"
+      strokeOpacity="0.5"
+      fill="none"
+    />
 
     <g fill="currentColor">
       <path d="M 30 48 H 47 V 55 H 42 V 80 H 35 V 55 H 30 Z" />
@@ -14,4 +32,4 @@ export const ReverseProxyTCP = forwardRef<SVGSVGElement, SVGProps<SVGSVGElement>
   </svg>
 ));
 
-ReverseProxyTCP.displayName = 'ReverseProxyTCP';
+ReverseProxyTCP.displayName = "ReverseProxyTCP";

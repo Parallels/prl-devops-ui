@@ -1,4 +1,5 @@
 import { StatGraphTile, Panel, Section } from '@prl/ui-kit';
+import { formatTimeRange } from '@/utils/timeRange';
 
 export interface GraphDataPoint {
   timestamp: number | string;
@@ -23,12 +24,14 @@ export function CpuUtilizationPanel({ hasGraphData, cpuTotal, graphData }: CpuUt
     );
   }
 
+  const timeRange = formatTimeRange(graphData.map((d) => (typeof d.timestamp === 'number' ? d.timestamp : 0)));
+
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-800 p-4 h-full">
       <StatGraphTile
         title="CPU Utilization"
         value={`${cpuTotal}%`}
-        subtitle="Total load"
+        subtitle={`Total load (${timeRange})`}
         data={graphData}
         variant="sparkline"
         series={[{ key: 'cpuPercent', label: 'CPU %', color: 'blue' }]}

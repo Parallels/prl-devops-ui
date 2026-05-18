@@ -29,14 +29,16 @@ export function decodeToken(token: string): JwtTokenPayload | null {
         }
 
         // Ensure arrays exist (even if empty)
-        const payload: JwtTokenPayload = {
+  const payload: JwtTokenPayload = {
             claims: Array.isArray(decoded.claims) ? decoded.claims : [],
             email: decoded.email,
             exp: decoded.exp || 0,
             roles: Array.isArray(decoded.roles) ? decoded.roles : [],
             uid: decoded.uid,
             username: decoded.username || '',
-        };
+            // Extract api_key_id claim if present (used for API key authentication)
+            api_key_id: decoded.api_key_id || null,
+  };
 
         return payload;
     } catch (error) {

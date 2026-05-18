@@ -1,7 +1,24 @@
 import classNames from "classnames";
-import React, { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import React, {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
-import { Loader, Tabs, type TabsProps, IconButton, Button, type ButtonColor, type ButtonProps, type ButtonVariant } from ".";
+import {
+  Loader,
+  Tabs,
+  type TabsProps,
+  IconButton,
+  Button,
+  type ButtonColor,
+  type ButtonProps,
+  type ButtonVariant,
+} from ".";
 import type { ModalSize } from "../theme";
 import { type IconName } from "../icons/registry";
 import { renderIcon } from "../utils/renderIcon";
@@ -37,7 +54,8 @@ const toCssDimension = (value?: number | string): string | undefined => {
   return value;
 };
 
-const isBrowser = typeof window !== "undefined" && typeof document !== "undefined";
+const isBrowser =
+  typeof window !== "undefined" && typeof document !== "undefined";
 
 interface ModalActionsProps {
   children: ReactNode;
@@ -52,12 +70,27 @@ const alignmentClassMap: Record<ModalActionsAlign, string> = {
   between: "justify-between",
 };
 
-const ModalActions: React.FC<ModalActionsProps> = ({ children, align = "end", className }) => {
+const ModalActions: React.FC<ModalActionsProps> = ({
+  children,
+  align = "end",
+  className,
+}) => {
   const alignmentClass = alignmentClassMap[align] ?? alignmentClassMap.end;
-  return <div className={classNames("flex w-full flex-wrap items-center gap-2", alignmentClass, className)}>{children}</div>;
+  return (
+    <div
+      className={classNames(
+        "flex w-full flex-wrap items-center gap-2",
+        alignmentClass,
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
 };
 
-export interface ModalProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title" | "children"> {
+export interface ModalProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title" | "children"> {
   isOpen: boolean;
   onClose: () => void;
   title: ReactNode;
@@ -159,17 +192,36 @@ const Modal: React.FC<ModalProps> = ({
     }
   }, [headerTabs]);
 
-  const presetForSize = typeof size === "string" ? sizePresets[size] : undefined;
+  const presetForSize =
+    typeof size === "string" ? sizePresets[size] : undefined;
   const fallbackPreset = sizePresets.md;
   const resolvedPreset = presetForSize ?? fallbackPreset;
   const isFullWidth = size === "full";
-  const explicitSize = typeof size === "number" || (typeof size === "string" && presetForSize === undefined && !isFullWidth);
+  const explicitSize =
+    typeof size === "number" ||
+    (typeof size === "string" && presetForSize === undefined && !isFullWidth);
   const sizeClass = !explicitSize ? resolvedPreset.className : undefined;
-  const presetWidth = !explicitSize && !isFullWidth ? resolvedPreset.width : undefined;
-  const presetWidthValue = presetWidth ? toCssDimension(presetWidth) : undefined;
-  const explicitWidthValue = explicitSize ? toCssDimension(size as number | string) : undefined;
-  const resolvedMaxWidth = maxWidth !== undefined ? toCssDimension(maxWidth) : isFullWidth ? "100%" : (explicitWidthValue ?? presetWidthValue);
-  const resolvedWidth = isFullWidth ? "100%" : explicitWidthValue ? `min(100%, ${explicitWidthValue})` : presetWidthValue ? `min(100%, ${presetWidthValue})` : undefined;
+  const presetWidth =
+    !explicitSize && !isFullWidth ? resolvedPreset.width : undefined;
+  const presetWidthValue = presetWidth
+    ? toCssDimension(presetWidth)
+    : undefined;
+  const explicitWidthValue = explicitSize
+    ? toCssDimension(size as number | string)
+    : undefined;
+  const resolvedMaxWidth =
+    maxWidth !== undefined
+      ? toCssDimension(maxWidth)
+      : isFullWidth
+        ? "100%"
+        : (explicitWidthValue ?? presetWidthValue);
+  const resolvedWidth = isFullWidth
+    ? "100%"
+    : explicitWidthValue
+      ? `min(100%, ${explicitWidthValue})`
+      : presetWidthValue
+        ? `min(100%, ${presetWidthValue})`
+        : undefined;
 
   const overlayClasses = classNames(
     "fixed inset-0 z-[1600] flex min-h-full items-start justify-center overflow-y-auto px-4 py-6 sm:px-8 sm:py-12 sm:items-center",
@@ -187,17 +239,24 @@ const Modal: React.FC<ModalProps> = ({
     className,
   );
 
-  const showFooterDividerClass = showFooterDivider ? "border-t border-neutral-200/70 dark:border-neutral-700/60" : "";
+  const showFooterDividerClass = showFooterDivider
+    ? "border-t border-neutral-200/70 dark:border-neutral-700/60"
+    : "";
 
   const contentStyle: React.CSSProperties = {
     ...(resolvedWidth ? { width: resolvedWidth } : undefined),
     ...(resolvedMaxWidth ? { maxWidth: resolvedMaxWidth } : undefined),
-    ...(minWidth !== undefined ? { minWidth: toCssDimension(minWidth) } : undefined),
-    ...(minHeight !== undefined ? { minHeight: toCssDimension(minHeight) } : undefined),
+    ...(minWidth !== undefined
+      ? { minWidth: toCssDimension(minWidth) }
+      : undefined),
+    ...(minHeight !== undefined
+      ? { minHeight: toCssDimension(minHeight) }
+      : undefined),
     ...style,
   };
 
-  const ariaLabelValue = ariaLabel ?? (typeof title === "string" ? title : undefined);
+  const ariaLabelValue =
+    ariaLabel ?? (typeof title === "string" ? title : undefined);
   const ariaLabelledBy = ariaLabelValue ? undefined : headingId;
   const ariaDescribedBy = description || bodyHeader ? bodyId : undefined;
 
@@ -218,9 +277,13 @@ const Modal: React.FC<ModalProps> = ({
     }
 
     if (isOpen) {
-      previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+      previouslyFocusedRef.current =
+        document.activeElement as HTMLElement | null;
 
-      const focusTarget = initialFocusRef?.current ?? (!hideCloseButton ? closeButtonRef.current : null) ?? (contentRef.current as HTMLElement | null);
+      const focusTarget =
+        initialFocusRef?.current ??
+        (!hideCloseButton ? closeButtonRef.current : null) ??
+        (contentRef.current as HTMLElement | null);
 
       // Use requestAnimationFrame to ensure the modal is rendered and refs are available
       const focusFrame = requestAnimationFrame(() => {
@@ -337,37 +400,85 @@ const Modal: React.FC<ModalProps> = ({
         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-neutral-200/70 pl-4 pr-3 py-4 dark:border-neutral-700/60">
           {onBack && (
             <div className="flex shrink-0 items-center self-center">
-              <IconButton icon="ArrowChevronLeft" variant="ghost" color="slate" size="sm" tooltip={backTooltip} tooltipPosition="bottom" aria-label={backTooltip} onClick={onBack} />
+              <IconButton
+                icon="ArrowChevronLeft"
+                variant="ghost"
+                color="slate"
+                size="sm"
+                tooltip={backTooltip}
+                tooltipPosition="bottom"
+                aria-label={backTooltip}
+                onClick={onBack}
+              />
             </div>
           )}
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <div className="flex min-w-0 items-center gap-3">
-              {icon && <div className="flex shrink-0 items-center justify-center text-neutral-600 dark:text-neutral-200">{renderIcon(icon, "sm")}</div>}
+              {icon && (
+                <div className="flex shrink-0 items-center justify-center text-neutral-600 dark:text-neutral-200">
+                  {renderIcon(icon, "sm")}
+                </div>
+              )}
               <div className="min-w-0">
-                <h2 id={headingId} className="truncate text-xl font-medium tracking-tight text-neutral-900 dark:text-neutral-100">
+                <h2
+                  id={headingId}
+                  className="truncate text-xl font-medium tracking-tight text-neutral-900 dark:text-neutral-100"
+                >
                   {title}
                 </h2>
               </div>
             </div>
-            {description && <p className="text-sm text-neutral-600 dark:text-neutral-300">{description}</p>}
+            {description && (
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                {description}
+              </p>
+            )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {effectiveHeaderActions.map((action, index) => (
               <Button key={`modal-header-action-${index}`} {...action} />
             ))}
-            {!hideCloseButton && <IconButton ref={closeButtonRef} icon="Close" variant="ghost" color="slate" size="sm" aria-label="Close dialog" onClick={onClose} />}
+            {!hideCloseButton && (
+              <IconButton
+                ref={closeButtonRef}
+                icon="Close"
+                variant="ghost"
+                color="slate"
+                size="sm"
+                aria-label="Close dialog"
+                onClick={onClose}
+              />
+            )}
           </div>
         </div>
 
         {tabsConfig && (
           <div className="shrink-0 border-b border-neutral-200/70 px-6 py-2 dark:border-neutral-700/60">
-            <Tabs {...tabsConfig} className={classNames("w-full overflow-x-auto", tabsConfig.className)} />
+            <Tabs
+              {...tabsConfig}
+              className={classNames(
+                "w-full overflow-x-auto",
+                tabsConfig.className,
+              )}
+            />
           </div>
         )}
 
-        {bodyHeader && <div className="shrink-0 border-b border-neutral-200/70 bg-neutral-50 px-6 py-3 dark:border-neutral-700/60 dark:bg-neutral-800/60"> {bodyHeader}</div>}
+        {bodyHeader && (
+          <div className="shrink-0 border-b border-neutral-200/70 bg-neutral-50 px-6 py-3 dark:border-neutral-700/60 dark:bg-neutral-800/60">
+            {" "}
+            {bodyHeader}
+          </div>
+        )}
         <div className="relative flex flex-1 min-h-0 overflow-hidden bg-neutral-50 dark:bg-neutral-800/60">
-          {loading && <Loader overlay title={loadingTitle} label={loadingLabel} className="z-30" />}
+          {loading && (
+            <Loader
+              overlay
+              title={loadingTitle}
+              label={loadingLabel}
+              className="z-30"
+            />
+          )}
           <div
             id={bodyId}
             className={classNames(
@@ -381,7 +492,14 @@ const Modal: React.FC<ModalProps> = ({
           </div>
         </div>
         {footerContent && (
-          <div className={classNames("flex shrink-0 items-center  justify-end gap-3 bg-neutral-50 px-6 py-4 dark:bg-neutral-800/60", showFooterDividerClass)}>{footerContent}</div>
+          <div
+            className={classNames(
+              "flex shrink-0 items-center  justify-end gap-3 bg-neutral-50 px-6 py-4 dark:bg-neutral-800/60",
+              showFooterDividerClass,
+            )}
+          >
+            {footerContent}
+          </div>
         )}
       </div>
     </div>
@@ -390,7 +508,11 @@ const Modal: React.FC<ModalProps> = ({
   return createPortal(content, document.body);
 };
 
-interface ConfirmModalProps extends Omit<ModalProps, "footer" | "actions" | "children" | "onClose" | "title"> {
+interface ConfirmModalProps
+  extends Omit<
+    ModalProps,
+    "footer" | "actions" | "children" | "onClose" | "title"
+  > {
   title: ReactNode;
   children?: ReactNode;
   onClose: () => void;
@@ -423,10 +545,21 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
       onClose={onClose}
       footer={
         <ModalActions>
-          <Button variant="soft" color="slate" onClick={onClose} {...cancelButtonProps}>
+          <Button
+            variant="soft"
+            color="slate"
+            onClick={onClose}
+            {...cancelButtonProps}
+          >
             {cancelLabel}
           </Button>
-          <Button variant={confirmVariant} color={props.confirmColor || "blue"} onClick={onConfirm} disabled={isConfirmDisabled} {...confirmButtonProps}>
+          <Button
+            variant={confirmVariant}
+            color={props.confirmColor || "blue"}
+            onClick={onConfirm}
+            disabled={isConfirmDisabled}
+            {...confirmButtonProps}
+          >
             {confirmLabel}
           </Button>
         </ModalActions>
@@ -437,7 +570,11 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   );
 };
 
-interface DeleteConfirmModalProps extends Omit<ConfirmModalProps, "confirmLabel" | "confirmVariant" | "confirmColor"> {
+interface DeleteConfirmModalProps
+  extends Omit<
+    ConfirmModalProps,
+    "confirmLabel" | "confirmVariant" | "confirmColor"
+  > {
   /** The exact string the user must type to enable the delete button. */
   confirmValue: string;
   /** Human-readable label shown in the instruction, e.g. "key name". Default: "name" */
@@ -474,7 +611,12 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
       initialFocusRef={inputRef as React.RefObject<HTMLElement>}
       footer={
         <ModalActions>
-          <Button variant="soft" color="slate" onClick={onClose} {...cancelButtonProps}>
+          <Button
+            variant="soft"
+            color="slate"
+            onClick={onClose}
+            {...cancelButtonProps}
+          >
             {cancelLabel}
           </Button>
           <Button
@@ -492,14 +634,20 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
       {children}
       <div className="flex flex-col gap-2 pt-1">
         <label className="text-sm text-neutral-600 dark:text-neutral-400">
-          Type the {confirmValueLabel} <span className="font-mono font-semibold text-neutral-800 dark:text-neutral-200">{confirmValue}</span> to confirm:
+          Type the {confirmValueLabel}{" "}
+          <span className="font-mono font-semibold text-neutral-800 dark:text-neutral-200">
+            {confirmValue}
+          </span>{" "}
+          to confirm:
         </label>
         <input
           ref={inputRef}
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && isMatch && !isConfirmDisabled) onConfirm(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && isMatch && !isConfirmDisabled) onConfirm();
+          }}
           placeholder={confirmValue}
           className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm font-mono text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-400/30"
           autoComplete="off"
@@ -510,7 +658,11 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   );
 };
 
-interface ApplyConfirmModalProps extends Omit<ConfirmModalProps, "confirmLabel" | "confirmVariant" | "confirmColor"> {
+interface ApplyConfirmModalProps
+  extends Omit<
+    ConfirmModalProps,
+    "confirmLabel" | "confirmVariant" | "confirmColor"
+  > {
   /** The exact string the user must type to enable the apply button. */
   confirmValue: string;
   /** Human-readable label shown in the instruction, e.g. "key name". Default: "name" */
@@ -547,7 +699,12 @@ const ApplyConfirmModal: React.FC<ApplyConfirmModalProps> = ({
       initialFocusRef={inputRef as React.RefObject<HTMLElement>}
       footer={
         <ModalActions>
-          <Button variant="soft" color="slate" onClick={onClose} {...cancelButtonProps}>
+          <Button
+            variant="soft"
+            color="slate"
+            onClick={onClose}
+            {...cancelButtonProps}
+          >
             {cancelLabel}
           </Button>
           <Button
@@ -565,14 +722,20 @@ const ApplyConfirmModal: React.FC<ApplyConfirmModalProps> = ({
       {children}
       <div className="flex flex-col gap-2 pt-1">
         <label className="text-sm text-neutral-600 dark:text-neutral-400">
-          Type the {confirmValueLabel} <span className="font-mono font-semibold text-neutral-800 dark:text-neutral-200">{confirmValue}</span> to confirm:
+          Type the {confirmValueLabel}{" "}
+          <span className="font-mono font-semibold text-neutral-800 dark:text-neutral-200">
+            {confirmValue}
+          </span>{" "}
+          to confirm:
         </label>
         <input
           ref={inputRef}
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && isMatch && !isConfirmDisabled) onConfirm(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && isMatch && !isConfirmDisabled) onConfirm();
+          }}
           placeholder={confirmValue}
           className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm font-mono text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-sky-400 focus:ring-2 focus:ring-sky-400/30"
           autoComplete="off"
@@ -596,5 +759,9 @@ type ModalComponentType = typeof Modal & {
 (Modal as ModalComponentType).ApplyConfirm = ApplyConfirmModal;
 
 export { ModalActions, ConfirmModal, DeleteConfirmModal, ApplyConfirmModal };
-export type { ModalActionsProps, DeleteConfirmModalProps, ApplyConfirmModalProps };
+export type {
+  ModalActionsProps,
+  DeleteConfirmModalProps,
+  ApplyConfirmModalProps,
+};
 export default Modal as ModalComponentType;

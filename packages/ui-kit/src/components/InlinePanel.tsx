@@ -1,4 +1,4 @@
-import classNames from 'classnames';
+import classNames from "classnames";
 import React, {
   type ReactNode,
   useCallback,
@@ -7,34 +7,42 @@ import React, {
   useMemo,
   useRef,
   useState,
-} from 'react';
-import { Loader, IconButton, Button, type ButtonProps, type ButtonVariant, type ButtonColor } from '.';
-import type { ModalSize } from '../theme';
-import { type IconName } from '../icons/registry';
-import { renderIcon } from '../utils/renderIcon';
+} from "react";
+import {
+  Loader,
+  IconButton,
+  Button,
+  type ButtonProps,
+  type ButtonVariant,
+  type ButtonColor,
+} from ".";
+import type { ModalSize } from "../theme";
+import { type IconName } from "../icons/registry";
+import { renderIcon } from "../utils/renderIcon";
 
 // ── Size presets (mirrors Modal) ──────────────────────────────────────────────
 
-const sizePresets: Record<ModalSize, { className: string; maxWidth?: string }> = {
-  xs:   { maxWidth: '320px',  className: 'max-w-[320px]'  },
-  sm:   { maxWidth: '400px',  className: 'max-w-[400px]'  },
-  md:   { maxWidth: '600px',  className: 'max-w-[600px]'  },
-  lg:   { maxWidth: '800px',  className: 'max-w-[800px]'  },
-  xl:   { maxWidth: '1000px', className: 'max-w-[1000px]' },
-  xxl:  { maxWidth: '1120px', className: 'max-w-[1120px]' },
-  '2xl':  { maxWidth: '1120px', className: 'max-w-[1120px]' },
-  xxxl: { maxWidth: '1280px', className: 'max-w-[1280px]' },
-  '3xl':  { maxWidth: '1280px', className: 'max-w-[1280px]' },
-  full: { className: 'w-full max-w-none' },
-};
+const sizePresets: Record<ModalSize, { className: string; maxWidth?: string }> =
+  {
+    xs: { maxWidth: "320px", className: "max-w-[320px]" },
+    sm: { maxWidth: "400px", className: "max-w-[400px]" },
+    md: { maxWidth: "600px", className: "max-w-[600px]" },
+    lg: { maxWidth: "800px", className: "max-w-[800px]" },
+    xl: { maxWidth: "1000px", className: "max-w-[1000px]" },
+    xxl: { maxWidth: "1120px", className: "max-w-[1120px]" },
+    "2xl": { maxWidth: "1120px", className: "max-w-[1120px]" },
+    xxxl: { maxWidth: "1280px", className: "max-w-[1280px]" },
+    "3xl": { maxWidth: "1280px", className: "max-w-[1280px]" },
+    full: { className: "w-full max-w-none" },
+  };
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** Where the panel is anchored inside its positioned ancestor. */
-export type InlinePanelAnchor = 'top' | 'bottom' | 'center' | 'fill';
+export type InlinePanelAnchor = "top" | "bottom" | "center" | "fill";
 
 export interface InlinePanelProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title' | 'children'> {
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title" | "children"> {
   // ── Visibility ──────────────────────────────────────────────────────────
   isOpen: boolean;
   onClose: () => void;
@@ -109,7 +117,7 @@ export interface InlinePanelProps
 
   // ── ARIA ─────────────────────────────────────────────────────────────────
   ariaLabel?: string;
-  role?: 'dialog' | 'alertdialog';
+  role?: "dialog" | "alertdialog";
 }
 
 // ── InlinePanel ───────────────────────────────────────────────────────────────
@@ -125,13 +133,13 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
   bodyClassName,
   footer,
   actions,
-  size = 'md',
+  size = "md",
   maxWidth,
   minWidth,
   height,
   maxHeight,
   minHeight,
-  anchor = 'fill',
+  anchor = "fill",
   zIndex = 20,
   closeOnEsc = true,
   closeOnBackdropClick = false,
@@ -141,12 +149,12 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
   loadingLabel,
   headerActions = [],
   onBack,
-  backTooltip = 'Go back',
+  backTooltip = "Go back",
   hideCloseButton = false,
   showFooterDivider,
   initialFocusRef,
   ariaLabel,
-  role = 'dialog',
+  role = "dialog",
   className,
   style,
   ...rest
@@ -183,12 +191,15 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+      previouslyFocusedRef.current =
+        document.activeElement as HTMLElement | null;
       const focusTarget =
         initialFocusRef?.current ??
         (!hideCloseButton ? closeButtonRef.current : null) ??
         contentRef.current;
-      const frame = requestAnimationFrame(() => focusTarget?.focus({ preventScroll: true }));
+      const frame = requestAnimationFrame(() =>
+        focusTarget?.focus({ preventScroll: true }),
+      );
       return () => cancelAnimationFrame(frame);
     }
   }, [isOpen, hideCloseButton, initialFocusRef]);
@@ -207,27 +218,27 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
     if (!isOpen || !closeOnEsc) return;
     const handler = (e: KeyboardEvent) => {
       // Don't steal Escape from a nested Modal (which calls preventDefault)
-      if (e.key === 'Escape' && !e.defaultPrevented) {
+      if (e.key === "Escape" && !e.defaultPrevented) {
         e.preventDefault();
         onClose();
       }
     };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, [isOpen, closeOnEsc, onClose]);
 
   // ── Dev-mode parent-positioning check ────────────────────────────────────
 
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production' && isOpen && contentRef.current) {
+    if (process.env.NODE_ENV !== "production" && isOpen && contentRef.current) {
       const parent = contentRef.current.parentElement;
       if (parent) {
         const { position } = getComputedStyle(parent);
-        if (position === 'static') {
+        if (position === "static") {
           console.warn(
-            '[InlinePanel] The parent element has `position: static`. ' +
-            'Add `position: relative` (or any non-static position) so the ' +
-            'panel clips to the intended container.',
+            "[InlinePanel] The parent element has `position: static`. " +
+              "Add `position: relative` (or any non-static position) so the " +
+              "panel clips to the intended container.",
           );
         }
       }
@@ -238,65 +249,85 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
 
   const shellPositionClass = useMemo(() => {
     switch (anchor) {
-      case 'top':    return 'absolute top-0 inset-x-0 flex justify-center items-start';
-      case 'bottom': return 'absolute bottom-0 inset-x-0 flex justify-center items-end';
-      case 'center': return 'absolute inset-0 flex justify-center items-center';
-      case 'fill':
-      default:       return 'absolute inset-0';
+      case "top":
+        return "absolute top-0 inset-x-0 flex justify-center items-start";
+      case "bottom":
+        return "absolute bottom-0 inset-x-0 flex justify-center items-end";
+      case "center":
+        return "absolute inset-0 flex justify-center items-center";
+      case "fill":
+      default:
+        return "absolute inset-0";
     }
   }, [anchor]);
 
   // ── Transition classes ────────────────────────────────────────────────────
 
-  const transitionBase = 'transition-[transform,opacity,scale] duration-200 ease-out';
+  const transitionBase =
+    "transition-[transform,opacity,scale] duration-200 ease-out";
 
   const shellTransitionClass = useMemo(() => {
-    if (anchor === 'fill') {
-      return isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none';
+    if (anchor === "fill") {
+      return isOpen ? "opacity-100" : "opacity-0 pointer-events-none";
     }
-    if (anchor === 'top') {
-      return isOpen ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none';
+    if (anchor === "top") {
+      return isOpen
+        ? "translate-y-0 opacity-100"
+        : "-translate-y-full opacity-0 pointer-events-none";
     }
-    if (anchor === 'bottom') {
-      return isOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none';
+    if (anchor === "bottom") {
+      return isOpen
+        ? "translate-y-0 opacity-100"
+        : "translate-y-full opacity-0 pointer-events-none";
     }
     // center
-    return isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 pointer-events-none';
+    return isOpen
+      ? "scale-100 opacity-100"
+      : "scale-95 opacity-0 pointer-events-none";
   }, [anchor, isOpen]);
 
   // ── Content card sizing (ignored for fill) ────────────────────────────────
 
   const preset = sizePresets[size] ?? sizePresets.md;
-  const isFill = anchor === 'fill';
-  const isCenter = anchor === 'center';
+  const isFill = anchor === "fill";
+  const isCenter = anchor === "center";
 
-  const cardSizeClass = isFill ? 'w-full h-full' : preset.className;
+  const cardSizeClass = isFill ? "w-full h-full" : preset.className;
 
   const cardStyle: React.CSSProperties = {
     ...(maxWidth !== undefined
-      ? { maxWidth: typeof maxWidth === 'number' ? `${maxWidth}px` : maxWidth }
-      : !isFill ? { maxWidth: preset.maxWidth } : undefined),
+      ? { maxWidth: typeof maxWidth === "number" ? `${maxWidth}px` : maxWidth }
+      : !isFill
+        ? { maxWidth: preset.maxWidth }
+        : undefined),
     ...(minWidth !== undefined
-      ? { minWidth: typeof minWidth === 'number' ? `${minWidth}px` : minWidth }
+      ? { minWidth: typeof minWidth === "number" ? `${minWidth}px` : minWidth }
       : undefined),
     ...(height !== undefined
-      ? { height: typeof height === 'number' ? `${height}px` : height }
+      ? { height: typeof height === "number" ? `${height}px` : height }
       : undefined),
     ...(maxHeight !== undefined
-      ? { maxHeight: typeof maxHeight === 'number' ? `${maxHeight}px` : maxHeight }
+      ? {
+          maxHeight:
+            typeof maxHeight === "number" ? `${maxHeight}px` : maxHeight,
+        }
       : undefined),
     ...(minHeight !== undefined
-      ? { minHeight: typeof minHeight === 'number' ? `${minHeight}px` : minHeight }
+      ? {
+          minHeight:
+            typeof minHeight === "number" ? `${minHeight}px` : minHeight,
+        }
       : undefined),
     ...style,
   };
 
   const footerContent = footer ?? actions;
   const showFooterDividerClass = showFooterDivider
-    ? 'border-t border-neutral-200/70 dark:border-neutral-700/60'
-    : '';
+    ? "border-t border-neutral-200/70 dark:border-neutral-700/60"
+    : "";
 
-  const ariaLabelValue = ariaLabel ?? (typeof title === 'string' ? title : undefined);
+  const ariaLabelValue =
+    ariaLabel ?? (typeof title === "string" ? title : undefined);
   const ariaLabelledBy = ariaLabelValue ? undefined : headingId;
   const ariaDescribedBy = description || bodyHeader ? bodyId : undefined;
 
@@ -326,10 +357,14 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
       <div
         ref={contentRef}
         className={classNames(
-          'relative flex flex-col overflow-hidden border border-neutral-200/70 bg-white shadow-2xl dark:border-neutral-700/60 dark:bg-neutral-800',
-          isFill ? 'rounded-[inherit] w-full h-full' : isCenter ? 'rounded-[28px] w-full mx-4' : 'rounded-[28px] w-full',
+          "relative flex flex-col overflow-hidden border border-neutral-200/70 bg-white shadow-2xl dark:border-neutral-700/60 dark:bg-neutral-800",
+          isFill
+            ? "rounded-[inherit] w-full h-full"
+            : isCenter
+              ? "rounded-[28px] w-full mx-4"
+              : "rounded-[28px] w-full",
           cardSizeClass,
-          'focus-visible:outline-none',
+          "focus-visible:outline-none",
           className,
         )}
         style={cardStyle}
@@ -338,7 +373,7 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
         aria-labelledby={ariaLabelledBy}
         aria-label={ariaLabelValue}
         aria-describedby={ariaDescribedBy}
-        aria-busy={loading ? 'true' : undefined}
+        aria-busy={loading ? "true" : undefined}
         tabIndex={-1}
         {...rest}
       >
@@ -362,7 +397,7 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
             <div className="flex min-w-0 items-center gap-3">
               {icon && (
                 <div className="flex shrink-0 items-center justify-center text-neutral-600 dark:text-neutral-200">
-                  {renderIcon(icon, 'sm')}
+                  {renderIcon(icon, "sm")}
                 </div>
               )}
               <div className="min-w-0">
@@ -375,7 +410,9 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
               </div>
             </div>
             {description && (
-              <p className="text-sm text-neutral-600 dark:text-neutral-300">{description}</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-300">
+                {description}
+              </p>
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -409,15 +446,20 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
         {/* ── Body ────────────────────────────────────────────────────── */}
         <div className="relative flex flex-1 min-h-0 overflow-hidden bg-neutral-50 dark:bg-neutral-800/60">
           {loading && (
-            <Loader overlay title={loadingTitle} label={loadingLabel} className="z-30" />
+            <Loader
+              overlay
+              title={loadingTitle}
+              label={loadingLabel}
+              className="z-30"
+            />
           )}
           <div
             id={bodyHeader ? undefined : bodyId}
             className={classNames(
-              'relative flex-1 min-h-0 overflow-y-auto px-6 py-5',
-              '[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700',
+              "relative flex-1 min-h-0 overflow-y-auto px-6 py-5",
+              "[&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-neutral-200 dark:[&::-webkit-scrollbar-thumb]:bg-neutral-700",
               bodyClassName,
-              loading && 'pointer-events-none',
+              loading && "pointer-events-none",
             )}
           >
             <div className="flex flex-col gap-4">{children}</div>
@@ -428,7 +470,7 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
         {footerContent && (
           <div
             className={classNames(
-              'flex shrink-0 items-center justify-end gap-3 bg-neutral-50 px-6 py-4 dark:bg-neutral-800/60',
+              "flex shrink-0 items-center justify-end gap-3 bg-neutral-50 px-6 py-4 dark:bg-neutral-800/60",
               showFooterDividerClass,
             )}
           >
@@ -440,12 +482,12 @@ const InlinePanel: React.FC<InlinePanelProps> = ({
   );
 };
 
-InlinePanel.displayName = 'InlinePanel';
+InlinePanel.displayName = "InlinePanel";
 
 // ── ConfirmInlinePanel ────────────────────────────────────────────────────────
 
 export interface ConfirmInlinePanelProps
-  extends Omit<InlinePanelProps, 'actions' | 'footer' | 'role' | 'children'> {
+  extends Omit<InlinePanelProps, "actions" | "footer" | "role" | "children"> {
   children?: ReactNode;
   onConfirm: () => void;
   confirmLabel?: ReactNode;
@@ -458,14 +500,14 @@ export interface ConfirmInlinePanelProps
 export const ConfirmInlinePanel: React.FC<ConfirmInlinePanelProps> = ({
   onConfirm,
   onClose,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
-  confirmVariant = 'solid',
-  confirmColor = 'blue',
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  confirmVariant = "solid",
+  confirmColor = "blue",
   isConfirmDisabled = false,
-  anchor = 'center',
+  anchor = "center",
   showBackdrop = true,
-  size = 'sm',
+  size = "sm",
   children,
   ...props
 }) => (
@@ -481,7 +523,13 @@ export const ConfirmInlinePanel: React.FC<ConfirmInlinePanelProps> = ({
         <Button variant="soft" color="slate" size="sm" onClick={onClose}>
           {cancelLabel}
         </Button>
-        <Button variant={confirmVariant} color={confirmColor} size="sm" disabled={isConfirmDisabled} onClick={onConfirm}>
+        <Button
+          variant={confirmVariant}
+          color={confirmColor}
+          size="sm"
+          disabled={isConfirmDisabled}
+          onClick={onConfirm}
+        >
           {confirmLabel}
         </Button>
       </>
@@ -491,12 +539,15 @@ export const ConfirmInlinePanel: React.FC<ConfirmInlinePanelProps> = ({
   </InlinePanel>
 );
 
-ConfirmInlinePanel.displayName = 'ConfirmInlinePanel';
+ConfirmInlinePanel.displayName = "ConfirmInlinePanel";
 
 // ── DeleteConfirmInlinePanel ──────────────────────────────────────────────────
 
 export interface DeleteConfirmInlinePanelProps
-  extends Omit<ConfirmInlinePanelProps, 'confirmLabel' | 'confirmVariant' | 'confirmColor'> {
+  extends Omit<
+    ConfirmInlinePanelProps,
+    "confirmLabel" | "confirmVariant" | "confirmColor"
+  > {
   /** The exact string the user must type to enable the delete button. */
   confirmValue: string;
   /** Human-readable label shown in the instruction, e.g. "snapshot name". @default "name" */
@@ -504,23 +555,25 @@ export interface DeleteConfirmInlinePanelProps
   confirmLabel?: ReactNode;
 }
 
-export const DeleteConfirmInlinePanel: React.FC<DeleteConfirmInlinePanelProps> = ({
+export const DeleteConfirmInlinePanel: React.FC<
+  DeleteConfirmInlinePanelProps
+> = ({
   confirmValue,
-  confirmValueLabel = 'name',
-  confirmLabel = 'Delete',
+  confirmValueLabel = "name",
+  confirmLabel = "Delete",
   onConfirm,
   onClose,
   isConfirmDisabled,
   children,
-  cancelLabel = 'Cancel',
+  cancelLabel = "Cancel",
   ...props
 }) => {
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const isMatch = inputValue === confirmValue;
 
   useEffect(() => {
-    if (!props.isOpen) setInputValue('');
+    if (!props.isOpen) setInputValue("");
   }, [props.isOpen]);
 
   return (
@@ -538,10 +591,10 @@ export const DeleteConfirmInlinePanel: React.FC<DeleteConfirmInlinePanelProps> =
       {children}
       <div className="flex flex-col gap-2 pt-1">
         <label className="text-sm text-neutral-600 dark:text-neutral-400">
-          Type the {confirmValueLabel}{' '}
+          Type the {confirmValueLabel}{" "}
           <span className="font-mono font-semibold text-neutral-800 dark:text-neutral-200">
             {confirmValue}
-          </span>{' '}
+          </span>{" "}
           to confirm:
         </label>
         <input
@@ -550,7 +603,7 @@ export const DeleteConfirmInlinePanel: React.FC<DeleteConfirmInlinePanelProps> =
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && isMatch && !isConfirmDisabled) onConfirm();
+            if (e.key === "Enter" && isMatch && !isConfirmDisabled) onConfirm();
           }}
           placeholder={confirmValue}
           className="w-full rounded-lg border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-800 px-3 py-2 text-sm font-mono text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 dark:placeholder-neutral-500 outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-400/30"
@@ -562,7 +615,7 @@ export const DeleteConfirmInlinePanel: React.FC<DeleteConfirmInlinePanelProps> =
   );
 };
 
-DeleteConfirmInlinePanel.displayName = 'DeleteConfirmInlinePanel';
+DeleteConfirmInlinePanel.displayName = "DeleteConfirmInlinePanel";
 
 export { InlinePanel };
 export default InlinePanel;

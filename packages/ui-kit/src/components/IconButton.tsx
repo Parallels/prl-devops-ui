@@ -1,6 +1,10 @@
 import classNames from "classnames";
 import React, { type ButtonHTMLAttributes, forwardRef } from "react";
-import { type ButtonColor, type ButtonSize, type ButtonVariant } from "./Button";
+import {
+  type ButtonColor,
+  type ButtonSize,
+  type ButtonVariant,
+} from "./Button";
 import Spinner, { type SpinnerColor, type SpinnerSize } from "./Spinner";
 import { useIconRenderer } from "../contexts/IconContext";
 import { getButtonColorClasses } from "../theme/Theme";
@@ -36,7 +40,8 @@ const roundedMap: Record<IconButtonRounded, string> = {
 const baseClasses =
   "inline-flex items-center justify-center select-none transition-colors duration-150 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50";
 
-export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "color"> {
+export interface IconButtonProps
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children" | "color"> {
   icon: string | React.ReactElement;
   variant?: ButtonVariant;
   color?: ButtonColor;
@@ -78,7 +83,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       tooltipPosition,
       ...rest
     },
-    ref
+    ref,
   ) => {
     const renderIcon = useIconRenderer();
     const sizeConfig = sizeTokens[size] ?? sizeTokens.md;
@@ -87,17 +92,23 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     const accentRing = iconAccentRing[accentTone] ?? iconAccentRing.blue;
     const accentHover = iconAccentHover[accentTone] ?? iconAccentHover.blue;
     const accentClasses = accent
-      ? classNames("bg-transparent text-inherit hover:bg-transparent focus-visible:ring-2 focus-visible:ring-offset-2", accentRing, accentHover)
+      ? classNames(
+          "bg-transparent text-inherit hover:bg-transparent focus-visible:ring-2 focus-visible:ring-offset-2",
+          accentRing,
+          accentHover,
+        )
       : null;
 
     // When accent is off but accentColor is explicitly provided,
     // apply hover text color for non-solid variants (ghost, soft, outline, icon)
-    const nonAccentHover = !accent && accentColor && variant !== "solid"
-      ? iconAccentHover[accentColor] ?? null
-      : null;
+    const nonAccentHover =
+      !accent && accentColor && variant !== "solid"
+        ? (iconAccentHover[accentColor] ?? null)
+        : null;
 
     const dimensionClass = customSizeClass ?? sizeConfig.button;
-    const spinnerColorToken: SpinnerColor = spinnerColor ?? (color as SpinnerColor);
+    const spinnerColorToken: SpinnerColor =
+      spinnerColor ?? (color as SpinnerColor);
 
     const computedClassName = classNames(
       baseClasses,
@@ -105,10 +116,14 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       roundedMap[rounded] ?? roundedMap.full,
       accentClasses ?? baseColorClasses,
       nonAccentHover,
-      className
+      className,
     );
 
-    const iconContent = renderIcon(icon, size as IconSize, classNames("flex-shrink-0", sizeConfig.icon, iconClassName));
+    const iconContent = renderIcon(
+      icon,
+      size as IconSize,
+      classNames("flex-shrink-0", sizeConfig.icon, iconClassName),
+    );
 
     // Pull aria-label and title out of rest so we can set them explicitly.
     // title falls back to aria-label → srLabel so the native browser tooltip
@@ -130,8 +145,19 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         title={computedTitle}
         {...restProps}
       >
-        {loading ? <Spinner size={sizeConfig.spinner} color={spinnerColorToken} variant={spinnerVariant} aria-hidden="true" /> : iconContent}
-        <span className="sr-only">{srLabel ?? rest["aria-label"] ?? "Icon button"}</span>
+        {loading ? (
+          <Spinner
+            size={sizeConfig.spinner}
+            color={spinnerColorToken}
+            variant={spinnerVariant}
+            aria-hidden="true"
+          />
+        ) : (
+          iconContent
+        )}
+        <span className="sr-only">
+          {srLabel ?? rest["aria-label"] ?? "Icon button"}
+        </span>
       </button>
     );
 
@@ -144,7 +170,7 @@ const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
     }
 
     return button;
-  }
+  },
 );
 
 IconButton.displayName = "IconButton";

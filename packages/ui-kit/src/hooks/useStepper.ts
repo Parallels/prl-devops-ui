@@ -31,7 +31,7 @@ export function useStepper<TStep extends { id?: string }>(
     currentStepId,
     onChange,
     completedStepIds,
-  }: UseStepperOptions = {}
+  }: UseStepperOptions = {},
 ): StepperState<TStep> {
   const resolveInitialIndex = useCallback(() => {
     if (typeof currentIndex === "number") {
@@ -44,17 +44,29 @@ export function useStepper<TStep extends { id?: string }>(
       }
     }
     if (defaultCurrentStepId) {
-      const targetIndex = steps.findIndex((step) => step.id === defaultCurrentStepId);
+      const targetIndex = steps.findIndex(
+        (step) => step.id === defaultCurrentStepId,
+      );
       if (targetIndex !== -1) {
         return targetIndex;
       }
     }
-    return Math.min(Math.max(defaultCurrentIndex, 0), Math.max(steps.length - 1, 0));
-  }, [currentIndex, currentStepId, defaultCurrentIndex, defaultCurrentStepId, steps]);
+    return Math.min(
+      Math.max(defaultCurrentIndex, 0),
+      Math.max(steps.length - 1, 0),
+    );
+  }, [
+    currentIndex,
+    currentStepId,
+    defaultCurrentIndex,
+    defaultCurrentStepId,
+    steps,
+  ]);
 
   const [internalIndex, setInternalIndex] = useState(resolveInitialIndex);
 
-  const resolvedIndex = typeof currentIndex === "number" ? currentIndex : internalIndex;
+  const resolvedIndex =
+    typeof currentIndex === "number" ? currentIndex : internalIndex;
 
   const resolvedStepId = useMemo(() => {
     if (currentStepId) {
@@ -66,21 +78,24 @@ export function useStepper<TStep extends { id?: string }>(
 
   const emitChange = useCallback(
     (nextIndex: number) => {
-      const boundedIndex = Math.min(Math.max(nextIndex, 0), Math.max(steps.length - 1, 0));
+      const boundedIndex = Math.min(
+        Math.max(nextIndex, 0),
+        Math.max(steps.length - 1, 0),
+      );
       if (typeof currentIndex !== "number") {
         setInternalIndex(boundedIndex);
       }
       const step = steps[boundedIndex];
       onChange?.(boundedIndex, step?.id);
     },
-    [currentIndex, onChange, steps]
+    [currentIndex, onChange, steps],
   );
 
   const goToIndex = useCallback(
     (index: number) => {
       emitChange(index);
     },
-    [emitChange]
+    [emitChange],
   );
 
   const goToStep = useCallback(
@@ -90,7 +105,7 @@ export function useStepper<TStep extends { id?: string }>(
         emitChange(idx);
       }
     },
-    [emitChange, steps]
+    [emitChange, steps],
   );
 
   const goToNext = useCallback(() => {
@@ -101,13 +116,18 @@ export function useStepper<TStep extends { id?: string }>(
     emitChange(resolvedIndex - 1);
   }, [emitChange, resolvedIndex]);
 
-  const completedSet = useMemo(() => new Set(completedStepIds ?? []), [completedStepIds]);
+  const completedSet = useMemo(
+    () => new Set(completedStepIds ?? []),
+    [completedStepIds],
+  );
 
   const progressPercent = useMemo(() => {
     if (steps.length === 0) {
       return 0;
     }
-    const baseCompleted = completedStepIds ? completedStepIds.length : Math.max(resolvedIndex, 0);
+    const baseCompleted = completedStepIds
+      ? completedStepIds.length
+      : Math.max(resolvedIndex, 0);
 
     const bounded = Math.min(baseCompleted, steps.length);
     return (bounded / steps.length) * 100;
@@ -120,7 +140,7 @@ export function useStepper<TStep extends { id?: string }>(
       }
       return resolvedIndex === index;
     },
-    [currentStepId, resolvedIndex]
+    [currentStepId, resolvedIndex],
   );
 
   const isCompleted = useCallback(
@@ -130,7 +150,7 @@ export function useStepper<TStep extends { id?: string }>(
       }
       return index < resolvedIndex;
     },
-    [completedSet, resolvedIndex]
+    [completedSet, resolvedIndex],
   );
 
   return {

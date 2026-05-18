@@ -63,7 +63,7 @@ const Loader: React.FC<LoaderProps> = ({
       (glass
         ? `absolute inset-0 z-50 rounded-[inherit] bg-white/70 p-6 ${blurIntensityMap[glassBlurIntensity]} dark:bg-neutral-900/60`
         : `absolute inset-0 z-50 rounded-[inherit] bg-white/85 p-6 ${blurIntensityMap[glassBlurIntensity]} dark:bg-neutral-900/80`),
-    className
+    className,
   );
 
   const renderBody = () => {
@@ -75,14 +75,39 @@ const Loader: React.FC<LoaderProps> = ({
       );
     }
 
-    return <Spinner size={resolvedSize.spinner} color={color} variant={spinnerVariant} thickness={spinnerThickness} />;
+    return (
+      <Spinner
+        size={resolvedSize.spinner}
+        color={color}
+        variant={spinnerVariant}
+        thickness={spinnerThickness}
+      />
+    );
   };
 
   return (
     <div className={containerClass}>
-      {title && <div className={classNames("font-semibold text-neutral-800 dark:text-neutral-100", resolvedSize.title)}>{title}</div>}
+      {title && (
+        <div
+          className={classNames(
+            "font-semibold text-neutral-800 dark:text-neutral-100",
+            resolvedSize.title,
+          )}
+        >
+          {title}
+        </div>
+      )}
       {renderBody()}
-      {label && <div className={classNames("text-neutral-600 dark:text-neutral-300", resolvedSize.label)}>{label}</div>}
+      {label && (
+        <div
+          className={classNames(
+            "text-neutral-600 dark:text-neutral-300",
+            resolvedSize.label,
+          )}
+        >
+          {label}
+        </div>
+      )}
     </div>
   );
 };

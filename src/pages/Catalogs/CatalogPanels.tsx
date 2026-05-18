@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
   EmptyState,
@@ -98,6 +98,7 @@ interface CatalogSourcePanelProps {
   onManifestClick: (manifest: CatalogManifestItem, tab?: 'details' | 'versions') => void;
   onDownloadRow?: (row: CatalogRow) => void;
   onStatsChange?: (stats: CatalogSourceStats) => void;
+  onManifestsChange?: (manifests: CatalogManifestItem[]) => void;
 }
 
 export interface CatalogSourceStats {
@@ -115,10 +116,14 @@ export const CatalogSourcePanel: React.FC<CatalogSourcePanelProps> = ({
   onManifestClick,
   onDownloadRow,
   onStatsChange,
+  onManifestsChange,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<CatalogManifestItem[]>([]);
+  const hasLoadedRef = useRef(false);
+  const onManifestsChangeRef = useRef(onManifestsChange);
+  onManifestsChangeRef.current = onManifestsChange;
 
   const fetchCatalogs = useCallback(async () => {
     if (!hostname) return;
@@ -132,15 +137,20 @@ export const CatalogSourcePanel: React.FC<CatalogSourcePanelProps> = ({
 
       const nextItems = mapCatalogManifests(manifests, source);
       setItems(nextItems);
+      if (hasLoadedRef.current) {
+        onManifestsChangeRef.current?.(nextItems);
+      }
       onStatsChange?.({
         manifests: nextItems.length,
         versions: nextItems.reduce((acc, item) => acc + item.versions.length, 0),
         images: nextItems.reduce((acc, item) => acc + item.totalItems, 0),
       });
+      hasLoadedRef.current = true;
     } catch (err: any) {
       setError(err?.message ?? 'Failed to load catalogs');
       setItems([]);
       onStatsChange?.({ manifests: 0, versions: 0, images: 0 });
+      hasLoadedRef.current = true;
     } finally {
       setLoading(false);
     }

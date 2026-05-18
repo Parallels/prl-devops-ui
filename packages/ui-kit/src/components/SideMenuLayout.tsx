@@ -4,7 +4,6 @@ import SideMenu, { type SideMenuProps } from "./SideMenu";
 import CustomIcon from "./CustomIcon";
 import { SideMenuActionsProvider } from "../contexts/SideMenuActionsContext";
 
-
 export interface SideMenuLayoutProps {
   /** Props passed to the SideMenu component (including color). */
   sideMenuProps: SideMenuProps;
@@ -68,54 +67,52 @@ export const SideMenuLayout = ({
     : mobileOpen;
 
   return (
-    <SideMenuActionsProvider initialSideItemActions={sideItemActions} initialSidePanelActions={sidePanelActions}>
-    <div className={classNames("flex h-full w-full overflow-hidden bg-gray-50", className)}>
-      {/* Side Menu */}
-      <SideMenu
-        {...sideMenuProps}
-        collapsed={isCollapsed}
-        onToggleCollapse={handleToggleCollapse}
-        mobileOpen={isMobileOpen}
-        onCloseMobile={handleCloseMobile}
-        fullHeight
-      />
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0 h-full">
-        {/* Mobile menu toggle */}
-        <div className="md:hidden flex items-center px-4 py-2 border-b border-gray-200 bg-white">
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
-            aria-label="Open menu"
-          >
-            <CustomIcon icon="ViewRows" className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Header */}
-        {header && (
-          <div
-            className={classNames(
-              "flex-shrink-0",
-              headerClassName,
-            )}
-          >
-            {header}
-          </div>
+    <SideMenuActionsProvider
+      initialSideItemActions={sideItemActions}
+      initialSidePanelActions={sidePanelActions}
+    >
+      <div
+        className={classNames(
+          "flex h-full w-full overflow-hidden bg-gray-50",
+          className,
         )}
+      >
+        {/* Side Menu */}
+        <SideMenu
+          {...sideMenuProps}
+          collapsed={isCollapsed}
+          onToggleCollapse={handleToggleCollapse}
+          mobileOpen={isMobileOpen}
+          onCloseMobile={handleCloseMobile}
+          fullHeight
+        />
 
-        {/* Scrollable Body */}
-        <main
-          className={classNames(
-            "flex-1 overflow-y-auto",
-            bodyClassName,
+        {/* Main Content Area */}
+        <div className="flex flex-1 flex-col min-w-0 h-full">
+          {/* Mobile menu toggle */}
+          <div className="md:hidden flex items-center px-4 py-2 border-b border-gray-200 bg-white">
+            <button
+              onClick={() => setMobileOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
+              aria-label="Open menu"
+            >
+              <CustomIcon icon="ViewRows" className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Header */}
+          {header && (
+            <div className={classNames("flex-shrink-0", headerClassName)}>
+              {header}
+            </div>
           )}
-        >
-          {children}
-        </main>
+
+          {/* Scrollable Body */}
+          <main className={classNames("flex-1 overflow-y-auto", bodyClassName)}>
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
     </SideMenuActionsProvider>
   );
 };

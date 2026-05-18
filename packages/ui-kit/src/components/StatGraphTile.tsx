@@ -1,10 +1,26 @@
-import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LineChart, Line, Tooltip as RechartsTooltip } from 'recharts';
-import StatTile from './StatTile';
-import type { StatTileProps } from './StatTile';
-import type { ThemeColor } from '../theme';
-import { getColorPaletteNames } from '../theme';
+import React, {
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
+import { createPortal } from "react-dom";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Tooltip as RechartsTooltip,
+} from "recharts";
+import StatTile from "./StatTile";
+import type { StatTileProps } from "./StatTile";
+import type { ThemeColor } from "../theme";
+import { getColorPaletteNames } from "../theme";
 
 export interface StatGraphSeries {
   key: string;
@@ -13,9 +29,13 @@ export interface StatGraphSeries {
   color?: ThemeColor;
 }
 
-export interface StatGraphTileProps extends Omit<StatTileProps, 'body' | 'progress' | 'trend' | 'meta' | 'footer'> {
+export interface StatGraphTileProps
+  extends Omit<
+    StatTileProps,
+    "body" | "progress" | "trend" | "meta" | "footer"
+  > {
   data: any[];
-  variant: 'bar' | 'sparkline';
+  variant: "bar" | "sparkline";
   series: StatGraphSeries[];
   height?: number;
   showLegend?: boolean;
@@ -49,7 +69,15 @@ interface TooltipSnapshot {
   values: string;
 }
 
-function PortalTooltip({ tooltip, series, getColor }: { tooltip: TooltipState | null; series: StatGraphSeries[]; getColor: (color: string) => string }) {
+function PortalTooltip({
+  tooltip,
+  series,
+  getColor,
+}: {
+  tooltip: TooltipState | null;
+  series: StatGraphSeries[];
+  getColor: (color: string) => string;
+}) {
   if (!tooltip || tooltip.payload.length === 0) return null;
 
   return createPortal(
@@ -58,7 +86,7 @@ function PortalTooltip({ tooltip, series, getColor }: { tooltip: TooltipState | 
       style={{
         left: tooltip.x,
         top: tooltip.y,
-        transform: 'translate(-50%, calc(-100% - 12px))',
+        transform: "translate(-50%, calc(-100% - 12px))",
       }}
     >
       <div className="bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 rounded-lg px-3 py-2 text-xs whitespace-nowrap shadow-xl ring-1 ring-black/10 dark:ring-black/5 min-w-[100px]">
@@ -66,9 +94,18 @@ function PortalTooltip({ tooltip, series, getColor }: { tooltip: TooltipState | 
           const s = series.find((s) => s.key === entry.dataKey);
           return (
             <div key={entry.dataKey} className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: entry.fill ?? getColor(s?.color ?? 'blue') }} />
+              <span
+                className="w-2 h-2 rounded-full flex-shrink-0"
+                style={{
+                  backgroundColor: entry.fill ?? getColor(s?.color ?? "blue"),
+                }}
+              />
               <span className="font-semibold">{entry.value}</span>
-              {s && <span className="text-neutral-400 dark:text-neutral-500">{s.label}</span>}
+              {s && (
+                <span className="text-neutral-400 dark:text-neutral-500">
+                  {s.label}
+                </span>
+              )}
             </div>
           );
         })}
@@ -89,14 +126,14 @@ function SilentTooltipContent() {
 
 const StatGraphTile: React.FC<StatGraphTileProps> = ({
   data,
-  variant = 'bar',
+  variant = "bar",
   series,
   height = 200,
   showLegend = true,
   showAxes = true,
   showGrid = true,
   showTooltip = true,
-  yDomain = [0, 'auto'],
+  yDomain = [0, "auto"],
   chartAnimation = true,
   chartAnimationDuration = 250,
   maxDataPoints = 0,
@@ -119,43 +156,47 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
   const getColor = useCallback((color: string) => {
     const colorMap: Record<string, string> = {
       // Spectrum colors (ThemeMultiColor — Tailwind 500 hex values)
-      red: '#ef4444',
-      orange: '#f97316',
-      amber: '#f59e0b',
-      yellow: '#eab308',
-      lime: '#84cc16',
-      green: '#22c55e',
-      emerald: '#10b981',
-      teal: '#14b8a6',
-      cyan: '#06b6d4',
-      sky: '#0ea5e9',
-      blue: '#3b82f6',
-      indigo: '#6366f1',
-      violet: '#8b5cf6',
-      purple: '#a855f7',
-      fuchsia: '#d946ef',
-      pink: '#ec4899',
-      rose: '#f43f5e',
-      slate: '#64748b',
-      gray: '#6b7280',
-      zinc: '#71717a',
-      neutral: '#737373',
-      stone: '#78716c',
+      red: "#ef4444",
+      orange: "#f97316",
+      amber: "#f59e0b",
+      yellow: "#eab308",
+      lime: "#84cc16",
+      green: "#22c55e",
+      emerald: "#10b981",
+      teal: "#14b8a6",
+      cyan: "#06b6d4",
+      sky: "#0ea5e9",
+      blue: "#3b82f6",
+      indigo: "#6366f1",
+      violet: "#8b5cf6",
+      purple: "#a855f7",
+      fuchsia: "#d946ef",
+      pink: "#ec4899",
+      rose: "#f43f5e",
+      slate: "#64748b",
+      gray: "#6b7280",
+      zinc: "#71717a",
+      neutral: "#737373",
+      stone: "#78716c",
       // Semantic aliases
-      parallels: '#e4001b',
-      text: '#64748b',
-      grid: '#e2e8f0',
+      parallels: "#e4001b",
+      text: "#64748b",
+      grid: "#e2e8f0",
     };
-    return colorMap[color] || '#3b82f6';
+    return colorMap[color] || "#3b82f6";
   }, []);
 
   const resolvedSeries = useMemo(() => {
     const palette = getColorPaletteNames(series.length);
-    return series.map((s, i) => ({ ...s, color: (s.color ?? palette[i]) as ThemeColor }));
+    return series.map((s, i) => ({
+      ...s,
+      color: (s.color ?? palette[i]) as ThemeColor,
+    }));
   }, [series]);
 
   const chartData = useMemo(() => {
-    if (!maxDataPoints || maxDataPoints <= 0 || data.length <= maxDataPoints) return data;
+    if (!maxDataPoints || maxDataPoints <= 0 || data.length <= maxDataPoints)
+      return data;
     return data.slice(-maxDataPoints);
   }, [data, maxDataPoints]);
 
@@ -178,12 +219,23 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
         x: next.x,
         y: next.y,
         label: next.label,
-        keys: next.payload.map((entry: any) => String(entry.dataKey ?? '')).join('|'),
-        values: next.payload.map((entry: any) => String(entry.value ?? '')).join('|'),
+        keys: next.payload
+          .map((entry: any) => String(entry.dataKey ?? ""))
+          .join("|"),
+        values: next.payload
+          .map((entry: any) => String(entry.value ?? ""))
+          .join("|"),
       };
 
       const prev = tooltipSnapshotRef.current;
-      if (prev && prev.x === snapshot.x && prev.y === snapshot.y && prev.label === snapshot.label && prev.keys === snapshot.keys && prev.values === snapshot.values) {
+      if (
+        prev &&
+        prev.x === snapshot.x &&
+        prev.y === snapshot.y &&
+        prev.label === snapshot.label &&
+        prev.keys === snapshot.keys &&
+        prev.values === snapshot.values
+      ) {
         return;
       }
 
@@ -202,7 +254,7 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
           const rect = wrapperEl.getBoundingClientRect();
           const absX = rect.left + (coordinate.x ?? 0);
           const absY = rect.top + (coordinate.y ?? 0);
-          queueTooltipUpdate({ x: absX, y: absY, payload, label: label ?? '' });
+          queueTooltipUpdate({ x: absX, y: absY, payload, label: label ?? "" });
         }
       } else {
         queueTooltipUpdate(null);
@@ -214,49 +266,100 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
 
   // Legend (bar only)
   const customActions = useMemo(() => {
-    if (!showLegend || variant !== 'bar') return null;
+    if (!showLegend || variant !== "bar") return null;
     return (
       <div className="flex items-center space-x-4">
         {resolvedSeries.map((s) => (
           <div key={s.key} className="flex items-center">
-            <div className="w-2.5 h-2.5 rounded-full mr-2" style={{ backgroundColor: getColor(s.color) }} />
-            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">{s.label}</span>
+            <div
+              className="w-2.5 h-2.5 rounded-full mr-2"
+              style={{ backgroundColor: getColor(s.color) }}
+            />
+            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-medium">
+              {s.label}
+            </span>
           </div>
         ))}
       </div>
     );
   }, [showLegend, variant, resolvedSeries, getColor]);
 
-  const textColor = '#64748b';
-  const gridColor = '#e2e8f0';
+  const textColor = "#64748b";
+  const gridColor = "#e2e8f0";
 
   const renderChart = () => {
-    if (variant === 'bar') {
+    if (variant === "bar") {
       return (
-        <div ref={wrapperRef} className="relative" onMouseLeave={() => queueTooltipUpdate(null)}>
+        <div
+          ref={wrapperRef}
+          className="relative"
+          onMouseLeave={() => queueTooltipUpdate(null)}
+        >
           <ResponsiveContainer width="100%" height={height}>
-            <BarChart data={chartData} barSize={8} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-              {showGrid && <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} opacity={0.5} />}
+            <BarChart
+              data={chartData}
+              barSize={8}
+              margin={{ top: 10, right: 0, left: -20, bottom: 0 }}
+            >
+              {showGrid && (
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke={gridColor}
+                  opacity={0.5}
+                />
+              )}
               {showAxes && (
                 <>
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: textColor, fontSize: 12 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: textColor, fontSize: 12 }} />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: textColor, fontSize: 12 }}
+                    dy={10}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: textColor, fontSize: 12 }}
+                  />
                 </>
               )}
-              <RechartsTooltip content={rechartsTooltipContent} cursor={{ fill: 'rgba(100,116,139,0.05)' }} isAnimationActive={false} />
+              <RechartsTooltip
+                content={rechartsTooltipContent}
+                cursor={{ fill: "rgba(100,116,139,0.05)" }}
+                isAnimationActive={false}
+              />
               {resolvedSeries.map((s) => (
-                <Bar key={s.key} dataKey={s.key} fill={getColor(s.color)} radius={[4, 4, 4, 4]} isAnimationActive={chartAnimation} animationDuration={chartAnimation ? chartAnimationDuration : 0} />
+                <Bar
+                  key={s.key}
+                  dataKey={s.key}
+                  fill={getColor(s.color)}
+                  radius={[4, 4, 4, 4]}
+                  isAnimationActive={chartAnimation}
+                  animationDuration={
+                    chartAnimation ? chartAnimationDuration : 0
+                  }
+                />
               ))}
             </BarChart>
           </ResponsiveContainer>
-          <PortalTooltip tooltip={tooltip} series={resolvedSeries} getColor={getColor} />
+          <PortalTooltip
+            tooltip={tooltip}
+            series={resolvedSeries}
+            getColor={getColor}
+          />
         </div>
       );
     }
 
-    if (variant === 'sparkline') {
+    if (variant === "sparkline") {
       return (
-        <div ref={wrapperRef} className="relative" onMouseLeave={() => queueTooltipUpdate(null)}>
+        <div
+          ref={wrapperRef}
+          className="relative"
+          onMouseLeave={() => queueTooltipUpdate(null)}
+        >
           <ResponsiveContainer width="100%" height={80}>
             <LineChart data={chartData}>
               <YAxis domain={yDomain} hide />
@@ -270,10 +373,20 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
                 isAnimationActive={chartAnimation}
                 animationDuration={chartAnimation ? chartAnimationDuration : 0}
               />
-              {showTooltip && <RechartsTooltip content={rechartsTooltipContent} cursor={false} isAnimationActive={false} />}
+              {showTooltip && (
+                <RechartsTooltip
+                  content={rechartsTooltipContent}
+                  cursor={false}
+                  isAnimationActive={false}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
-          <PortalTooltip tooltip={tooltip} series={resolvedSeries} getColor={getColor} />
+          <PortalTooltip
+            tooltip={tooltip}
+            series={resolvedSeries}
+            getColor={getColor}
+          />
         </div>
       );
     }
@@ -286,16 +399,22 @@ const StatGraphTile: React.FC<StatGraphTileProps> = ({
       actions={customActions || props.actions}
       body={
         <div className="flex flex-col h-full w-full">
-          {variant === 'sparkline' && (
+          {variant === "sparkline" && (
             <div className="mt-2 mb-4 px-1">
               {renderChart()}
               <div className="mt-4">
-                <div className="text-3xl font-bold text-neutral-900 dark:text-white">{props.value}</div>
-                {props.subtitle && <div className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">{props.subtitle}</div>}
+                <div className="text-3xl font-bold text-neutral-900 dark:text-white">
+                  {props.value}
+                </div>
+                {props.subtitle && (
+                  <div className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
+                    {props.subtitle}
+                  </div>
+                )}
               </div>
             </div>
           )}
-          {variant === 'bar' && <div className="mt-4">{renderChart()}</div>}
+          {variant === "bar" && <div className="mt-4">{renderChart()}</div>}
         </div>
       }
     />

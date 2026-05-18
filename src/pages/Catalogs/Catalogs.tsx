@@ -62,6 +62,7 @@ export const Catalogs: React.FC = () => {
   const [allManagers, setAllManagers] = useState<CatalogManager[]>([]);
   const [sourceStats, setSourceStats] = useState<Record<string, CatalogSourceStats>>({});
   const [catalogReloadToken, setCatalogReloadToken] = useState(0);
+  const [manifestsBySource, setManifestsBySource] = useState<Map<string, CatalogManifestItem[]>>(new Map());
 
   const [selectedCatalogItem, setSelectedCatalogItem] = useState<SelectedCatalogItem | null>(null);
 
@@ -86,6 +87,18 @@ export const Catalogs: React.FC = () => {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [activeItem, setActiveItem] = useState<string | null>(null)
+
+  // Stable callback that updates manifest data by source — feeds into manifestsBySource state
+  // This replaces the old handleManifestsChange which called setSelectedCatalogItem and caused
+  // the infinite loop. By storing data in state here (not via setSelectedCatalogItem), we break
+  // the cycle while still collecting fresh manifest data from child panels.
+  const onManifestsChangeViaRef = useCallback((sourceId: string, manifests: CatalogManifestItem[]) => {
+    setManifestsBySource((prev) => {
+      const next = new Map(prev);
+      next.set(sourceId, manifests);
+      return next;
+    });
+  }, []);
 
   const hasLocalCatalogs = hasModule(Modules.CATALOG);
   const hasCatalogManagers = hasModule(Modules.CATALOG_MANAGERS);
@@ -189,6 +202,20 @@ export const Catalogs: React.FC = () => {
       setSelectedCatalogItem(null);
     }
   }, [selectedCatalogItem, selectedSourceId, sources]);
+
+  // Refresh selectedCatalogItem.manifest when manifestsBySource updates (from catalogReloadToken)
+  // This pushes fresh data to the side panel without triggering fetchCatalogs again.
+  // Safe because manifestsBySource updates come from onManifestsChangeViaRef which is a child→parent
+  // notification that fires AFTER fetchCatalogs completes — it does NOT feed back into fetchCatalogs.
+  useEffect(() => {
+    if (!selectedCatalogItem) return;
+    const manifests = manifestsBySource.get(selectedCatalogItem.source.id);
+    if (!manifests) return;
+    const updated = manifests.find((m) => m.id === selectedCatalogItem.manifest.id);
+    if (updated && updated !== selectedCatalogItem.manifest) {
+      setSelectedCatalogItem({ source: selectedCatalogItem.source, manifest: updated });
+    }
+  }, [selectedCatalogItem, manifestsBySource]);
 
   const openAddCatalogModal = useCallback(() => {
     if (!hasCatalogManagers) return;
@@ -493,11 +520,12 @@ export const Catalogs: React.FC = () => {
               onStatsChange={(stats) => {
                 setSourceStats((prev) => ({ ...prev, [source.id]: stats }));
               }}
+              onManifestsChange={(manifests) => onManifestsChangeViaRef(source.id, manifests)}
             />
           ),
         };
       }),
-    [allManagers, canDeleteManager, canEditManager, catalogReloadToken, hasCatalogManagers, hostname, openDownloadVmModal, openEditManagerModal, query, selectedCatalogItem, sources, themeColor],
+    [allManagers, canDeleteManager, canEditManager, catalogReloadToken, hasCatalogManagers, hostname, openDownloadVmModal, openEditManagerModal, onManifestsChangeViaRef, query, sources, themeColor],
   );
 
   const panelEmptyState = () => (

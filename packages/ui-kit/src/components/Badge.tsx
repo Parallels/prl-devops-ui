@@ -57,9 +57,19 @@ export const Badge: React.FC<BadgeProps> = ({
   let content: React.ReactNode;
 
   if (dot) {
-    content = <span className={classNames("h-2 w-2 rounded-full", colorClass)} aria-hidden="true" />;
+    content = (
+      <span
+        className={classNames("h-2 w-2 rounded-full", colorClass)}
+        aria-hidden="true"
+      />
+    );
   } else {
-    const displayValue = count !== undefined ? (Number(count) > maxCount ? `${maxCount}+` : count) : "";
+    const displayValue =
+      count !== undefined
+        ? Number(count) > maxCount
+          ? `${maxCount}+`
+          : count
+        : "";
     content = displayValue;
   }
 
@@ -68,7 +78,7 @@ export const Badge: React.FC<BadgeProps> = ({
     "min-h-[1.125rem] min-w-[1.125rem] border border-white/80 dark:border-neutral-900/60",
     dot ? "px-1 py-1 bg-transparent text-transparent" : "px-1.5",
     !dot && colorClass,
-    className
+    className,
   );
 
   const badgeStyle = { ...style };
@@ -76,7 +86,10 @@ export const Badge: React.FC<BadgeProps> = ({
   if (dot) {
     return (
       <span className={badgeClasses} style={badgeStyle} aria-hidden="true">
-        <span className={classNames("block h-2 w-2 rounded-full", colorClass)} aria-hidden="true" />
+        <span
+          className={classNames("block h-2 w-2 rounded-full", colorClass)}
+          aria-hidden="true"
+        />
       </span>
     );
   }

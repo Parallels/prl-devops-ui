@@ -22,7 +22,8 @@ export interface StatChartDataset {
   items: StatChartItem[];
 }
 
-export interface StatChartTileProps extends Omit<StatTileProps, "body" | "title" | "value" | "subtitle"> {
+export interface StatChartTileProps
+  extends Omit<StatTileProps, "body" | "title" | "value" | "subtitle"> {
   data: StatChartDataset[];
 }
 
@@ -32,10 +33,16 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
 
   const resolvedItems = useMemo(() => {
     const palette = getColorPaletteNames(currentDataset.items.length);
-    return currentDataset.items.map((item, i) => ({ ...item, color: (item.color ?? palette[i]) as ThemeColor }));
+    return currentDataset.items.map((item, i) => ({
+      ...item,
+      color: (item.color ?? palette[i]) as ThemeColor,
+    }));
   }, [currentDataset]);
 
-  const total = useMemo(() => currentDataset.items.reduce((acc, item) => acc + item.value, 0), [currentDataset]);
+  const total = useMemo(
+    () => currentDataset.items.reduce((acc, item) => acc + item.value, 0),
+    [currentDataset],
+  );
 
   const handlePrev = () => {
     if (currentIndex > 0) {
@@ -60,27 +67,27 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
   const segments =
     total === 0
       ? [
-        {
-          label: "",
-          value: 0,
-          color: "neutral",
-          intensity: "200",
-          dashArray: `${circumference} ${circumference}`,
-          dashOffset: 0,
-          onClick: undefined,
-        },
-      ]
+          {
+            label: "",
+            value: 0,
+            color: "neutral",
+            intensity: "200",
+            dashArray: `${circumference} ${circumference}`,
+            dashOffset: 0,
+            onClick: undefined,
+          },
+        ]
       : resolvedItems.map((item) => {
-        const percent = item.value / total;
-        const dashArray = `${circumference * percent} ${circumference}`;
-        const dashOffset = -circumference * cumulativePercent;
-        cumulativePercent += percent;
-        return {
-          ...item,
-          dashArray,
-          dashOffset,
-        };
-      });
+          const percent = item.value / total;
+          const dashArray = `${circumference * percent} ${circumference}`;
+          const dashOffset = -circumference * cumulativePercent;
+          cumulativePercent += percent;
+          return {
+            ...item,
+            dashArray,
+            dashOffset,
+          };
+        });
 
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -96,21 +103,27 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
               disabled={currentIndex === 0}
               className={classNames(
                 "p-1 rounded-full transition-colors",
-                currentIndex === 0 ? "text-neutral-300 cursor-not-allowed" : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                currentIndex === 0
+                  ? "text-neutral-300 cursor-not-allowed"
+                  : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800",
                 data.length <= 1 && "invisible",
               )}
             >
               <CustomIcon icon="ArrowChevronLeft" size="sm" />
             </button>
 
-            <span className="font-bold text-neutral-900 dark:text-white flex-1 text-center">{currentDataset.label}</span>
+            <span className="font-bold text-neutral-900 dark:text-white flex-1 text-center">
+              {currentDataset.label}
+            </span>
 
             <button
               onClick={handleNext}
               disabled={currentIndex === data.length - 1}
               className={classNames(
                 "p-1 rounded-full transition-colors",
-                currentIndex === data.length - 1 ? "text-neutral-300 cursor-not-allowed" : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800",
+                currentIndex === data.length - 1
+                  ? "text-neutral-300 cursor-not-allowed"
+                  : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800",
                 data.length <= 1 && "invisible",
               )}
             >
@@ -120,9 +133,20 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
 
           {/* Chart Area */}
           <div className="relative flex-1 flex items-center justify-center min-h-55">
-            <svg className="transform -rotate-90 w-48 h-48 overflow-visible" viewBox={`0 0 ${size} ${size}`}>
+            <svg
+              className="transform -rotate-90 w-48 h-48 overflow-visible"
+              viewBox={`0 0 ${size} ${size}`}
+            >
               {/* Background Circle (Optional, maybe not needed if full 100%) */}
-              <circle className="text-neutral-100 dark:text-neutral-800" strokeWidth={strokeWidth} stroke="currentColor" fill="none" r={radius} cx={size / 2} cy={size / 2} />
+              <circle
+                className="text-neutral-100 dark:text-neutral-800"
+                strokeWidth={strokeWidth}
+                stroke="currentColor"
+                fill="none"
+                r={radius}
+                cx={size / 2}
+                cy={size / 2}
+              />
 
               {/* Segments - Render non-hovered first */}
               {segments.map((segment, idx) => {
@@ -132,7 +156,8 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
                     key={idx}
                     className={classNames(
                       `text-${segment.color}-${segment.intensity || "500"} transition-all duration-300 ease-out origin-center`,
-                      total > 0 && "hover:scale-110 hover:drop-shadow-lg cursor-pointer hover:opacity-90",
+                      total > 0 &&
+                        "hover:scale-110 hover:drop-shadow-lg cursor-pointer hover:opacity-90",
                     )}
                     strokeWidth={strokeWidth}
                     strokeDasharray={segment.dashArray}
@@ -201,8 +226,12 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
 
             {/* Center Text */}
             <div className="absolute flex flex-col items-center justify-center text-center max-w-30">
-              <span className="text-4xl font-bold text-neutral-900 dark:text-white leading-none mb-1">{total}</span>
-              <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-tight">{currentDataset.centerLabel}</span>
+              <span className="text-4xl font-bold text-neutral-900 dark:text-white leading-none mb-1">
+                {total}
+              </span>
+              <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400 leading-tight">
+                {currentDataset.centerLabel}
+              </span>
             </div>
           </div>
 
@@ -214,16 +243,24 @@ const StatChartTile: React.FC<StatChartTileProps> = ({ data, ...props }) => {
                   key={idx}
                   className={classNames(
                     "flex items-center justify-between min-w-0 group",
-                    item.onClick ? "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded px-1 -mx-1" : "cursor-default",
+                    item.onClick
+                      ? "cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/50 rounded px-1 -mx-1"
+                      : "cursor-default",
                   )}
                   title={`${item.label}: ${item.value}`}
                   onClick={() => item.onClick && item.onClick()}
                 >
                   <div className="flex items-center min-w-0 mr-2">
-                    <div className={`w-2.5 h-2.5 flex-none rounded-full bg-${item.color}-500 mr-2`} />
-                    <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">{item.label}</span>
+                    <div
+                      className={`w-2.5 h-2.5 flex-none rounded-full bg-${item.color}-500 mr-2`}
+                    />
+                    <span className="text-xs text-neutral-600 dark:text-neutral-300 truncate group-hover:text-neutral-900 dark:group-hover:text-white transition-colors">
+                      {item.label}
+                    </span>
                   </div>
-                  <span className="text-xs font-bold text-neutral-900 dark:text-white flex-none">{item.value}</span>
+                  <span className="text-xs font-bold text-neutral-900 dark:text-white flex-none">
+                    {item.value}
+                  </span>
                 </div>
               ))}
             </div>

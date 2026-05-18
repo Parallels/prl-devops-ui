@@ -5,15 +5,25 @@
  * directly to the `action_value_unit` field returned by the API.
  */
 
-export type DataSizeUnit = 'B' | 'KB' | 'MB' | 'GB' | 'TB';
+export type DataSizeUnit = "B" | "KB" | "MB" | "GB" | "TB";
 
 /** Maps common full names and abbreviations (any case) to a canonical DataSizeUnit. */
 const UNIT_ALIASES: Record<string, DataSizeUnit> = {
-  b: 'B', byte: 'B', bytes: 'B',
-  kb: 'KB', kilobyte: 'KB', kilobytes: 'KB',
-  mb: 'MB', megabyte: 'MB', megabytes: 'MB',
-  gb: 'GB', gigabyte: 'GB', gigabytes: 'GB',
-  tb: 'TB', terabyte: 'TB', terabytes: 'TB',
+  b: "B",
+  byte: "B",
+  bytes: "B",
+  kb: "KB",
+  kilobyte: "KB",
+  kilobytes: "KB",
+  mb: "MB",
+  megabyte: "MB",
+  megabytes: "MB",
+  gb: "GB",
+  gigabyte: "GB",
+  gigabytes: "GB",
+  tb: "TB",
+  terabyte: "TB",
+  terabytes: "TB",
 };
 
 /**
@@ -21,13 +31,13 @@ const UNIT_ALIASES: Record<string, DataSizeUnit> = {
  * to a canonical `DataSizeUnit`. Falls back to `'B'` for unknown values.
  */
 export function normalizeDataSizeUnit(raw: string | undefined): DataSizeUnit {
-  if (!raw) return 'B';
-  return UNIT_ALIASES[raw.trim().toLowerCase()] ?? 'B';
+  if (!raw) return "B";
+  return UNIT_ALIASES[raw.trim().toLowerCase()] ?? "B";
 }
 
 /** Conversion factors relative to bytes. */
 const BYTES_PER_UNIT: Record<DataSizeUnit, number> = {
-  B:  1,
+  B: 1,
   KB: 1_024,
   MB: 1_048_576,
   GB: 1_073_741_824,
@@ -35,7 +45,7 @@ const BYTES_PER_UNIT: Record<DataSizeUnit, number> = {
 };
 
 /** Ordered from largest to smallest — used when picking the best display unit. */
-const DISPLAY_ORDER: DataSizeUnit[] = ['TB', 'GB', 'MB', 'KB', 'B'];
+const DISPLAY_ORDER: DataSizeUnit[] = ["TB", "GB", "MB", "KB", "B"];
 
 /**
  * Convert a value from `fromUnit` to bytes.
@@ -52,14 +62,18 @@ export function pickBestUnit(referenceBytes: number): DataSizeUnit {
   for (const unit of DISPLAY_ORDER) {
     if (referenceBytes >= BYTES_PER_UNIT[unit]) return unit;
   }
-  return 'B';
+  return "B";
 }
 
 /**
  * Format a raw byte value using the given display unit, up to `decimals`
  * significant decimal places (trailing zeros are stripped).
  */
-export function formatBytesAs(bytes: number, unit: DataSizeUnit, decimals = 2): string {
+export function formatBytesAs(
+  bytes: number,
+  unit: DataSizeUnit,
+  decimals = 2,
+): string {
   const converted = bytes / BYTES_PER_UNIT[unit];
   // Round to the requested precision then strip trailing zeros.
   const rounded = parseFloat(converted.toFixed(decimals));
@@ -82,16 +96,26 @@ export function formatBytesAs(bytes: number, unit: DataSizeUnit, decimals = 2): 
 export function formatProgressBytes(
   value: number,
   total: number,
-  inputUnit: DataSizeUnit = 'B',
+  inputUnit: DataSizeUnit = "B",
   decimals = 2,
-): { valueLabel: string; totalLabel: string; unit: DataSizeUnit; line: string } {
+): {
+  valueLabel: string;
+  totalLabel: string;
+  unit: DataSizeUnit;
+  line: string;
+} {
   const totalBytes = toBytes(total, inputUnit);
   const unit = pickBestUnit(totalBytes);
 
   const valueLabel = formatBytesAs(toBytes(value, inputUnit), unit, decimals);
   const totalLabel = formatBytesAs(totalBytes, unit, decimals);
 
-  return { valueLabel, totalLabel, unit, line: `${valueLabel} / ${totalLabel} ${unit}` };
+  return {
+    valueLabel,
+    totalLabel,
+    unit,
+    line: `${valueLabel} / ${totalLabel} ${unit}`,
+  };
 }
 
 /**
