@@ -56,6 +56,10 @@ export function titleCase(s: string): string {
   return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+export function collapseBlankLines(s: string): string {
+  return s.replace(/\n\s*\n/g, '\n');
+}
+
 /** Returns the best display name for a step: display_name → titleCase(name) → fallback */
 export function stepName(step: { name?: string; display_name?: string }, fallback = ''): string {
   if (step.display_name) return step.display_name;

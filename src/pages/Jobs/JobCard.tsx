@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import classNames from 'classnames';
 import {
   ArrowRight,
@@ -7,6 +7,7 @@ import {
   CheckCircle,
   ConfirmModal,
   ConnectionFlow,
+  CustomIcon,
   IconButton,
   Panel,
   Pill,
@@ -22,7 +23,7 @@ import type { Job, JobStep } from '@/interfaces/Jobs';
 import { useJobs } from '@/contexts/JobsContext';
 import { useHighlight } from '@/contexts/HighlightContext';
 import { resolveJobOutcome } from '@/utils/jobOutcomeResolver';
-import { stateToTone, jobTypeIcon, formatTimestamp, titleCase, stepName, joinNames, formatEta, parseEtaToSeconds, TONE_ICON_BG } from './jobsUtils';
+import { stateToTone, jobTypeIcon, formatTimestamp, titleCase, stepName, joinNames, formatEta, parseEtaToSeconds, TONE_ICON_BG, collapseBlankLines } from './jobsUtils';
 
 interface JobCardProps {
   job: Job;
@@ -31,21 +32,29 @@ interface JobCardProps {
 
 // ── Step pipeline (ConnectionFlow) ────────────────────────────────────────────
 
-const StepFlow: React.FC<{ steps: JobStep[]; jobActive: boolean }> = ({ steps, jobActive }) => {
+const StepFlow: React.FC<{ steps: JobStep[]; jobActive: boolean; jobState: string }> = ({ steps, jobActive, jobState }) => {
   if (!steps || steps.length === 0) return null;
 
+  const isJobFailed = jobState === 'failed';
   const runningIdx = steps.findIndex((s) => s.state === 'running');
 
   const items: ConnectionFlowItem[] = steps.map((step, i) => {
+    const stepWithError = step.error ? (
+      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-rose-500 text-white text-[8px] font-bold">!</span>
+    ) : null;
+
+    const stepState = isJobFailed ? 'failed' : step.state;
+
     return {
       id: `step-${i}-${step.name}`,
       title: stepName(step, `Step ${i + 1}`),
       titleWrap: true,
-      tone: stateToTone(step.state),
-      active: step.state === 'running',
-      activePulse: step.state === 'running',
+      tone: stateToTone(stepState),
+      active: step.state === 'running' && !isJobFailed,
+      activePulse: step.state === 'running' && !isJobFailed,
       parallel: step.parallel ?? false,
       skipped: step.state === 'skipped',
+      badge: stepWithError,
       // Animate only the connector leading into the currently running step
       connector: i > 0 ? { width: 24, animateCompleted: i === runningIdx } : undefined,
     };
@@ -133,6 +142,8 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
   const [isHighlighted, setIsHighlighted] = useState(highlighted);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showStepErrors, setShowStepErrors] = useState(false);
   const { deleteJob } = useJobs();
   const { addHighlight } = useHighlight();
 
@@ -153,6 +164,14 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
       setConfirmDelete(false);
     }
   };
+
+  const handleCopyError = async () => {
+    await navigator.clipboard.writeText(job.error);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const erroredSteps = useMemo(() => (job.steps ?? []).filter((s) => s.error), [job.steps]);
 
   const tone = stateToTone(job.state);
   const isInit = job.state === 'init';
@@ -218,7 +237,7 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
         {/* Step pipeline — shown when steps are present */}
         {hasSteps && (
           <div className="mt-3">
-            <StepFlow steps={job.steps} jobActive={isActive} />
+            <StepFlow steps={job.steps} jobActive={isActive} jobState={job.state} />
           </div>
         )}
 
@@ -235,9 +254,46 @@ export const JobCard: React.FC<JobCardProps> = ({ job, highlighted = false }) =>
 
         {/* Error */}
         {isFailed && job.error && (
-          <Panel variant="tonal" color="rose" padding="xs" tone="rose" corner="rounded-sm">
-            <span className="text-sm">{job.error}</span>
-          </Panel>
+          <div className="px-4 pb-3">
+            <div className="flex items-center gap-2 mb-1">
+              <CustomIcon icon="Error" className="w-4 h-4 shrink-0 text-rose-500" />
+              <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">Error</span>
+              <IconButton
+                icon={copied ? 'Check' : 'CopyClipboard'}
+                variant="ghost"
+                color="rose"
+                size="xs"
+                tooltip={copied ? 'Copied!' : 'Copy error'}
+                aria-label="Copy error"
+                onClick={() => void handleCopyError()}
+              />
+            </div>
+            <p className="text-sm text-rose-700 dark:text-rose-400 mt-1 whitespace-pre-wrap break-words ml-6">{collapseBlankLines(job.error)}</p>
+            {erroredSteps.length > 0 && (
+              <button
+                type="button"
+                className="flex items-center gap-1.5 mt-2 text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 transition-colors"
+                onClick={() => setShowStepErrors(!showStepErrors)}
+              >
+                <span style={{ transform: showStepErrors ? 'rotate(90deg)' : undefined }} className="transition-transform duration-200 inline-block">
+                  <CustomIcon icon="ChevronLeft" className="w-3 h-3" />
+                </span>
+                <span className="font-medium">Step Errors ({erroredSteps.length})</span>
+              </button>
+            )}
+            {showStepErrors && erroredSteps.length > 0 && (
+              <div className="mt-2 space-y-1.5 ml-0">
+                {erroredSteps.map((step) => (
+                  <div key={step.name} className="rounded-md bg-rose-50 dark:bg-rose-900/20 p-2.5">
+                    <p className="text-xs font-semibold text-rose-600 dark:text-rose-400 mb-0.5">
+                      {step.display_name || titleCase(step.name)}
+                    </p>
+                    <p className="text-xs text-rose-700 dark:text-rose-400 whitespace-pre-wrap break-words">{collapseBlankLines(step.error)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Finished job deeplink */}
