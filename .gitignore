@@ -53,3 +53,4 @@ packages/ui-kit/.claude-flow/agents/
 *.db
 # RuFlo runtime
 node_modules/
+notarize/

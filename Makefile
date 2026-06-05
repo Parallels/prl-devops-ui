@@ -9,6 +9,9 @@ GREEN  := $(shell tput -Txterm setaf 2)
 YELLOW := $(shell tput -Txterm setaf 3)
 RESET  := $(shell tput -Txterm sgr0)
 
+# Load .env if present (used by signing and distribution)
+-include .env
+
 ## Show this help
 help:
 	@echo ''
@@ -65,7 +68,21 @@ ui-kit-build:
 
 ## Build for macOS (Universal)
 build-macos:
-	npm run tauri build -- --target universal-apple-darwin
+	@echo "Updating Tauri configuration file with signing identity..."
+	@if [ -n "$(APPLE_SIGNING_IDENTITY)" ]; then \
+		jq --arg v "$(APPLE_SIGNING_IDENTITY)" '.bundle.macOS.signingIdentity = $$v' src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && \
+		mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json; \
+	fi
+	@APPLE_SIGNING_IDENTITY='$(APPLE_SIGNING_IDENTITY)' \
+	 APPLE_API_KEY='$(APPLE_API_KEY)' \
+	 APPLE_API_KEY_PATH='$(APPLE_API_KEY_PATH)' \
+	 APPLE_API_ISSUER='$(APPLE_API_ISSUER)' \
+	 TAURI_SIGNING_PRIVATE_KEY='$(TAURI_SIGNING_PRIVATE_KEY)' \
+	 TAURI_SIGNING_PRIVATE_KEY_PASSWORD='$(TAURI_SIGNING_PRIVATE_KEY_PASSWORD)' \
+	 npm run tauri build -- --target universal-apple-darwin
+	@echo "Resetting configuration files..."
+	@jq '.bundle.macOS.signingIdentity = "Developer ID Application: Parallels International GmbH (4C6364ACXT)"' src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && \
+	mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
 ## Build for Windows (Requires Windows or Setup)
 build-windows:
