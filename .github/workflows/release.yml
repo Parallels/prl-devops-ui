@@ -1,6 +1,6 @@
 name: "Release — Production"
 
-run-name: "Production release v${{ github.run_number }}"
+run-name: "Production release"
 
 on:
   workflow_dispatch:
