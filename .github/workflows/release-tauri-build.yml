@@ -97,6 +97,7 @@ jobs:
         env:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_KEY_ISSUER: ${{ secrets.APPLE_API_KEY_ISSUER }}
         run: |
           if [ -z "$APPLE_API_KEY" ]; then
             echo "No Apple API key provided — skipping notarization setup"
@@ -105,6 +106,10 @@ jobs:
           mkdir -p "$HOME/.private_keys"
           echo "$APPLE_API_KEY" | base64 --decode > \
             "$HOME/.private_keys/AuthKey_${APPLE_API_KEY_ID}.p8"
+          xcrun notarytool store-credentials "notary-credentials" \
+            --key "$HOME/.private_keys/AuthKey_${APPLE_API_KEY_ID}.p8" \
+            --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_KEY_ISSUER"
 
       # ── Patch version for channel builds ─────────────────────────────────
       # Tauri derives artifact filenames from tauri.conf.json "version".
@@ -165,12 +170,31 @@ jobs:
           APPLE_SIGNING_IDENTITY: "Developer ID Application: Parallels International GmbH (4C6364ACXT)"
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_KEY_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           # Expand $HOME at runtime — format() in GHA expressions doesn't expand ~
           export APPLE_API_KEY_PATH="$HOME/.private_keys/AuthKey_${APPLE_API_KEY_ID}.p8"
           make build-macos
+
+      - name: Verify macOS code signature
+        if: inputs.platform == 'macos'
+        run: |
+          echo "=== Verifying .app bundle ==="
+          find src-tauri/target/universal-apple-darwin/release/bundle/macos -name "*.app" | while read app; do
+            codesign --verify --verbose "$app" || { echo "ERROR: App bundle not signed: $app"; exit 1; }
+            codesign --display --verbose "$app"
+          done
+          echo "=== Verifying DMG ==="
+          find src-tauri/target/universal-apple-darwin/release/bundle/dmg -name "*.dmg" | while read dmg; do
+            codesign --verify --verbose "$dmg" || { echo "ERROR: DMG not signed: $dmg"; exit 1; }
+            codesign --display --verbose "$dmg"
+          done
+          echo "=== Gatekeeper assessment ==="
+          find src-tauri/target/universal-apple-darwin/release/bundle/macos -name "*.app" | while read app; do
+            spctl --assess --type execute "$app" || echo "WARNING: $app rejected by Gatekeeper"
+          done
 
       - name: Build Tauri — Windows
         if: inputs.platform == 'windows'
@@ -207,8 +231,17 @@ jobs:
         if: inputs.platform == 'macos'
         run: |
           mkdir -p release-artifacts
+          # Collect DMGs
           find src-tauri/target/universal-apple-darwin/release/bundle \
             -name "*.dmg" \
+            -exec cp {} release-artifacts/ \;
+          # Collect .sig files (Tauri updater signatures alongside binaries)
+          find src-tauri/target/universal-apple-darwin/release/bundle \
+            -name "*.sig" \
+            -exec cp {} release-artifacts/ \;
+          # Collect .tar.gz files (Tauri updater archives)
+          find src-tauri/target/universal-apple-darwin/release/bundle \
+            \( -name "*.tar.gz" -o -name "*.tar.gz.sig" \) \
             -exec cp {} release-artifacts/ \;
           ls -la release-artifacts/
 

@@ -47,7 +47,8 @@
       "signingIdentity": "Developer ID Application: Parallels International GmbH (4C6364ACXT)",
       "hardenedRuntime": true,
       "minimumSystemVersion": "14.0",
-      "entitlements": "entitlements.plist"
+      "entitlements": "entitlements.plist",
+      "providerShortName": "notary-credentials"
     }
   }
 }

@@ -16,9 +16,5 @@
   <true/>
   <key>com.apple.security.device.usb</key>
   <true/>
-  <key>com.apple.security.temporary-exception.mach-register.global-name</key>
-  <array>
-    <string>com.parallels.capsules-hub.helper</string>
-  </array>
 </dict>
 </plist>
