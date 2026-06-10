@@ -170,7 +170,7 @@ jobs:
           export APPLE_SIGNING_IDENTITY="Developer ID Application: Parallels International GmbH (4C6364ACXT)"
           export TAURI_SIGNING_PRIVATE_KEY="${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"
           export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"
-          export APPLE_API_KEY="${{ secrets.APPLE_API_KEY }}"
+          export APPLE_API_KEY="${{ secrets.APPLE_API_KEY_ID }}"
           export APPLE_API_KEY_ID="${{ secrets.APPLE_API_KEY_ID }}"
           export APPLE_API_ISSUER="${{ secrets.APPLE_API_KEY_ISSUER }}"
           export APPLE_API_KEY_PATH="$HOME/.private_keys/AuthKey_${APPLE_API_KEY_ID}.p8"
