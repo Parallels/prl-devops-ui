@@ -3,6 +3,9 @@
 All notable changes to Parallels DevOps UI are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.2] - 2026-06-11
+
+- chore: maintenance release
 ## [0.2.1] - 2026-06-05
 
 - Added a fix in the jobs when a job fails showing the correct information
