@@ -1,6 +1,6 @@
 [package]
 name = "parallels-devops-ui"
-version = "0.2.1"
+version = "0.2.2"
 description = "Parallels DevOps UI"
 authors = ["Parallels, Inc."]
 edition = "2024"
