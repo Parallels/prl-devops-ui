@@ -450,6 +450,7 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
 
   const removeNotification = useCallback((channel: string, id: string) => {
     dispatch({ type: 'REMOVE_NOTIFICATION', channel, id });
+    toastService.clearToast(id);
   }, []);
 
   const setAlreadyShownToast = useCallback((id: string, channel: string, alreadyShownToast: boolean) => {
@@ -501,6 +502,24 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
       window.removeEventListener('notification-modal', handleModalEvent);
     };
   }, [addNotification, updateNotification, deleteNotification, openModal, closeModal]);
+
+  // Connect toast dismissal to notification removal
+  useEffect(() => {
+    toastService.setOnToastRemoved((id) => {
+      // Find the notification by ID across all channels and remove it
+      for (const [channel, notifications] of Object.entries(state.notifications)) {
+        const notification = notifications.find((n) => n.id === id);
+        if (notification) {
+          removeNotification(channel, id);
+          break;
+        }
+      }
+    });
+
+    return () => {
+      toastService.setOnToastRemoved(() => {});
+    };
+  }, [state.notifications, removeNotification]);
 
   return (
     <NotificationContext.Provider

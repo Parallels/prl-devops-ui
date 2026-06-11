@@ -29,6 +29,7 @@ class ToastService {
   private toastSubject = new BehaviorSubject<Toast | null>(null);
   private activeToasts = new Map<string, Toast>(); // Track active toasts by ID
   private toastCounter = 0; // Counter to ensure unique keys
+  private onToastRemovedCallback: ((id: string) => void) | null = null;
 
   private constructor() { }
 
@@ -161,11 +162,20 @@ class ToastService {
   }
 
   /**
+   * Set a callback to be called when a toast is removed
+   * @param callback Function to call with the toast ID when it's removed
+   */
+  public setOnToastRemoved(callback: (id: string) => void): void {
+    this.onToastRemovedCallback = callback;
+  }
+
+  /**
    * Mark a toast as removed (called by ToastManager)
    * @param id The ID of the toast that was removed
    */
   public markToastRemoved(id: string): void {
     this.activeToasts.delete(id);
+    this.onToastRemovedCallback?.(id);
   }
 
   /**
