@@ -222,7 +222,7 @@ export const Home: React.FC = () => {
       {
         id: 'system-info-host',
         title: 'Host Information',
-        defaultSpan: hasModule('host') ? 4 : 12,
+        defaultSpan: hasModule('host') || hasModule('orchestrator') ? 4 : 12,
         active: true,
         single: true,
         render: () => <HostInformationPanel hw={hw} />,
@@ -230,7 +230,7 @@ export const Home: React.FC = () => {
       {
         id: 'system-info-resources',
         title: 'Available Resources',
-        defaultSpan: hasModule('host') ? 8 : 12,
+        defaultSpan: hasModule('host') || hasModule('orchestrator') ? 8 : 12,
         active: hasModule('host') || hasModule('orchestrator'),
         single: true,
         render: () => <AvailableResourcesPanel resourcePages={resourcePages} orchLoading={orchLoading} orchError={orchError} />,
