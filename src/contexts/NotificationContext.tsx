@@ -5,6 +5,7 @@ import notificationService from '@/services/NotificationService';
 import toastService from '@/services/ToastService';
 import { NotificationAction, NotificationContextValue, NotificationUpdate } from '@/interfaces/NotificationContext';
 import { NotificationState } from '../types/Notification';
+import { useSession } from './SessionContext';
 
 // We need to define NotificationState here if it was removed from types or ensure it exists
 // Based on previous file content, NotificationState was imported from types/Notification
@@ -28,8 +29,11 @@ const initialState: NotificationState = {
 
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined);
 
-const STORAGE_KEY = 'notifications';
 const MAX_NOTIFICATIONS_PER_CHANNEL = 500;
+
+function getStorageKey(userId?: string): string {
+  return userId ? `notifications_${userId}` : 'notifications';
+}
 
 function notificationReducer(state: NotificationState, action: NotificationAction): NotificationState {
   let newState: NotificationState = state;
@@ -352,19 +356,21 @@ function notificationReducer(state: NotificationState, action: NotificationActio
 function saveStateToStorage(state: NotificationState): void {
   try {
     const { openPanels, activeModal, ...stateToSave } = state;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    const storageKey = getStorageKey(stateToSave.userId);
+    localStorage.setItem(storageKey, JSON.stringify(stateToSave));
   } catch (error) {
     console.error('Failed to save notifications to localStorage:', error);
   }
 }
 
-function loadStateFromStorage(): Partial<NotificationState> | null {
+function loadStateFromStorage(userId?: string): Partial<NotificationState> | null {
   try {
-    const savedState = localStorage.getItem(STORAGE_KEY);
+    const storageKey = getStorageKey(userId);
+    const savedState = localStorage.getItem(storageKey);
     const state = JSON.parse(savedState || '{}') as Partial<NotificationState>;
     if (savedState) {
       for (const notification of Object.values(state.notifications || {}).flat()) {
-        notification.alreadyShownToast = false;
+        notification.alreadyShownToast = true;
       }
     }
     return state;
@@ -376,9 +382,12 @@ function loadStateFromStorage(): Partial<NotificationState> | null {
 
 export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = ({ children }) => {
   const [state, dispatch] = useReducer(notificationReducer, initialState);
+  const { session } = useSession();
+
+  const userId = session ? `${session.hostname}:${session.username}` : undefined;
 
   useEffect(() => {
-    const savedState = loadStateFromStorage();
+    const savedState = loadStateFromStorage(userId);
     if (savedState) {
       dispatch({
         type: 'INIT_STATE',
@@ -386,10 +395,34 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
           ...initialState,
           ...savedState,
           itemsPerPage: initialState.itemsPerPage,
+          userId,
+        },
+      });
+    } else {
+      dispatch({
+        type: 'INIT_STATE',
+        state: {
+          ...initialState,
+          userId,
         },
       });
     }
-  }, []);
+  }, [userId]);
+
+  // Clear notifications when user changes (logout/login)
+  useEffect(() => {
+    // Clear old notifications from localStorage when user changes
+    const oldKey = getStorageKey(undefined);
+    const oldKey2 = getStorageKey('');
+    if (oldKey !== getStorageKey(userId)) {
+      localStorage.removeItem(oldKey);
+    }
+    if (oldKey2 !== getStorageKey(userId)) {
+      localStorage.removeItem(oldKey2);
+    }
+    // Clear NotificationService singleton state
+    notificationService.clearAll();
+  }, [userId]);
 
   const markAsRead = useCallback((id: string, channel: string) => {
     dispatch({ type: 'MARK_AS_READ', id, channel });
@@ -450,6 +483,7 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
 
   const removeNotification = useCallback((channel: string, id: string) => {
     dispatch({ type: 'REMOVE_NOTIFICATION', channel, id });
+    toastService.clearToast(id);
   }, []);
 
   const setAlreadyShownToast = useCallback((id: string, channel: string, alreadyShownToast: boolean) => {
@@ -501,6 +535,24 @@ export const NotificationProvider: React.FC<React.PropsWithChildren<object>> = (
       window.removeEventListener('notification-modal', handleModalEvent);
     };
   }, [addNotification, updateNotification, deleteNotification, openModal, closeModal]);
+
+  // Connect toast dismissal to notification removal
+  useEffect(() => {
+    toastService.setOnToastRemoved((id) => {
+      // Find the notification by ID across all channels and remove it
+      for (const [channel, notifications] of Object.entries(state.notifications)) {
+        const notification = notifications.find((n) => n.id === id);
+        if (notification) {
+          removeNotification(channel, id);
+          break;
+        }
+      }
+    });
+
+    return () => {
+      toastService.setOnToastRemoved(() => {});
+    };
+  }, [state.notifications, removeNotification]);
 
   return (
     <NotificationContext.Provider

@@ -2710,7 +2710,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                                 <div
                                   key={cell.entry.id}
                                   data-sg-item-id={cell.entry.id}
-                                  className={`relative z-10 min-h-0 rounded-xl ${isEditMode ? `border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-500/10 cursor-grab active:cursor-grabbing` : "bg-transparent"} ${draggingId === cell.entry.id ? "opacity-50 scale-[0.99]" : ""}`}
+                                  className={`smart-grid-item relative z-10 min-h-0 rounded-xl ${isEditMode ? `border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-500/10 cursor-grab active:cursor-grabbing` : "bg-transparent"} ${draggingId === cell.entry.id ? "opacity-50 scale-[0.99]" : ""}`}
                                   style={{
                                     gridColumn: `span ${renderCell.span} / span ${renderCell.span}`,
                                   }}
@@ -2858,7 +2858,7 @@ export const SmartGridLayout: React.FC<SmartGridLayoutProps> = ({
                               <article
                                 key={cell.entry.id}
                                 data-sg-item-id={cell.entry.id}
-                                className={`relative z-0 min-w-0 min-h-0 transition-[grid-column,transform,box-shadow] duration-150 ease-out ${isEditMode ? "cursor-grab active:cursor-grabbing" : ""} ${draggingId === cell.entry.id ? "opacity-50 scale-[0.99]" : ""}`}
+                                className={`smart-grid-item relative z-0 min-w-0 min-h-0 transition-[grid-column,transform,box-shadow] duration-150 ease-out ${isEditMode ? "cursor-grab active:cursor-grabbing" : ""} ${draggingId === cell.entry.id ? "opacity-50 scale-[0.99]" : ""}`}
                                 style={{
                                   gridColumn: `span ${renderCell.span} / span ${renderCell.span}`,
                                 }}

@@ -90,7 +90,7 @@ export function HostsPanel() {
         columns={columns}
         data={hosts}
         rowKey={(row) => row.id ?? row.host}
-        variant="compact"
+        variant="flat"
         hoverable
         stickyHeader
         groupable={false}

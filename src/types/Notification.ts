@@ -11,6 +11,7 @@ export interface NotificationState {
     currentPage: number;
     itemsPerPage: number;
     activeModal?: NotificationModalPayload | null;
+    userId?: string;
 }
 
 export interface NotificationModalPayload {

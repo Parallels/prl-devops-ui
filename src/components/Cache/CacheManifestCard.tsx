@@ -42,8 +42,8 @@ export function CacheManifestCard({
       {/* Header */}
       <div className="flex items-start justify-between p-4 pb-3">
         <div className="flex-1 min-w-0 pr-3">
-          <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 leading-snug mb-1">{manifest.description || manifest.catalog_id}</p>
-          <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 truncate mb-2.5">{manifest.name}</p>
+          <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 leading-snug mb-1">{manifest.name || manifest.catalog_id}</p>
+          <p className="text-[10px] font-mono text-neutral-400 dark:text-neutral-500 truncate mb-2.5"> {manifest.description}</p>
           <div className="flex items-center gap-1.5 flex-wrap">
             <Pill tone={archColor}>{manifest.architecture}</Pill>
             <Pill tone="emerald">{manifest.version}</Pill>

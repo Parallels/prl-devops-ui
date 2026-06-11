@@ -144,9 +144,10 @@ export function VmsPanel() {
         columns={columns}
         data={rows}
         rowKey={(row) => row.ID ?? row.Name ?? String(Math.random())}
-        variant="compact"
+        variant="flat"
         hoverable
         stickyHeader
+        
         groupable={false}
         emptyState={
           <p className="text-center text-xs text-neutral-400 py-6">
