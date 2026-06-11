@@ -3,6 +3,14 @@
 All notable changes to Parallels DevOps UI are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.3] - 2026-06-11
+
+- feat: update SmartGridLayout item class
+- change HostsPanel and VmsPanel variant to flat
+- enhance Notification context and service for user-specific storage
+- Added dismiss operation to toast
+- Cache now displays name as title on the cache panel instead of description
+- deps: bump the minor-and-patch group with 10 updates
 ## [0.2.2] - 2026-06-11
 
 - chore: maintenance release
