@@ -284,6 +284,11 @@ class NotificationService {
     this.channelUnsubscribes.clear();
   }
 
+  public clearAll(): void {
+    this.notifications.clear();
+    this.notificationsSubject.next([]);
+  }
+
   // Toast delegation
   private showAsToast(notification: Notification): void {
     const { id, message, type, details, actions, autoClose, progress } = notification;
