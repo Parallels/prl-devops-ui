@@ -137,8 +137,19 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ${{ github.workspace }}/node_modules
+            ${{ github.workspace }}/packages/*/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: Install Node dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       # ── Rust ──────────────────────────────────────────────────────────────
       - name: Set up Rust
