@@ -93,5 +93,5 @@ jobs:
                 steps.meta-production.outputs.labels }}
           build-args: |
             APP_VERSION=${{ inputs.release_version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=release-docker-${{ inputs.channel }}
+          cache-to: type=gha,mode=max,scope=release-docker-${{ inputs.channel }},ignore-error=true

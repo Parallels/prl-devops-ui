@@ -196,5 +196,5 @@ jobs:
           file: Dockerfile
           push: false
           tags: prl-devops-ui:pr-${{ github.event.pull_request.number || 'ci' }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=pr-docker-${{ github.event.pull_request.number || github.ref_name }}
+          cache-to: type=gha,mode=max,scope=pr-docker-${{ github.event.pull_request.number || github.ref_name }},ignore-error=true
