@@ -9,6 +9,7 @@ import { authService } from '../../services/authService';
 import type { HostConfig } from '../../interfaces/Host';
 import { getPasswordKey, getApiKeyKey } from '../../utils/secretKeys';
 import { decodeToken } from '../../utils/tokenUtils';
+import { generateId } from '../../utils/id';
 import { devopsService } from '../../services/devops';
 import type { HostHardwareInfo } from '../../interfaces/devops';
 import { getOS } from '@/utils/utils';
@@ -99,7 +100,7 @@ export const LocalAgentForm: React.FC<LocalAgentFormProps> = ({ onBack, onContin
       const willBeOnlyHost = !fromLogin && (existingIndex >= 0 ? existingHosts.length === 1 : existingHosts.length === 0);
 
       const hostEntry: HostConfig = {
-        id: existingIndex >= 0 ? existingHosts[existingIndex].id : crypto.randomUUID(),
+        id: existingIndex >= 0 ? existingHosts[existingIndex].id : generateId(),
         name: displayName.trim() || undefined,
         hostname, baseUrl, authType: 'credentials', username: 'root', keepLoggedIn: true,
         lastUsed: new Date().toISOString(),

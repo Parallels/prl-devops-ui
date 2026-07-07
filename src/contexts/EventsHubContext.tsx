@@ -3,6 +3,7 @@ import { useSession } from './SessionContext';
 import { useWebSocketContext } from './WebSocketContext';
 import { WebSocketState, type WebSocketMessage } from '../types/WebSocket';
 import { authService } from '../services/authService';
+import { generateId } from '../utils/id';
 
 export const EVENTS_HUB_SERVER_ID = 'events-hub';
 const WS_EVENT_TYPES = 'pdfm,health,orchestrator,stats,system_logs,reverse_proxy,job_manager,auth';
@@ -384,7 +385,7 @@ export const EventsHubProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     useEffect(() => {
         const unsub = service.subscribeRaw(EVENTS_HUB_SERVER_ID, (msg) => {
             const entry: EventsHubMessage = {
-                id: msg.id || crypto.randomUUID(),
+                id: msg.id || generateId(),
                 receivedAt: Date.now(),
                 hostname: hostnameRef.current,
                 raw: msg,

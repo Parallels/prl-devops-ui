@@ -21,6 +21,11 @@ DEFAULT_HOST_NAME_ESCAPED="$(js_escape "${VITE_DEFAULT_HOST_NAME:-}")"
 DEFAULT_USERNAME_ESCAPED="$(js_escape "${VITE_DEFAULT_USERNAME:-}")"
 DEFAULT_PASSWORD_ESCAPED="$(js_escape "${VITE_DEFAULT_PASSWORD:-}")"
 
+ALLOW_INSECURE_STORAGE_BOOL="false"
+if [ "$(printf '%s' "${ALLOW_INSECURE_STORAGE:-}" | tr '[:upper:]' '[:lower:]')" = "true" ]; then
+  ALLOW_INSECURE_STORAGE_BOOL="true"
+fi
+
 # Write runtime environment config that the app can read via window.__ENV__
 cat > /usr/share/nginx/html/env-config.js <<EOF
 window.__ENV__ = {
@@ -28,10 +33,16 @@ window.__ENV__ = {
   VITE_DEFAULT_HOST_URL: "${DEFAULT_HOST_URL_ESCAPED}",
   VITE_DEFAULT_HOST_NAME: "${DEFAULT_HOST_NAME_ESCAPED}",
   VITE_DEFAULT_USERNAME: "${DEFAULT_USERNAME_ESCAPED}",
-  VITE_DEFAULT_PASSWORD: "${DEFAULT_PASSWORD_ESCAPED}"
+  VITE_DEFAULT_PASSWORD: "${DEFAULT_PASSWORD_ESCAPED}",
+  ALLOW_INSECURE_STORAGE: ${ALLOW_INSECURE_STORAGE_BOOL}
 };
 EOF
 chmod 644 /usr/share/nginx/html/env-config.js
+
+# Warn when insecure storage is enabled
+if [ "$ALLOW_INSECURE_STORAGE_BOOL" = "true" ]; then
+  echo "WARNING: ALLOW_INSECURE_STORAGE is enabled — secrets will NOT be encrypted"
+fi
 
 # Inject the env-config.js script tag into index.html before the app module script.
 # Use awk here instead of sed range syntax because the alpine image uses busybox

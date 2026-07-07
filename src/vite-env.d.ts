@@ -25,5 +25,6 @@ interface Window {
     VITE_DEFAULT_HOST_NAME?: string;
     VITE_DEFAULT_USERNAME?: string;
     VITE_DEFAULT_PASSWORD?: string;
+    ALLOW_INSECURE_STORAGE?: boolean;
   };
 }
