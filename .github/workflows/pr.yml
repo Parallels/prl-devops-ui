@@ -197,4 +197,4 @@ jobs:
           push: false
           tags: prl-devops-ui:pr-${{ github.event.pull_request.number || 'ci' }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min,ignore-error=true
