@@ -3,6 +3,23 @@
 All notable changes to Parallels DevOps UI are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.4] - 2026-07-07
+
+- Added support for insecure storage mode, allowing users to store secrets without encryption for development purposes.
+- Introduced `ALLOW_INSECURE_STORAGE` environment variable to toggle insecure mode.
+- Created `InsecureModeBanner` and `InsecureOriginScreen` components to inform users about the risks of using insecure storage.
+- Implemented `UnencryptedConfigService` and `UnencryptedSecretStore` for handling secrets in insecure mode.
+- Updated various components and contexts to utilize the new ID generation method for host entries.
+- Modified Docker configurations to include the new environment variable.
+- Enhanced error handling for crypto-related operations to provide clearer feedback to users.
+- deps: bump the minor-and-patch group with 11 updates
+- deps: bump the minor-and-patch group with 11 updates
+- deps: bump actions/cache from 5 to 6 in the actions group
+- deps: bump @types/node from 25.9.3 to 26.0.0 in the major group
+- deps: bump the minor-and-patch group with 7 updates
+- deps: bump actions/checkout from 6 to 7 in the actions group
+- deps: bump the minor-and-patch group with 9 updates
+- deps: bump actions/cache from 4 to 5 in the actions group
 ## [0.2.3] - 2026-06-11
 
 - feat: update SmartGridLayout item class
