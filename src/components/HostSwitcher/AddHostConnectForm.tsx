@@ -7,6 +7,7 @@ import { useSession } from '../../contexts/SessionContext';
 import { authService } from '../../services/authService';
 import { getPasswordKey, getApiKeyKey } from '../../utils/secretKeys';
 import { decodeToken } from '../../utils/tokenUtils';
+import { generateId } from '../../utils/id';
 import { devopsService } from '../../services/devops';
 import type { HostAuthType, HostConfig } from '../../interfaces/Host';
 import type { HostHardwareInfo } from '../../interfaces/devops';
@@ -163,7 +164,7 @@ export const AddHostConnectForm = forwardRef<ConnectFormHandle, AddHostConnectFo
         const willBeOnlyHost = !prefill?.fromLogin && (existingIndex >= 0 ? existingHosts.length === 1 : existingHosts.length === 0);
 
         const hostEntry: HostConfig = {
-          id: existingIndex >= 0 ? existingHosts[existingIndex].id : crypto.randomUUID(),
+          id: existingIndex >= 0 ? existingHosts[existingIndex].id : generateId(),
           name: displayName.trim() || undefined,
           hostname,
           baseUrl: normalizedUrl,

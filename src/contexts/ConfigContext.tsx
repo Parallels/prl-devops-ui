@@ -2,6 +2,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { IConfigService } from '../services/config/interfaces';
 import { ConfigFactory } from '../services/config/ConfigFactory';
 import { amplitudeService } from '../services/AmplitudeService';
+import { isCryptoUnavailableError } from '../utils/cryptoMode';
+import { InsecureOriginScreen } from '../components/InsecureOriginScreen';
 
 const ConfigContext = createContext<IConfigService | null>(null);
 
@@ -25,6 +27,10 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, []);
 
     if (initError) {
+        if (isCryptoUnavailableError(initError)) {
+            return <InsecureOriginScreen error={initError} />;
+        }
+
         return (
             <div className="flex items-center justify-center h-screen p-6">
                 <div className="max-w-lg text-center">

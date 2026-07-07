@@ -19,17 +19,28 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Claims as ClaimPerms, Roles as RolePerms } from '@/interfaces/tokenTypes';
 import { Events } from '@/pages/Events/Events';
 import { Logs } from '@/pages/Logs/Logs';
-import { Roles } from '@/pages/Roles/Roles';
-import { Claims } from '@/pages/Claims/Claims';
+import { Roles as RolesPage } from '@/pages/Roles/Roles';
+import { Claims as ClaimsPage } from '@/pages/Claims/Claims';
 import { ApiKeys } from '@/pages/ApiKeys/ApiKeys';
 import { Cache } from '@/pages/Cache/Cache';
 import { ReverseProxy } from '@/pages/ReverseProxy/ReverseProxy';
 import { Jobs } from '@/pages/Jobs/Jobs';
+import { isInsecureTrialMode } from '../utils/cryptoMode';
+import { InsecureModeBanner } from '../components/InsecureModeBanner';
+
+const INSECURE = (() => { try { return isInsecureTrialMode(); } catch { return false; } })();
 
 const RootLayout: React.FC = () => (
     <>
         <DevResetHandler />
         <Outlet />
+    </>
+);
+
+const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <>
+        {INSECURE && <InsecureModeBanner />}
+        {children}
     </>
 );
 
@@ -56,11 +67,11 @@ export const router = createBrowserRouter([
         children: [
     {
         path: '/onboarding',
-        element: <OnboardingRoute />,
+        element: <AuthRoute><OnboardingRoute /></AuthRoute>,
     },
     {
         path: '/login',
-        element: <LoginRoute />,
+        element: <AuthRoute><LoginRoute /></AuthRoute>,
     },
     {
         path: '/forbidden',
@@ -118,7 +129,7 @@ export const router = createBrowserRouter([
                 path: '/roles',
                 element: (
                     <ProtectedRoute requiredClaims={[ClaimPerms.LIST_ROLE]}>
-                        <Roles />
+                        <RolesPage />
                     </ProtectedRoute>
                 ),
             },
@@ -126,7 +137,7 @@ export const router = createBrowserRouter([
                 path: '/claims',
                 element: (
                     <ProtectedRoute requiredClaims={[ClaimPerms.LIST_CLAIM]}>
-                        <Claims />
+                        <ClaimsPage />
                     </ProtectedRoute>
                 ),
             },

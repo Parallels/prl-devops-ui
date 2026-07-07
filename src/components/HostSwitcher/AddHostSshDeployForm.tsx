@@ -9,6 +9,7 @@ import { authService } from '../../services/authService';
 import type { HostConfig } from '../../interfaces/Host';
 import { getPasswordKey, getApiKeyKey } from '../../utils/secretKeys';
 import { decodeToken } from '../../utils/tokenUtils';
+import { generateId } from '../../utils/id';
 import { devopsService } from '../../services/devops';
 import type { HostHardwareInfo } from '../../interfaces/devops';
 import {
@@ -154,7 +155,7 @@ export const AddSshDeployHostForm = forwardRef<SshDeployFormHandle, AddSshDeploy
       const existingHosts = (await config.get<HostConfig[]>('hosts')) ?? [];
       const existingIndex = existingHosts.findIndex((h) => h.hostname === hostname);
       const hostEntry: HostConfig = {
-        id: existingIndex >= 0 ? existingHosts[existingIndex].id : crypto.randomUUID(),
+        id: existingIndex >= 0 ? existingHosts[existingIndex].id : generateId(),
         name: displayName.trim() || undefined,
         hostname,
         baseUrl,

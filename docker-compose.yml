@@ -1,13 +1,14 @@
 services:
   prl-devops-ui:
-    image: ghcr.io/parallels/prl-devops-ui:0.2.0-beta.19
+    image: ghcr.io/parallels/prl-devops-ui:latest
     container_name: prl-devops-ui
     ports:
-      - "5780:80"
+      - "5782:80"
     environment:
       APP_ENV: ${APP_ENV:-production}
       VITE_DEFAULT_HOST_URL: ${VITE_DEFAULT_HOST_URL:-}
       VITE_DEFAULT_HOST_NAME: ${VITE_DEFAULT_HOST_NAME:-}
       VITE_DEFAULT_USERNAME: ${VITE_DEFAULT_USERNAME:-}
       VITE_DEFAULT_PASSWORD: ${VITE_DEFAULT_PASSWORD:-}
+      ALLOW_INSECURE_STORAGE: ${ALLOW_INSECURE_STORAGE:-false}
     restart: unless-stopped

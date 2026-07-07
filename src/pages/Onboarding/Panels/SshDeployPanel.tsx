@@ -9,6 +9,7 @@ import { authService } from '../../../services/authService';
 import type { HostConfig } from '../../../interfaces/Host';
 import { getPasswordKey, getApiKeyKey } from '../../../utils/secretKeys';
 import { decodeToken } from '../../../utils/tokenUtils';
+import { generateId } from '../../../utils/id';
 import { devopsService } from '../../../services/devops';
 import type { HostHardwareInfo } from '../../../interfaces/devops';
 import { OnboardingPanelBrand } from './OnboardingBrand';
@@ -132,7 +133,7 @@ export const SshDeployPanel: React.FC<SshDeployPanelProps> = ({ onBack, onConnec
       const existingHosts = (await config.get<HostConfig[]>('hosts')) ?? [];
       const existingIndex = existingHosts.findIndex((h) => h.hostname === hostname);
       const hostEntry: HostConfig = {
-        id: existingIndex >= 0 ? existingHosts[existingIndex].id : crypto.randomUUID(),
+        id: existingIndex >= 0 ? existingHosts[existingIndex].id : generateId(),
         name: displayName.trim() || undefined,
         hostname,
         baseUrl,
