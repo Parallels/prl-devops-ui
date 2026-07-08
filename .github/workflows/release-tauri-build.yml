@@ -172,13 +172,13 @@ jobs:
           workspaces: src-tauri
 
       - name: Install DotNet
-        if: inputs.platform == 'windows' or inputs.platform == 'windows-arm64'
+        if: inputs.platform == 'windows' || inputs.platform == 'windows-arm64'
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: 8.0.x
 
       - name: Install AzureSignTool
-        if: inputs.platform == 'windows' or inputs.platform == 'windows-arm64'
+        if: inputs.platform == 'windows' || inputs.platform == 'windows-arm64'
         run: dotnet tool install --global AzureSignTool
 
       # ── Build ─────────────────────────────────────────────────────────────
