@@ -26,6 +26,10 @@ on:
         required: false
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
         required: false
+      PARALLELS_BUILD_KV_SPN_USER:
+        required: false
+      PARALLELS_BUILD_KV_SPN_KEY:
+        required: false
 
 env:
   NODE_VERSION: "24"
@@ -37,7 +41,7 @@ jobs:
       ${{ fromJSON(
             inputs.platform == 'macos'         && '"macos-latest"' ||
             inputs.platform == 'windows'       && '"windows-latest"' ||
-            inputs.platform == 'linux-arm64'   && '["self-hosted","linux","ARM64"]' ||
+            inputs.platform == 'linux-arm64'   && '"ubuntu-24.04-arm"' ||
             inputs.platform == 'windows-arm64' && '"windows-11-arm"' ||
             '"ubuntu-latest"'
           ) }}
