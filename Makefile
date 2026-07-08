@@ -86,19 +86,37 @@ build-macos:
 
 ## Build for Windows (Requires Windows or Setup)
 build-windows:
-	npm run tauri build -- --target x86_64-pc-windows-msvc
+	@SIGNING_KVU='$(SIGNING_KVU)' \
+	  SIGNING_KVI='$(SIGNING_KVI)' \
+	  SIGNING_KVS='$(SIGNING_KVS)' \
+	  SIGNING_KVT='$(SIGNING_KVT)' \
+	  SIGNING_KVC='$(SIGNING_KVC)' \
+	  TAURI_SIGNING_PRIVATE_KEY='$(TAURI_SIGNING_PRIVATE_KEY)' \
+	  TAURI_SIGNING_PRIVATE_KEY_PASSWORD='$(TAURI_SIGNING_PRIVATE_KEY_PASSWORD)' \
+	  npm run tauri build -- --target x86_64-pc-windows-msvc
 
 ## Build for Linux
 build-linux:
-	npm run tauri build -- --target x86_64-unknown-linux-gnu
+	@TAURI_SIGNING_PRIVATE_KEY='$(TAURI_SIGNING_PRIVATE_KEY)' \
+	  TAURI_SIGNING_PRIVATE_KEY_PASSWORD='$(TAURI_SIGNING_PRIVATE_KEY_PASSWORD)' \
+	  npm run tauri build -- --target x86_64-unknown-linux-gnu
 
 ## Build for Linux (ARM64)
 build-linux-arm64:
-	npm run tauri build -- --target aarch64-unknown-linux-gnu
+	@TAURI_SIGNING_PRIVATE_KEY='$(TAURI_SIGNING_PRIVATE_KEY)' \
+	  TAURI_SIGNING_PRIVATE_KEY_PASSWORD='$(TAURI_SIGNING_PRIVATE_KEY_PASSWORD)' \
+	  npm run tauri build -- --target aarch64-unknown-linux-gnu
 
 ## Build for Windows (ARM64)
 build-windows-arm64:
-	npm run tauri build -- --target aarch64-pc-windows-msvc
+	@SIGNING_KVU='$(SIGNING_KVU)' \
+	  SIGNING_KVI='$(SIGNING_KVI)' \
+	  SIGNING_KVS='$(SIGNING_KVS)' \
+	  SIGNING_KVT='$(SIGNING_KVT)' \
+	  SIGNING_KVC='$(SIGNING_KVC)' \
+	  TAURI_SIGNING_PRIVATE_KEY='$(TAURI_SIGNING_PRIVATE_KEY)' \
+	  TAURI_SIGNING_PRIVATE_KEY_PASSWORD='$(TAURI_SIGNING_PRIVATE_KEY_PASSWORD)' \
+	  npm run tauri build -- --target aarch64-pc-windows-msvc
 
 ## Build for all desktop platforms (Note: Requires cross-compilation setup)
 build-all: build-macos build-windows build-linux build-linux-arm64 build-windows-arm64

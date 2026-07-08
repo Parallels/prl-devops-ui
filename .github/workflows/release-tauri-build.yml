@@ -167,6 +167,16 @@ jobs:
         with:
           workspaces: src-tauri
 
+      - name: Install DotNet
+        if: inputs.platform == 'windows'
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install AzureSignTool
+        if: inputs.platform == 'windows'
+        run: dotnet tool install --global AzureSignTool
+
       # ── Build ─────────────────────────────────────────────────────────────
       - name: Build Tauri — Linux
         if: inputs.platform == 'linux'
@@ -208,6 +218,11 @@ jobs:
       - name: Build Tauri — Windows
         if: inputs.platform == 'windows'
         env:
+          SIGNING_KVU: ${{ secrets.PARALLELS_BUILD_KV_SPN_USER }}
+          SIGNING_KVI: ${{ secrets.PARALLELS_BUILD_KV_SPN_KEY }}
+          SIGNING_KVS: parallels-international-gmbh-digicert-ev-codesign-2024-2027
+          SIGNING_KVT: 33874721-dd77-4b7e-97b7-863c2cbe7c73
+          SIGNING_KVC: https://kv-vault-build-ev-we.vault.azure.net/
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: make build-windows
@@ -222,6 +237,11 @@ jobs:
       - name: Build Tauri — Windows (ARM64)
         if: inputs.platform == 'windows-arm64'
         env:
+          SIGNING_KVU: ${{ secrets.PARALLELS_BUILD_KV_SPN_USER }}
+          SIGNING_KVI: ${{ secrets.PARALLELS_BUILD_KV_SPN_KEY }}
+          SIGNING_KVS: parallels-international-gmbh-digicert-ev-codesign-2024-2027
+          SIGNING_KVT: 33874721-dd77-4b7e-97b7-863c2cbe7c73
+          SIGNING_KVC: https://kv-vault-build-ev-we.vault.azure.net/
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: make build-windows-arm64

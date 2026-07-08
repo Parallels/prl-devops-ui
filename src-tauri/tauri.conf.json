@@ -48,6 +48,12 @@
       "hardenedRuntime": true,
       "minimumSystemVersion": "14.0",
       "entitlements": "entitlements.plist"
+    },
+    "windows": {
+      "signCommand": {
+        "cmd": "powershell",
+        "args": ["-ExecutionPolicy", "Bypass", "-File", "scripts/sign.ps1", "%1"]
+      }
     }
   }
 }
