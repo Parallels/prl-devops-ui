@@ -51,7 +51,7 @@
     },
     "windows": {
       "signCommand": {
-        "cmd": "pwsh",
+        "cmd": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
         "args": ["-ExecutionPolicy", "Bypass", "-File", "scripts/sign.ps1", "%1"]
       }
     }
