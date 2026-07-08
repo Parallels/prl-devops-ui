@@ -106,6 +106,8 @@ jobs:
     secrets:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      PARALLELS_BUILD_KV_SPN_USER: ${{ secrets.PARALLELS_BUILD_KV_SPN_USER }}
+      PARALLELS_BUILD_KV_SPN_KEY: ${{ secrets.PARALLELS_BUILD_KV_SPN_KEY }}
 
   build-tauri-linux-arm64:
     name: "Build: Tauri (Linux ARM64)"
@@ -128,7 +130,8 @@ jobs:
     secrets:
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-
+      PARALLELS_BUILD_KV_SPN_USER: ${{ secrets.PARALLELS_BUILD_KV_SPN_USER }}
+      PARALLELS_BUILD_KV_SPN_KEY: ${{ secrets.PARALLELS_BUILD_KV_SPN_KEY }}
   # ── Publish Docker image ──────────────────────────────────────────────────
 
   docker-publish:
