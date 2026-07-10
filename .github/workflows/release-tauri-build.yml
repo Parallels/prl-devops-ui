@@ -39,13 +39,12 @@ jobs:
     name: "Tauri (${{ inputs.platform }})"
     runs-on: >-
       ${{ fromJSON(
-            inputs.platform == 'macos'         && '"macos-latest"' ||
-            inputs.platform == 'windows'       && '[self-hosted, Windows, X64' ||
-            inputs.platform == 'linux-arm64'   && '"ubuntu-24.04-arm"' ||
-            inputs.platform == 'windows-arm64' && '[self-hosted, Windows, X64]' ||
-            '"ubuntu-latest"'
+            inputs.platform == 'macos'         && '["macos-latest"]' ||
+            inputs.platform == 'windows'       && '["self-hosted", "Windows", "X64"]' ||
+            inputs.platform == 'linux-arm64'   && '["ubuntu-24.04-arm"]' ||
+            inputs.platform == 'windows-arm64' && '["self-hosted", "Windows", "X64"]' ||
+            '["ubuntu-latest"]'
           ) }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
