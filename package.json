@@ -74,7 +74,7 @@
     "ruflo": "^3.25.6",
     "sass-embedded": "^1.100.0",
     "tailwindcss": "^4.3.2",
-    "typescript": "~6.0.3",
+    "typescript": "~7.0.2",
     "vite": "^8.1.4",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.0.16"
