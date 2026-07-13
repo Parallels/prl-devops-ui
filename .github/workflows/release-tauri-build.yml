@@ -172,7 +172,7 @@ jobs:
 
       - name: Install DotNet
         if: inputs.platform == 'windows' || inputs.platform == 'windows-arm64'
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 8.0.x
 
