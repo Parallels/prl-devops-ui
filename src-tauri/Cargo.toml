@@ -27,5 +27,12 @@ serde_json = "1"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-store = "2"
 tauri-plugin-stronghold = "2"
+tauri-plugin-fs = "2"
 sha2 = "0.10.9"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+tauri-plugin-log = "2"
+flate2 = "1"
+tar = "0.4"
+semver = "1"
+log = "0.4"
 

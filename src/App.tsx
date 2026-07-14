@@ -2,6 +2,7 @@ import './App.scss';
 import { AppRouter } from './router/AppRouter';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ConfigProvider } from './contexts/ConfigContext';
+import { BinaryServiceProvider } from './contexts/BinaryServiceContext';
 import { SessionProvider } from './contexts/SessionContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import { EventsHubProvider } from './contexts/EventsHubContext';
@@ -23,21 +24,23 @@ function App() {
     <ErrorBoundary>
     <ThemeProvider>
       <ConfigProvider>
-        <LockedHostProvider>
-          <SessionProvider>
-            <WebSocketProvider>
-              <EventsHubProvider>
-                <SystemStatsProvider>
-                  <IconProvider renderIcon={renderIcon}>
-                    <BottomSheetProvider>
-                      <AppRouter />
-                    </BottomSheetProvider>
-                  </IconProvider>
-                </SystemStatsProvider>
-              </EventsHubProvider>
-            </WebSocketProvider>
-          </SessionProvider>
-        </LockedHostProvider>
+        <BinaryServiceProvider>
+          <LockedHostProvider>
+            <SessionProvider>
+              <WebSocketProvider>
+                <EventsHubProvider>
+                  <SystemStatsProvider>
+                    <IconProvider renderIcon={renderIcon}>
+                      <BottomSheetProvider>
+                        <AppRouter />
+                      </BottomSheetProvider>
+                    </IconProvider>
+                  </SystemStatsProvider>
+                </EventsHubProvider>
+              </WebSocketProvider>
+            </SessionProvider>
+          </LockedHostProvider>
+        </BinaryServiceProvider>
       </ConfigProvider>
     </ThemeProvider>
     </ErrorBoundary>

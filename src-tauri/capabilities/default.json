@@ -10,6 +10,8 @@
     "opener:default",
     "clipboard-manager:default",
     "store:default",
-    "stronghold:default"
+    "stronghold:default",
+    "fs:default",
+    "log:default"
   ]
 }

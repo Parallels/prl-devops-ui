@@ -1,7 +1,35 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod binary_service;
+
+use binary_service::BinaryServiceStatus;
+use tauri::Manager;
+use log::{error, info};
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+async fn ensure_binary_service(
+    app_handle: tauri::AppHandle,
+) -> Result<BinaryServiceStatus, String> {
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data directory: {}", e))?;
+
+    info!("[BinaryService] Tauri command invoked for ensure_binary_service");
+
+    match binary_service::ensure_binary_service(&app_data_dir).await {
+        Ok(status) => {
+            info!("[BinaryService] Command succeeded, available={}", status.available);
+            Ok(status)
+        }
+        Err(e) => {
+            error!("[BinaryService] Command failed: {}", e);
+            Err(e)
+        }
+    }
 }
 
 #[tauri::command]
@@ -74,6 +102,11 @@ async fn deploy_local_agent(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Debug)
+                .build(),
+        )
         .plugin(tauri_plugin_http::init())
         .plugin(
             tauri_plugin_stronghold::Builder::new(|password| {
@@ -89,7 +122,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, deploy_local_agent])
+        .invoke_handler(tauri::generate_handler![greet, deploy_local_agent, ensure_binary_service])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

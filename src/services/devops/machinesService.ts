@@ -373,6 +373,8 @@ class MachinesService {
         throw new Error('No hostname provided and no active session found');
       }
 
+      console.log(`Creating VM asynchronously from catalog on ${isOrchestrator ? 'orchestrator' : 'host'}:`, request);
+
       const endpoint = isOrchestrator
         ? '/api/v1/orchestrator/machines/async'
         : '/api/v1/machines/async';

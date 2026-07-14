@@ -31,6 +31,17 @@
       "endpoints": [
         "https://github.com/Parallels/prl-devops-ui/releases/latest/download/latest.json"
       ]
+    },
+    "fs": {
+      "requireExplicitAuthorization": false,
+      "scopes": {
+        "$APPDATA": {
+          "*": true
+        },
+        "$APPDATA/binary-service": {
+          "*": true
+        }
+      }
     }
   },
   "bundle": {
