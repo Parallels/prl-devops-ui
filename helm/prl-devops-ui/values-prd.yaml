@@ -7,6 +7,13 @@ image:
 
 environment: production
 
+runtimeEnv:
+  defaultHostUrl: "https://prl-devops-ui.parallels.com"
+  defaultHostName: ""
+  defaultUsername: ""
+  defaultPassword: ""
+  allowInsecureStorage: false
+
 service:
   type: ClusterIP
   port: 80

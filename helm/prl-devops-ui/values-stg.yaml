@@ -8,6 +8,13 @@ image:
 # Fallback only: deploy workflow overrides this with --set environment=<release_channel>
 environment: development
 
+runtimeEnv:
+  defaultHostUrl: "https://prl-devops-ui.stg.di.prls.space"
+  defaultHostName: ""
+  defaultUsername: ""
+  defaultPassword: ""
+  allowInsecureStorage: false
+
 service:
   type: ClusterIP
   port: 80
