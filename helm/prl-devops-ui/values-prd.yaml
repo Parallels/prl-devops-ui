@@ -8,7 +8,7 @@ image:
 environment: production
 
 runtimeEnv:
-  defaultHostUrl: "https://prl-devops-ui.parallels.com"
+  defaultHostUrl: "https://prl-devops-orchestrator.di.prls.space"
   defaultHostName: ""
   defaultUsername: ""
   defaultPassword: ""

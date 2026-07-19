@@ -9,7 +9,7 @@ image:
 environment: development
 
 runtimeEnv:
-  defaultHostUrl: "https://prl-devops-ui.stg.di.prls.space"
+  defaultHostUrl: "https://prl-devops-orchestrator.stg.di.prls.space"
   defaultHostName: ""
   defaultUsername: ""
   defaultPassword: ""
