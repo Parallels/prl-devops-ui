@@ -292,6 +292,33 @@ jobs:
             Download the installer for your platform from the Assets section below.
           files: release-assets/*
 
+  deploy-prd:
+    name: Deploy UI to Production
+    needs: [metadata, docker-publish, github-release]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch deploy workflow on main
+        uses: actions/github-script@v6
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy-aks.yml',
+              ref: 'main',
+              inputs: {
+                environment: 'prd',
+                image_tag: '${{ needs.metadata.outputs.release_version }}',
+                release_channel: 'production',
+                namespace: 'prl-devops-services',
+                dry_run: 'false',
+                rollback_on_failure: 'true'
+              }
+            });
+            console.log('Dispatched deploy-aks.yml on main for prd');
+
   # ── Cleanup all canary & beta images ─────────────────────────────────────
 
   cleanup-canary-images:

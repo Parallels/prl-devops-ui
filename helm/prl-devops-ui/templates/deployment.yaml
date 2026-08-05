@@ -40,6 +40,16 @@ spec:
           env:
             - name: APP_ENV
               value: {{ .Values.environment | quote }}
+            - name: VITE_DEFAULT_HOST_URL
+              value: {{ .Values.runtimeEnv.defaultHostUrl | quote }}
+            - name: VITE_DEFAULT_HOST_NAME
+              value: {{ .Values.runtimeEnv.defaultHostName | quote }}
+            - name: VITE_DEFAULT_USERNAME
+              value: {{ .Values.runtimeEnv.defaultUsername | quote }}
+            - name: VITE_DEFAULT_PASSWORD
+              value: {{ .Values.runtimeEnv.defaultPassword | quote }}
+            - name: ALLOW_INSECURE_STORAGE
+              value: {{ ternary "true" "false" (.Values.runtimeEnv.allowInsecureStorage | default false) | quote }}
           livenessProbe:
             httpGet:
               path: /

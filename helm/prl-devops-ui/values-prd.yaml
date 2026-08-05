@@ -1,0 +1,54 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/parallels/prl-devops-ui
+  pullPolicy: Always
+  tag: "latest"
+
+environment: production
+
+runtimeEnv:
+  defaultHostUrl: "https://prl-devops-orchestrator.di.prls.space"
+  defaultHostName: ""
+  defaultUsername: ""
+  defaultPassword: ""
+  allowInsecureStorage: false
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations:
+  - key: kubernetes.parallels.com/workload
+    operator: Equal
+    value: public
+    effect: NoSchedule
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.parallels.com/workload
+              operator: In
+              values:
+                - public
