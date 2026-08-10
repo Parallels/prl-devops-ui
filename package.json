@@ -54,7 +54,7 @@
     }
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.62.3"
+    "@rollup/rollup-linux-x64-gnu": "4.62.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
@@ -70,12 +70,12 @@
     "@vitest/coverage-v8": "^4.1.10",
     "autoprefixer": "^10.5.4",
     "jsdom": "^30.0.1",
-    "postcss": "^8.5.25",
-    "ruflo": "^3.33.0",
+    "postcss": "^8.5.26",
+    "ruflo": "^3.34.0",
     "sass-embedded": "^1.100.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~7.0.2",
-    "vite": "^8.2.0",
+    "vite": "^8.2.1",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.0.16"
   }
