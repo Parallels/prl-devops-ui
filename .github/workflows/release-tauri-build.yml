@@ -224,7 +224,7 @@ jobs:
           SIGNING_KVI: ${{ secrets.PARALLELS_BUILD_KV_SPN_USER }}
           SIGNING_KVS: ${{ secrets.PARALLELS_BUILD_KV_SPN_KEY }}
           SIGNING_KVC: parallels-international-gmbh-digicert-ev-codesign-2024-2027
-          SIGNING_KVT: 33874721-dd77-4b7e-97b7-863c2cbe7c73
+          SIGNING_KVT: ${{ secrets.PARALLELS_BUILD_TENANT_ID }}
           SIGNING_KVU: https://kv-vault-build-ev-we.vault.azure.net/
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -243,7 +243,7 @@ jobs:
           SIGNING_KVI: ${{ secrets.PARALLELS_BUILD_KV_SPN_USER }}
           SIGNING_KVS: ${{ secrets.PARALLELS_BUILD_KV_SPN_KEY }}
           SIGNING_KVC: parallels-international-gmbh-digicert-ev-codesign-2024-2027
-          SIGNING_KVT: 33874721-dd77-4b7e-97b7-863c2cbe7c73
+          SIGNING_KVT: ${{ secrets.PARALLELS_BUILD_TENANT_ID }}
           SIGNING_KVU: https://kv-vault-build-ev-we.vault.azure.net/
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
