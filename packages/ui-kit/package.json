@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "@types/crypto-js": "^4.2.2",
-    "@uiw/react-md-editor": "^4.1.1",
+    "@uiw/react-md-editor": "^4.1.2",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
     "crypto-js": "^4.2.0",
@@ -36,13 +36,13 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "postcss": "^8.5.26",
     "tailwindcss": "4.3.3",
     "tsup": "^8.3.5",
-    "tsx": "^4.23.10",
+    "tsx": "^4.23.12",
     "typescript": "7.0.2"
   }
 }
