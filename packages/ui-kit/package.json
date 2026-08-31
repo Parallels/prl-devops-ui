@@ -36,13 +36,13 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
+    "@types/react-dom": "^19.2.5",
     "postcss": "^8.5.26",
     "tailwindcss": "4.3.3",
     "tsup": "^8.3.5",
-    "tsx": "^4.23.12",
+    "tsx": "^4.22.1",
     "typescript": "7.0.2"
   }
 }
