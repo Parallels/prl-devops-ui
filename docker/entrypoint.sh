@@ -16,6 +16,16 @@ case "$APP_ENV" in
 esac
 
 APP_ENV_ESCAPED="$(js_escape "$APP_ENV")"
+NOINDEX_HEADER_VALUE=""
+case "$(printf '%s' "${NOINDEX:-false}" | tr '[:upper:]' '[:lower:]')" in
+  true|1|yes) NOINDEX_HEADER_VALUE="noindex, nofollow" ;;
+esac
+
+# Render the optional robots response header from the deployment setting.
+sed "s|__ROBOTS_TAG__|${NOINDEX_HEADER_VALUE}|g" \
+  /etc/nginx/conf.d/default.conf > /tmp/default.conf
+mv /tmp/default.conf /etc/nginx/conf.d/default.conf
+
 DEFAULT_HOST_URL_ESCAPED="$(js_escape "${VITE_DEFAULT_HOST_URL:-}")"
 DEFAULT_HOST_NAME_ESCAPED="$(js_escape "${VITE_DEFAULT_HOST_NAME:-}")"
 DEFAULT_USERNAME_ESCAPED="$(js_escape "${VITE_DEFAULT_USERNAME:-}")"

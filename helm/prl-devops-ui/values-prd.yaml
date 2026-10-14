@@ -6,6 +6,7 @@ image:
   tag: "latest"
 
 environment: production
+noIndex: true
 
 runtimeEnv:
   defaultHostUrl: "https://prl-devops-orchestrator.di.prls.space"

@@ -14,6 +14,9 @@ fullnameOverride: ""
 # Valid values: production | canary | beta | development
 environment: production
 
+# Send X-Robots-Tag: noindex, nofollow from Nginx for this deployment.
+noIndex: false
+
 # Runtime UI configuration injected into env-config.js by container entrypoint.
 runtimeEnv:
   defaultHostUrl: ""

@@ -40,6 +40,8 @@ spec:
           env:
             - name: APP_ENV
               value: {{ .Values.environment | quote }}
+            - name: NOINDEX
+              value: {{ .Values.noIndex | quote }}
             - name: VITE_DEFAULT_HOST_URL
               value: {{ .Values.runtimeEnv.defaultHostUrl | quote }}
             - name: VITE_DEFAULT_HOST_NAME
