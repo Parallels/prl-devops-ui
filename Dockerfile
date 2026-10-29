@@ -16,6 +16,9 @@ RUN npm run build:web
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
 FROM nginx:alpine AS production
 
+# Pull in Alpine security fixes published after the base image was built
+RUN apk upgrade --no-cache
+
 # Runtime entrypoint (generates env-config.js)
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
