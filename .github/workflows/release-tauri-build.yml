@@ -119,19 +119,27 @@ jobs:
       # For canary/beta, release_version includes the suffix (0.1.1-canary.4)
       # so the built artifacts are named correctly.
       - name: Set Tauri version to release version
+        if: inputs.platform != 'windows' && inputs.platform != 'windows-arm64'
         shell: bash
         run: |
           VERSION="${{ inputs.release_version }}"
-          # WiX MSI requires a numeric-only pre-release identifier (semver with digits only).
-          # Convert e.g. 0.1.1-canary.5 -> 0.1.1-5 (strip the channel name, keep run number).
-          # 0.1.1 (production) is unchanged - sed pattern only matches when a channel is present.
-          # Keep this script ASCII-only: the Windows runner can mangle multi-byte chars.
-          if [[ "${{ inputs.platform }}" == "windows" || "${{ inputs.platform }}" == "windows-arm64" ]]; then
-            VERSION=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+)-[a-zA-Z]+\.([0-9]+)$/\1-\2/')
-          fi
           jq --arg v "$VERSION" '.version = $v' \
             src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
           mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+
+      # WiX MSI requires a numeric-only pre-release identifier (semver with digits only).
+      # Convert e.g. 0.1.1-canary.5 -> 0.1.1-5 (strip the channel name, keep run number).
+      # 0.1.1 (production) is unchanged - the pattern only matches when a channel is present.
+      # Uses pwsh because the Windows runner's bash is Cygwin, which fails on the CRLF
+      # scripts the runner writes ("syntax error: unexpected end of file").
+      - name: Set Tauri version to release version (Windows)
+        if: inputs.platform == 'windows' || inputs.platform == 'windows-arm64'
+        shell: pwsh
+        run: |
+          $version = "${{ inputs.release_version }}" -replace '^(\d+\.\d+\.\d+)-[a-zA-Z]+\.(\d+)$', '$1-$2'
+          jq --arg v $version '.version = $v' src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp
+          if ($LASTEXITCODE -ne 0) { throw "jq failed" }
+          Move-Item -Force src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
 
       # ── Node.js ───────────────────────────────────────────────────────────
       - name: Set up Node.js
