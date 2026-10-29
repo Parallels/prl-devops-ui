@@ -139,9 +139,10 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $version = "${{ inputs.release_version }}" -replace '^(\d+\.\d+\.\d+)-[a-zA-Z]+\.(\d+)$', '$1-$2'
           $conf = Join-Path $PWD 'src-tauri/tauri.conf.json'
-          $json = jq --arg v $version '.version = $v' $conf
-          if ($LASTEXITCODE -ne 0) { throw "jq failed" }
-          [System.IO.File]::WriteAllText($conf, (($json -join "`n") + "`n"), (New-Object System.Text.UTF8Encoding $false))
+          $json = Get-Content -Raw -Encoding UTF8 $conf | ConvertFrom-Json
+          $json.version = $version
+          $text = $json | ConvertTo-Json -Depth 100
+          [System.IO.File]::WriteAllText($conf, $text + "`n", (New-Object System.Text.UTF8Encoding $false))
 
       # ── Node.js ───────────────────────────────────────────────────────────
       - name: Set up Node.js
