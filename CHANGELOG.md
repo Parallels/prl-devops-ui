@@ -3,6 +3,30 @@
 All notable changes to Parallels DevOps UI are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.5] - 2026-10-29
+
+- deps: bump the minor-and-patch group with 8 updates
+- deps: bump tsup from 8.5.1 to 9.0.0 in the major group across 1 directory
+- deps: bump the minor-and-patch group with 12 updates
+- deps: bump the minor-and-patch group with 10 updates
+- deps: bump the minor-and-patch group with 9 updates
+- deps: bump 15 packages (minor-and-patch)
+- deps: bump the minor-and-patch group with 9 updates
+- deps: bump 2 packages (major)
+- deps: bump the minor-and-patch group with 8 updates
+- deps: bump the minor-and-patch group with 9 updates
+- deps: bump 12 packages (minor-and-patch)
+- deps: bump the actions group with 5 updates
+- deps: bump the minor-and-patch group with 5 updates
+- deps: bump jsdom from 29.1.1 to 30.0.1 in the major group across 1 directory
+- deps: bump the minor-and-patch group with 12 updates
+- deps: bump @testing-library/jest-dom from 6.9.1 to 7.0.0 in the major group
+- deps: bump the minor-and-patch group with 9 updates
+- deps: bump the minor-and-patch group with 9 updates
+- deps: bump the actions group with 2 updates
+- deps: bump typescript from 6.0.3 to 7.0.2 in the major group across 1 directory
+- deps: bump the minor-and-patch group with 8 updates
+- deps: bump actions/setup-dotnet from 3 to 5 in the actions group
 ## [0.2.4] - 2026-07-07
 
 - Added support for insecure storage mode, allowing users to store secrets without encryption for development purposes.
