@@ -123,8 +123,9 @@ jobs:
         run: |
           VERSION="${{ inputs.release_version }}"
           # WiX MSI requires a numeric-only pre-release identifier (semver with digits only).
-          # Convert e.g. 0.1.1-canary.5 → 0.1.1-5 (strip the channel name, keep run number).
-          # 0.1.1 (production) is unchanged — sed pattern only matches when a channel is present.
+          # Convert e.g. 0.1.1-canary.5 -> 0.1.1-5 (strip the channel name, keep run number).
+          # 0.1.1 (production) is unchanged - sed pattern only matches when a channel is present.
+          # Keep this script ASCII-only: the Windows runner can mangle multi-byte chars.
           if [[ "${{ inputs.platform }}" == "windows" || "${{ inputs.platform }}" == "windows-arm64" ]]; then
             VERSION=$(echo "$VERSION" | sed -E 's/^([0-9]+\.[0-9]+\.[0-9]+)-[a-zA-Z]+\.([0-9]+)$/\1-\2/')
           fi
