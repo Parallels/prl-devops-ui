@@ -16,7 +16,7 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@amplitude/analytics-browser": "^2.48.1",
+    "@amplitude/analytics-browser": "^2.49.2",
     "@base-ui-components/react": "^1.0.0-beta.2",
     "@prl/ui-kit": "workspace:*",
     "@tauri-apps/api": "^2.8.0",
@@ -31,7 +31,7 @@
     "@tauri-apps/plugin-store": "^2.4.0",
     "@tauri-apps/plugin-stronghold": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.9.0",
-    "agentic-flow": "^3.3.0",
+    "agentic-flow": "^3.4.1",
     "axios": "^1.21.0",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
@@ -54,11 +54,11 @@
     }
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.66.0"
+    "@rollup/rollup-linux-x64-gnu": "4.68.0"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.3.3",
-    "@tailwindcss/vite": "^4.3.3",
+    "@tailwindcss/postcss": "^4.3.5",
+    "@tailwindcss/vite": "^4.3.5",
     "@tauri-apps/cli": "^2",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",
@@ -66,16 +66,16 @@
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^6.1.2",
-    "@vitest/coverage-v8": "^5.0.5",
+    "@vitejs/plugin-react": "^6.2.1",
+    "@vitest/coverage-v8": "^5.1.0",
     "autoprefixer": "^10.6.2",
     "jsdom": "^31.0.0",
     "postcss": "^8.5.32",
-    "ruflo": "^3.65.0",
-    "sass-embedded": "^1.107.0",
-    "tailwindcss": "^4.3.3",
+    "ruflo": "^3.72.2",
+    "sass-embedded": "^1.108.1",
+    "tailwindcss": "^4.3.5",
     "typescript": "~7.0.2",
-    "vite": "^8.3.5",
+    "vite": "^8.3.6",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^5.0.0"
   }
