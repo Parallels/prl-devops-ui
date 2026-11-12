@@ -20,82 +20,11 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
-# Shared build steps for both architecture jobs. ARCH and PLATFORM come from
-# each job's env; building arm64 under QEMU on an amd64 machine is what made
-# the Vite build take hours / hang, so each arch runs on its native runner.
-x-build-steps: &build-steps
-  - name: Checkout repository
-    uses: actions/checkout@v7
-
-  - name: Log in to GitHub Container Registry
-    uses: docker/login-action@v4
-    with:
-      registry: ${{ env.REGISTRY }}
-      username: ${{ github.actor }}
-      password: ${{ secrets.GITHUB_TOKEN }}
-
-  # ── OCI labels (per channel) ───────────────────────────────────────────────
-  - name: Generate Docker metadata — canary
-    if: inputs.channel == 'canary'
-    id: meta-canary
-    uses: docker/metadata-action@v6
-    with:
-      images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
-  - name: Generate Docker metadata — beta
-    if: inputs.channel == 'beta'
-    id: meta-beta
-    uses: docker/metadata-action@v6
-    with:
-      images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
-  - name: Generate Docker metadata — production
-    if: inputs.channel == 'production'
-    id: meta-production
-    uses: docker/metadata-action@v6
-    with:
-      images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
-  - name: Compute per-architecture tags
-    id: arch-tags
-    env:
-      CHANNEL: ${{ inputs.channel }}
-      RELEASE_VERSION: ${{ inputs.release_version }}
-      APP_VERSION: ${{ inputs.app_version }}
-    run: |
-      IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
-      case "$CHANNEL" in
-        canary) list="$RELEASE_VERSION canary" ;;
-        beta)   list="$RELEASE_VERSION beta" ;;
-        *)      list="$RELEASE_VERSION $APP_VERSION latest" ;;
-      esac
-      {
-        echo "tags<<EOF"
-        for tag in $list; do
-          echo "$REGISTRY/$IMAGE_NAME:$tag-$ARCH"
-        done
-        echo "EOF"
-      } >> "$GITHUB_OUTPUT"
-
-  - name: Build and push (${{ env.ARCH }})
-    uses: docker/build-push-action@v7
-    with:
-      context: .
-      file: Dockerfile
-      push: true
-      platforms: ${{ env.PLATFORM }}
-      tags: ${{ steps.arch-tags.outputs.tags }}
-      labels: >-
-        ${{ inputs.channel == 'canary' && steps.meta-canary.outputs.labels ||
-            inputs.channel == 'beta'   && steps.meta-beta.outputs.labels   ||
-            steps.meta-production.outputs.labels }}
-      build-args: |
-        APP_VERSION=${{ inputs.release_version }}
-      provenance: false
-      cache-from: type=gha,scope=release-docker-${{ inputs.channel }}-${{ env.ARCH }}
-      cache-to: type=gha,mode=max,scope=release-docker-${{ inputs.channel }}-${{ env.ARCH }},ignore-error=true
-
 jobs:
+  # Each architecture builds natively on its own runner. Building arm64 under
+  # QEMU on an amd64 machine runs the Vite/rolldown native binaries on
+  # emulated threads — hours slow, and prone to hanging forever.
+  # NOTE: build-amd64 and build-arm64 mirror each other; keep them in sync.
   build-amd64:
     name: "Docker: build amd64 (${{ inputs.channel }})"
     runs-on: ubuntu-latest
@@ -106,7 +35,78 @@ jobs:
     env:
       ARCH: amd64
       PLATFORM: linux/amd64
-    steps: *build-steps
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── OCI labels (per channel) ───────────────────────────────────────────
+      - name: Generate Docker metadata — canary
+        if: inputs.channel == 'canary'
+        id: meta-canary
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Generate Docker metadata — beta
+        if: inputs.channel == 'beta'
+        id: meta-beta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Generate Docker metadata — production
+        if: inputs.channel == 'production'
+        id: meta-production
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Compute per-architecture tags
+        id: arch-tags
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          APP_VERSION: ${{ inputs.app_version }}
+        run: |
+          IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          case "$CHANNEL" in
+            canary) list="$RELEASE_VERSION canary" ;;
+            beta)   list="$RELEASE_VERSION beta" ;;
+            *)      list="$RELEASE_VERSION $APP_VERSION latest" ;;
+          esac
+          {
+            echo "tags<<EOF"
+            for tag in $list; do
+              echo "$REGISTRY/$IMAGE_NAME:$tag-$ARCH"
+            done
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push (${{ env.ARCH }})
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          platforms: ${{ env.PLATFORM }}
+          tags: ${{ steps.arch-tags.outputs.tags }}
+          labels: >-
+            ${{ inputs.channel == 'canary' && steps.meta-canary.outputs.labels ||
+                inputs.channel == 'beta'   && steps.meta-beta.outputs.labels   ||
+                steps.meta-production.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ inputs.release_version }}
+          provenance: false
+          cache-from: type=gha,scope=release-docker-${{ inputs.channel }}-${{ env.ARCH }}
+          cache-to: type=gha,mode=max,scope=release-docker-${{ inputs.channel }}-${{ env.ARCH }},ignore-error=true
 
   build-arm64:
     name: "Docker: build arm64 (${{ inputs.channel }})"
@@ -118,7 +118,78 @@ jobs:
     env:
       ARCH: arm64
       PLATFORM: linux/arm64
-    steps: *build-steps
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── OCI labels (per channel) ───────────────────────────────────────────
+      - name: Generate Docker metadata — canary
+        if: inputs.channel == 'canary'
+        id: meta-canary
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Generate Docker metadata — beta
+        if: inputs.channel == 'beta'
+        id: meta-beta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Generate Docker metadata — production
+        if: inputs.channel == 'production'
+        id: meta-production
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Compute per-architecture tags
+        id: arch-tags
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          APP_VERSION: ${{ inputs.app_version }}
+        run: |
+          IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          case "$CHANNEL" in
+            canary) list="$RELEASE_VERSION canary" ;;
+            beta)   list="$RELEASE_VERSION beta" ;;
+            *)      list="$RELEASE_VERSION $APP_VERSION latest" ;;
+          esac
+          {
+            echo "tags<<EOF"
+            for tag in $list; do
+              echo "$REGISTRY/$IMAGE_NAME:$tag-$ARCH"
+            done
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push (${{ env.ARCH }})
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          platforms: ${{ env.PLATFORM }}
+          tags: ${{ steps.arch-tags.outputs.tags }}
+          labels: >-
+            ${{ inputs.channel == 'canary' && steps.meta-canary.outputs.labels ||
+                inputs.channel == 'beta'   && steps.meta-beta.outputs.labels   ||
+                steps.meta-production.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ inputs.release_version }}
+          provenance: false
+          cache-from: type=gha,scope=release-docker-${{ inputs.channel }}-${{ env.ARCH }}
+          cache-to: type=gha,mode=max,scope=release-docker-${{ inputs.channel }}-${{ env.ARCH }},ignore-error=true
 
   # Merge the per-architecture images into the final multi-arch tags.
   manifest:
