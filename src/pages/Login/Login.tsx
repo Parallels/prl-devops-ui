@@ -218,9 +218,15 @@ export const Login: React.FC<LoginProps> = ({ prefill }) => {
         });
         navigate('/', { replace: true });
       } catch (error: unknown) {
-        clearLockedPassword();
-        await config.removeSecret(getPasswordKey(lockedHostname!));
-        await config.flushSecrets();
+        // Only server-rejected credentials invalidate the saved password; a
+        // transient failure (network, 5xx during backend restarts) must not
+        // silently disable keep-me-logged-in.
+        const status = (error as { statusCode?: number }).statusCode;
+        if (typeof status === 'number' && status >= 400 && status < 500) {
+          clearLockedPassword();
+          await config.removeSecret(getPasswordKey(lockedHostname!));
+          await config.flushSecrets();
+        }
         setPassword('');
         setKeepLoggedIn(false);
         setIsSaving(false);

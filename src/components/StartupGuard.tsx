@@ -86,6 +86,40 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                     const savedPassword = await config.getSecret(getPasswordKey(lockedHostname));
                     const loginPassword = lockedPassword ?? savedPassword;
 
+                    // A valid stored token restores the session directly, mirroring the
+                    // normal multi-host flow below. Auto-login credentials are only
+                    // required once the token is missing or expired — refreshing the
+                    // page within the token's lifetime must not log the user out.
+                    const storedToken = authService.getToken(lockedHostname);
+                    const storedPayload = storedToken ? decodeToken(storedToken) : null;
+                    if (storedPayload?.exp && (storedPayload.exp * 1000) > Date.now()) {
+                        if (loginUsername && loginPassword) {
+                            authService.setCredentials(lockedHostname, {
+                                url: hostUrl!,
+                                username: loginUsername,
+                                password: loginPassword,
+                                email: loginUsername,
+                                api_key: '',
+                            });
+                        }
+                        authService.currentHostname = lockedHostname;
+                        console.log('[StartupGuard] restoring locked host from stored token', lockedHostname);
+                        if (!cancelled) {
+                            setSession({
+                                serverUrl: hostUrl!,
+                                hostname: lockedHostname,
+                                username: loginUsername || storedPayload.username || storedPayload.email,
+                                authType: 'credentials',
+                                hostId: savedHost?.id ?? `locked:${lockedHostname}`,
+                                connectedAt: new Date().toISOString(),
+                                tokenPayload: storedPayload,
+                                hardwareInfo: savedHost?.hardwareInfo,
+                            });
+                            setIsReady(true);
+                        }
+                        return;
+                    }
+
                     if (!loginUsername || !loginPassword) {
                         if (session) {
                             if (!cancelled) setIsReady(true);
@@ -133,9 +167,15 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                         }
                     } catch (error) {
                         console.error('[StartupGuard] locked auto-login failed:', error);
-                        clearLockedPassword();
-                        await config.removeSecret(getPasswordKey(lockedHostname));
-                        await config.flushSecrets();
+                        // Only credentials actually rejected by the server invalidate the
+                        // saved password. Transient failures (network error, 5xx while the
+                        // backend restarts) must not destroy keep-me-logged-in state.
+                        const status = (error as { statusCode?: number }).statusCode;
+                        if (typeof status === 'number' && status >= 400 && status < 500) {
+                            clearLockedPassword();
+                            await config.removeSecret(getPasswordKey(lockedHostname));
+                            await config.flushSecrets();
+                        }
                         redirectToLogin('locked auto-login failed');
                     }
                     return;
