@@ -14,6 +14,13 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    server: {
+      deps: {
+        // @uiw packages ship plain .css imports in their ESM builds; keep them
+        // inside Vite's pipeline so CSS modules are handled instead of hitting Node
+        inline: [/@uiw\/react-md-editor/, /@uiw\/react-markdown-preview/],
+      },
+    },
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['node_modules', 'dist', 'src-tauri'],
     coverage: {

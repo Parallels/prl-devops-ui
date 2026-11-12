@@ -57,3 +57,4 @@ notarize/
 .kilo/
 .local/
 .claude/
+coverage/

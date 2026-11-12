@@ -1,6 +1,7 @@
-import { ArrowChevronRight, Button, formatMB, InfoRow, MultiProgressBar, Pill, SectionCard, Table, type Column } from '@prl/ui-kit';
+import { ArrowChevronRight, Button, formatMB, InfoRow, MetricBar, MultiProgressBar, Pill, SectionCard, Table, TooltipWrapper, type Column } from '@prl/ui-kit';
 import { useNavigate } from 'react-router-dom';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
+import { getVmCapacity, VM_LIMIT_REACHED_HINT, vmModeLabel, vmModeTooltip } from '@/utils/vmCapacity';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
 import { OsIcon } from '@/utils/virtualMachine';
@@ -83,6 +84,8 @@ export function OverviewTab({ host }: { host: DevOpsRemoteHost }) {
   const diskInUse = host.detailed_resources?.total_in_use?.disk_size ?? host.detailed_resources?.total_in_use?.disk_count;
   const diskReserved = host.detailed_resources?.total_reserved?.disk_size ?? host.detailed_resources?.total_reserved?.disk_count;
   const diskAvailable = host.detailed_resources?.total_available?.disk_size ?? host.detailed_resources?.total_available?.disk_count;
+
+  const vmCap = getVmCapacity(host);
 
   return (
     <div className="p-4 space-y-4">
@@ -269,6 +272,36 @@ export function OverviewTab({ host }: { host: DevOpsRemoteHost }) {
             />
           </>
         )}
+
+        {/* Virtual machine count vs the host's MAX_VMS_PER_HOST cap — read-only host-local config. */}
+        {vmCap.hasLimit ? (
+          <div className="py-2.5">
+            <TooltipWrapper text={vmModeTooltip(vmCap.mode)}>
+              <div className="w-full">
+                <MetricBar
+                  label="Virtual machines"
+                  value={`${vmCap.shown} / ${vmCap.limit}`}
+                  percentage={Math.round((vmCap.ratio ?? 0) * 100)}
+                  color={vmCap.tone === 'critical' ? 'rose' : vmCap.tone === 'warning' ? 'amber' : 'blue'}
+                />
+              </div>
+            </TooltipWrapper>
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-neutral-500 dark:text-neutral-400">
+              {/* Mode chip only with a cap — uncapped hosts may still report a mode. */}
+              <span>{vmModeLabel(vmCap.mode)}</span>
+              {vmCap.pending > 0 && (
+                <span>
+                  <span className="font-medium text-neutral-700 dark:text-neutral-300">{vmCap.pending}</span> pending
+                </span>
+              )}
+            </div>
+            {vmCap.atLimit && <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">{VM_LIMIT_REACHED_HINT}</p>}
+          </div>
+        ) : vmCap.total != null ? (
+          // No cap but the host reports its inventory: a plain count line (also absent →
+          // older host build or Linux/Windows — do not claim "unsupported" from that alone).
+          <InfoRow label="Virtual machines" value={`${vmCap.total} on this host`} />
+        ) : null}
       </SectionCard>
     </div>
   );

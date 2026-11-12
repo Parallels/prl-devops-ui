@@ -32,6 +32,8 @@ export interface CatalogRow {
   revokedBy?: string;
   revokedAt?: string;
   size: string;
+  /** Raw pack/compressed size in bytes (feeds the requirement-check disk probe); undefined when unknown. */
+  sizeBytes?: number;
   created: string;
   updated: string;
   tags: string;
@@ -256,6 +258,7 @@ const mapCatalogRow = (manifest: RawCatalogManifest, item: Record<string, unknow
     revokedBy: typeof item.revoked_by === 'string' ? item.revoked_by : undefined,
     revokedAt: formatCatalogDate(item.revoked_at as string | undefined),
     size: formatBytes(toNumber(item.compressed_size) ?? toNumber(item.pack_size) ?? toNumber(item.size)),
+    sizeBytes: toNumber(item.pack_size) ?? toNumber(item.compressed_size) ?? toNumber(item.size),
     created: formatCatalogDate(item.created_at as string),
     updated: formatCatalogDate(item.updated_at as string),
     tags: tagsList.length ? tagsList.join(', ') : '-',

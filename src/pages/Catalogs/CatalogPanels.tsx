@@ -97,6 +97,8 @@ interface CatalogSourcePanelProps {
   selectedManifestId?: string;
   onManifestClick: (manifest: CatalogManifestItem, tab?: 'details' | 'versions') => void;
   onDownloadRow?: (row: CatalogRow) => void;
+  /** Present only when the user may run the pre-flight requirement check (CREATE_VM + orchestrator). */
+  onCheckRow?: (row: CatalogRow) => void;
   onStatsChange?: (stats: CatalogSourceStats) => void;
   onManifestsChange?: (manifests: CatalogManifestItem[]) => void;
 }
@@ -115,6 +117,7 @@ export const CatalogSourcePanel: React.FC<CatalogSourcePanelProps> = ({
   selectedManifestId,
   onManifestClick,
   onDownloadRow,
+  onCheckRow,
   onStatsChange,
   onManifestsChange,
 }) => {
@@ -173,6 +176,7 @@ export const CatalogSourcePanel: React.FC<CatalogSourcePanelProps> = ({
       selectedManifestId={selectedManifestId}
       onSelectItem={onManifestClick}
       onDownloadItem={onDownloadRow}
+      onCheckItem={onCheckRow}
     />
   );
 };

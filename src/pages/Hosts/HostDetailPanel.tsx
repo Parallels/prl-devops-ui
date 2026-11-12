@@ -1,11 +1,14 @@
 import React from 'react';
 import { Tabs } from '@prl/ui-kit';
 import { DevOpsRemoteHost } from '@/interfaces/devops';
+import { Claims } from '@/interfaces/tokenTypes';
+import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { OverviewTab } from './tabs/OverviewTab';
 import { PerformanceTab } from './tabs/PerformanceTab';
 import { CacheTab } from './tabs/CacheTab';
 import { LogsTab } from './tabs/LogsTab';
+import { RequirementCheckTab } from './tabs/RequirementCheckTab';
 import { ReverseProxy } from '@/pages/ReverseProxy/ReverseProxy';
 
 export interface HostDetailPanelProps {
@@ -20,6 +23,7 @@ function isHealthy(host: DevOpsRemoteHost): boolean {
 
 export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host }) => {
   const { themeColor } = useSystemSettings();
+  const { hasClaim } = useSession();
 
   const tabItems = [
     { id: 'overview', label: 'Overview', panel: <OverviewTab host={host} /> },
@@ -34,6 +38,10 @@ export const HostDetailPanel: React.FC<HostDetailPanelProps> = ({ host }) => {
             panel: <ReverseProxy orchestratorHostId={host.id} availableVms={host.vms} />,
           },
         ]
+      : []),
+    // Requirement check runs on the orchestrator with host_id scoping — same claim as VM create.
+    ...(isHealthy(host) && host.enabled && hasClaim(Claims.CREATE_VM)
+      ? [{ id: 'check', label: 'Check', panel: <RequirementCheckTab host={host} /> }]
       : []),
     // { id: 'settings', label: 'Settings', panel: <SettingsTab host={host} /> },
     ...(isHealthy(host) && host.enabled ? [{ id: 'logs', label: 'Logs', panel: <LogsTab host={host} /> }] : []),

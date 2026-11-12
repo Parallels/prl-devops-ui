@@ -73,12 +73,16 @@ export interface CatalogManifestPackContentItem {
  * Resource counters returned by /api/v1/config/hardware and /api/v1/orchestrator/resources.
  * memory_size is in MB; logical_cpu_count is cores.
  * disk_count is used by the hardware endpoint; disk_size (also MB) by the orchestrator endpoint.
+ * total_vms: on host detailed_resources — in `total` every VM registered on the host,
+ * in `total_in_use` VMs holding a hypervisor slot, in `total_reserved` in-flight operations.
+ * All counters are omitempty: absent means 0, not "unknown".
  */
 export interface HardwareResourceStats {
   logical_cpu_count?: number;
   memory_size?: number;
   disk_count?: number;
   disk_size?: number;
+  total_vms?: number;
 }
 
 export interface HardwareReverseProxy {
@@ -169,6 +173,10 @@ export interface DevOpsRemoteHostItem {
 }
 export interface DevOpsRemoteHostResourceDetailed {
   total_apple_vms?: number;
+  /** Host VM count cap (MAX_VMS_PER_HOST). omitempty — absent means no cap. */
+  max_vms_per_host?: number;
+  /** Counting mode (MAX_VMS_PER_HOST_MODE). Reported even without a cap — gate display on max_vms_per_host. */
+  max_vms_per_host_mode?: 'any' | 'running';
   system_reserved?: HardwareResourceStats;
   total?: HardwareResourceStats;
   total_available?: HardwareResourceStats;
@@ -185,6 +193,8 @@ export interface DevOpsRemoteHostResource {
   logical_cpu_count?: number;
   memory_size?: number;
   disk_size?: number;
+  /** Same as detailed_resources.total.total_vms — headline convenience for compact cards. */
+  total_vms?: number;
   [key: string]: unknown;
 }
 

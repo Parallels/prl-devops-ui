@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Alert, Button, FormField, FormLayout, Input, Modal, ModalActions, MultiToggle, type MultiToggleOption, Panel, Toggle } from '@prl/ui-kit';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { useRequirementCheck } from '@/hooks/useRequirementCheck';
+import { buildWizardCheckRequest } from '@/components/RequirementCheck/checkLogic';
+import { RequirementCheckResult } from '@/components/RequirementCheck/RequirementCheckResult';
 
 export type DownloadTarget = 'host' | 'orchestrator';
 
@@ -28,6 +31,16 @@ interface DownloadCatalogModalProps {
   hasOrchestratorModule?: boolean;
   /** When set, hides the target toggle and locks the download target. */
   forcedTarget?: 'host' | 'orchestrator';
+  /** Orchestrator hostname for the pre-flight requirement check. */
+  hostname?: string;
+  /** Run the pre-flight feasibility check (CREATE_VM claim + orchestrator target). Advisory only. */
+  canCheck?: boolean;
+  /** Manifest-declared cpu/memory defaults — a field differing from it counts as an override. */
+  manifestSpecs?: { cpu?: string; memory?: string };
+  /** Raw pack size in bytes — enables the live disk probe in override mode. */
+  sizeBytes?: number;
+  /** Heuristic from the catalog row (tags/name) — only used in override mode. */
+  macOS?: boolean;
   onClose: () => void;
   onSubmit: () => void;
   onFormChange: (next: DownloadVmFormData) => void;
@@ -37,6 +50,8 @@ const targetOptions: MultiToggleOption[] = [
   { value: 'host', label: 'Host' },
   { value: 'orchestrator', label: 'Orchestrator' },
 ];
+
+const normalizeSpecText = (value?: string): string => (value ?? '').trim();
 
 export const DownloadCatalogModal: React.FC<DownloadCatalogModalProps> = ({
   isOpen,
@@ -51,12 +66,64 @@ export const DownloadCatalogModal: React.FC<DownloadCatalogModalProps> = ({
   hasHostModule = false,
   hasOrchestratorModule = false,
   forcedTarget,
+  hostname,
+  canCheck = false,
+  manifestSpecs,
+  sizeBytes,
+  macOS = false,
   onClose,
   onSubmit,
   onFormChange,
 }) => {
   const { themeColor } = useSystemSettings();
   const showTargetSelector = !forcedTarget && hasHostModule && hasOrchestratorModule && !isLocal;
+
+  // The wizard pre-fills CPU/Memory from the manifest; only a *changed* value is
+  // an override. Unchanged (or cleared) fields mean the create call will use the
+  // manifest defaults, so the check stays in exact catalog-driven mode.
+  const cpuOverride = normalizeSpecText(form.cpu) && normalizeSpecText(form.cpu) !== normalizeSpecText(manifestSpecs?.cpu) ? form.cpu : '';
+  const memoryOverride = normalizeSpecText(form.memory) && normalizeSpecText(form.memory) !== normalizeSpecText(manifestSpecs?.memory) ? form.memory : '';
+
+  const checkRequest = useMemo(
+    () =>
+      canCheck && isOpen
+        ? buildWizardCheckRequest({
+            catalogId,
+            version,
+            architecture,
+            managerId,
+            cpuText: cpuOverride,
+            memoryText: memoryOverride,
+            manifestCpu: manifestSpecs?.cpu,
+            manifestMemory: manifestSpecs?.memory,
+            sizeBytes,
+            macOS,
+          })
+        : null,
+    [canCheck, isOpen, catalogId, version, architecture, managerId, cpuOverride, memoryOverride, manifestSpecs, sizeBytes, macOS],
+  );
+
+  const { state: checkState, run: runCheck, reset: resetCheck } = useRequirementCheck(hostname ?? '', { debounceMs: 500 });
+  const openedOnceRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      openedOnceRef.current = false;
+      resetCheck();
+      return;
+    }
+    if (!canCheck || !hostname || !checkRequest) {
+      resetCheck();
+      return;
+    }
+    const immediate = !openedOnceRef.current;
+    openedOnceRef.current = true;
+    runCheck(checkRequest, immediate);
+  }, [isOpen, canCheck, hostname, checkRequest, runCheck, resetCheck]);
+
+  const handleRetryCheck = () => {
+    if (checkRequest) runCheck(checkRequest, true);
+  };
 
   return (
     <Modal
@@ -116,6 +183,9 @@ export const DownloadCatalogModal: React.FC<DownloadCatalogModalProps> = ({
             </FormField>
           </FormLayout>
         </Panel>
+
+        {/* Advisory pre-flight feasibility check — create stays enabled regardless. */}
+        {canCheck && hostname ? <RequirementCheckResult state={checkState} onRetry={handleRetryCheck} /> : null}
 
         <Panel tone="neutral" variant="glass" padding="xs" backgroundColor="white">
           <FormLayout columns={2} gap="sm">

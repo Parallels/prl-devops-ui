@@ -14,6 +14,7 @@ import type { VmsDeepLinkState } from '@/types/deepLink';
 import { useHighlight } from '@/contexts/HighlightContext';
 import { getStateTone, parseVmReferenceBody, parseVmStateChangeBody, parseVmUptimeChangeBody, sortVirtualMachines, upsertVirtualMachine } from '@/utils/vmUtils';
 import { drainUnseenMessages } from '@/utils/messageQueue';
+import { describeVmCapacityError } from '@/utils/vmCapacity';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
 import { useUserConfig } from '@/contexts/UserConfigContext';
 import { PageHeaderIcon } from '@/components/PageHeader';
@@ -664,7 +665,7 @@ export const Vms: React.FC = () => {
         setPendingAction(null);
         void fetchVms();
       } catch (err: any) {
-        setError(err?.message ?? 'Failed to clone virtual machine');
+        setError(describeVmCapacityError(err)?.message ?? err?.message ?? 'Failed to clone virtual machine');
         setPendingAction(null);
       } finally {
         setModalLoading(false);
