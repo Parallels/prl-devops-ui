@@ -2,6 +2,7 @@ import { apiService } from '../api';
 import { DevOpsRemoteHost, AddOrchestratorHostRequest, DeployOrchestratorHostRequest, UpdateOrchestratorHostRequest } from '../../interfaces/devops';
 import { OrchestratorResource } from '@/interfaces/Orchestrator';
 import { VirtualMachine } from '@/interfaces/VirtualMachine';
+import { CheckMachineRequirementsRequest, CheckMachineRequirementsResponse } from '@/interfaces/Machine';
 
 /**
  * Orchestrator Service - Handles orchestrator and host management operations
@@ -146,6 +147,31 @@ class OrchestratorService {
       console.error('Failed to get orchestrator resources:', error);
       throw error;
     }
+  }
+
+  /**
+   * Pre-flight host feasibility check for a prospective VM (orchestrator only).
+   *
+   * Runs the exact scheduling decision factors used by VM creation before the user
+   * commits to a create. Answers "can any host run this VM?" — and if not, what is
+   * missing per host (CPU, memory, disk, Apple VM capacity…).
+   *
+   * Semantics:
+   * - `passed: false` is NOT an error — HTTP 200 with data; the caller renders the
+   *   per-host detail instead of an error state.
+   * - Only 400 (bad input / unresolvable catalog), 404 (unknown host_id) and
+   *   401/403 (auth) reject — deliberately WITHOUT an errorPrefix so the server's
+   *   400 remediation message (e.g. "…after retrying: x509: certificate signed by
+   *   unknown authority") reaches the UI verbatim.
+   * - The disk probe queries hosts live → the call can take several seconds.
+   *
+   * @param hostname - The hostname identifier of the orchestrator server
+   * @param request - Catalog-driven or explicit-requirements request (XOR)
+   * @returns The check verdict (slim when passed, detailed per host when not)
+   * @throws ApiError
+   */
+  async checkMachineRequirements(hostname: string, request: CheckMachineRequirementsRequest): Promise<CheckMachineRequirementsResponse> {
+    return apiService.post<CheckMachineRequirementsResponse>(hostname, '/api/v1/orchestrator/machines/check', request);
   }
 
   /**

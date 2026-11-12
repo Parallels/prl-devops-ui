@@ -7,6 +7,7 @@ import {
   DropdownButton,
   EmptyState,
   Folder,
+  IconButton,
   Library,
   Minio,
   Panel,
@@ -35,6 +36,8 @@ interface CatalogManifestListProps {
   selectedManifestId?: string;
   onSelectItem: (manifest: CatalogManifestItem, tab?: 'details' | 'versions') => void;
   onDownloadItem?: (row: CatalogRow) => void;
+  /** "Can I run this?" — pre-flight requirement check; rendered only when provided. */
+  onCheckItem?: (row: CatalogRow) => void;
 }
 
 /** One flat row = one individual catalog item (a single version × architecture). */
@@ -108,7 +111,7 @@ const getProviderIcon = (provider: string): React.ReactNode => {
   }
 };
 
-export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ sourceId, items, query, loading = false, error = null, onRetry, selectedManifestId, onSelectItem, onDownloadItem }) => {
+export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ sourceId, items, query, loading = false, error = null, onRetry, selectedManifestId, onSelectItem, onDownloadItem, onCheckItem }) => {
   const { themeColor } = useSystemSettings();
   const { isLoaded, getConfig, setConfig } = useUserConfig();
 
@@ -278,24 +281,40 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
         align: 'right',
         sticky: 'right',
         render: (flat) => (
-          <Button
-            variant="soft"
-            color={themeColor}
-            size="xs"
-            leadingIcon="Download"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownloadItem(flat.row);
-            }}
-          >
-            Pull {flat.row.version}
-          </Button>
+          <div className="flex items-center justify-end gap-1">
+            {onCheckItem && (
+              <IconButton
+                icon="CheckCircle"
+                size="xs"
+                variant="ghost"
+                color="slate"
+                tooltip="Check requirements — can any host run this VM?"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCheckItem(flat.row);
+                }}
+                aria-label="Check requirements"
+              />
+            )}
+            <Button
+              variant="soft"
+              color={themeColor}
+              size="xs"
+              leadingIcon="Download"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownloadItem(flat.row);
+              }}
+            >
+              Pull {flat.row.version}
+            </Button>
+          </div>
         ),
       });
     }
 
     return cols;
-  }, [onDownloadItem, themeColor]);
+  }, [onCheckItem, onDownloadItem, themeColor]);
 
   // ── Panel card renderer (one card per manifest) ───────────────────────────────
   const renderCard = useCallback(
@@ -395,7 +414,23 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
             <div className="flex grow flex-wrap gap-1 min-h-9 items-center">
               <TagPanel size='md' tags={featuredTags.map((t) => ({ label: t.toLowerCase(), tone: t.toLowerCase() === 'latest' ? 'success' : themeColor, variant: t.toLowerCase() === 'latest' ? 'soft' : 'outline', size: "xs" }))} tagLimit={5} />
             </div>
-            <div className=' flex'>
+            <div className=' flex items-center gap-1.5'>
+            {onCheckItem && (latestRow ?? previewRow) && (
+              <IconButton
+                icon="CheckCircle"
+                size="sm"
+                variant="soft"
+                color="slate"
+                tooltip="Check requirements — can any host run this VM?"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const target = latestRow ?? previewRow;
+                  if (target) onCheckItem(target);
+                }}
+                aria-label="Check requirements"
+              />
+            )}
+            <div className="flex-1 min-w-0">
             {onDownloadItem ? (
               <DropdownButton
                 label={`Pull Version ${latestVersionLabel}`}
@@ -422,11 +457,12 @@ export const CatalogManifestList: React.FC<CatalogManifestListProps> = ({ source
               </Button>
               )}
               </div>
+              </div>
           </div>
         </Panel>
       );
     },
-    [manifestCards, selectedManifestId, themeColor, onSelectItem, onDownloadItem],
+    [manifestCards, selectedManifestId, themeColor, onSelectItem, onDownloadItem, onCheckItem],
   );
 
   // ── Early-exit states ─────────────────────────────────────────────────────────

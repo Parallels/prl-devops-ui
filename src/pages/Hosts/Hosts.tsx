@@ -40,6 +40,7 @@ import {
   upsertVirtualMachine,
 } from '@/utils/vmUtils';
 import { drainUnseenMessages } from '@/utils/messageQueue';
+import { getVmCapacity } from '@/utils/vmCapacity';
 import { PageHeaderIcon } from '@/components/PageHeader';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -74,10 +75,27 @@ const HostItemLabel = memo(function HostItemLabel({ host }: { host: DevOpsRemote
 });
 
 const HostSubtitleLabel = memo(function HostSubtitleLabel({ host }: { host: DevOpsRemoteHost }) {
-  if (host.vms?.length ?? 0 > 0) {
-    return <div className="flex gap-2 min-w-0 flex-1 w-full flex-col text-neutral-400 mt-2">{`${host.vms?.length || 0} VM${host.vms?.length !== 1 ? 's' : ''}`}</div>;
-  }
-  return null;
+  const vmCount = host.vms?.length ?? 0;
+  const cap = getVmCapacity(host);
+  // No cap and no VMs → nothing, exactly as before (never "0 / 0" or "unlimited").
+  if (vmCount === 0 && !cap.hasLimit) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1 w-full text-neutral-400 mt-2">
+      {vmCount > 0 && <span>{`${vmCount} VM${vmCount !== 1 ? 's' : ''}`}</span>}
+      {cap.hasLimit && (
+        <>
+          <Pill size="sm" tone={cap.tone === 'critical' ? 'rose' : cap.tone === 'warning' ? 'amber' : 'blue'} variant="soft">
+            {`VMs ${cap.shown} / ${cap.limit}`}
+          </Pill>
+          {cap.pending > 0 && (
+            <Pill size="sm" tone="sky" variant="soft">
+              {`+${cap.pending}`}
+            </Pill>
+          )}
+        </>
+      )}
+    </div>
+  );
 });
 
 // ── Page component ────────────────────────────────────────────────────────────

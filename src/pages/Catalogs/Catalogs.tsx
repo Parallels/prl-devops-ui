@@ -1,12 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CustomIcon, DeleteConfirmModal, EmptyState, IconButton, Library, Pill, SearchBar, SidePanel, SplitView, type SplitViewItem } from '@prl/ui-kit';
+import { Alert, Button, CustomIcon, DeleteConfirmModal, EmptyState, IconButton, Library, Modal, ModalActions, Pill, SearchBar, SidePanel, SplitView, type SplitViewItem } from '@prl/ui-kit';
 import { useLocation } from 'react-router-dom';
 import { useSession } from '@/contexts/SessionContext';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { useRequirementCheck } from '@/hooks/useRequirementCheck';
 import { CatalogManager } from '@/interfaces/CatalogManager';
 import { CatalogPushRequest } from '@/interfaces/devops';
 import { Claims, Modules } from '@/interfaces/tokenTypes';
 import { devopsService } from '@/services/devops';
+import { describeVmCapacityError } from '@/utils/vmCapacity';
+import { buildCatalogCheckRequest, inferMacOs } from '@/components/RequirementCheck/checkLogic';
+import { RequirementCheckResult } from '@/components/RequirementCheck/RequirementCheckResult';
 import { PageHeaderIcon } from '@/components/PageHeader';
 import { CatalogDetailContent } from './CatalogDetailPanel';
 import { CatalogManagerEditorModal, DeleteCatalogManagerModal } from './Modals/CatalogManagerModals';
@@ -83,6 +87,10 @@ export const Catalogs: React.FC = () => {
   const [downloadVmLoading, setDownloadVmLoading] = useState(false);
   const [downloadTarget, setDownloadTarget] = useState<'host' | 'orchestrator' | undefined>(deepLink?.downloadTarget);
 
+  // "Can I run this?" — fleet-wide requirement check per catalog row (advisory, never cached).
+  const [checkVmModalItem, setCheckVmModalItem] = useState<CatalogDownloadTarget | null>(null);
+  const { state: fleetCheckState, run: runFleetCheck, reset: resetFleetCheck } = useRequirementCheck(hostname);
+
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -120,6 +128,8 @@ export const Catalogs: React.FC = () => {
   const hasUpdateManager = hasClaim(Claims.CATALOG_MANAGER_UPDATE);
   const hasUpdateManagerOwn = hasClaim(Claims.CATALOG_MANAGER_UPDATE_OWN);
   const hasPushCatalogClaim = hasClaim(Claims.PUSH_CATALOG_MANIFEST);
+  // Requirement check is gated on the same claim as VM create.
+  const canRunRequirementCheck = hasClaim(Claims.CREATE_VM) && hasOrchestratorModule;
 
   const canCreateCatalogManager = hasCatalogManagers && (hasCreateCatalog || hasCreateCatalogOwn);
 
@@ -376,6 +386,47 @@ export const Catalogs: React.FC = () => {
     setDownloadTarget(undefined);
   }, []);
 
+  // ── "Can I run this?" — catalog-mode fleet check (host_id omitted) ─────────
+  const buildFleetCheckRequest = useCallback(
+    (item: CatalogDownloadTarget) =>
+      buildCatalogCheckRequest({
+        catalogId: item.row.manifestId,
+        version: item.row.version,
+        architecture: item.row.architecture,
+        managerId: item.source.managerId,
+      }),
+    [],
+  );
+
+  const openCheckVmModal = useCallback(
+    (item: CatalogDownloadTarget) => {
+      setCheckVmModalItem(item);
+      const request = buildFleetCheckRequest(item);
+      if (request) runFleetCheck(request, true);
+      else resetFleetCheck();
+    },
+    [buildFleetCheckRequest, resetFleetCheck, runFleetCheck],
+  );
+
+  const closeCheckVmModal = useCallback(() => {
+    setCheckVmModalItem(null);
+    resetFleetCheck();
+  }, [resetFleetCheck]);
+
+  const retryFleetCheck = useCallback(() => {
+    if (!checkVmModalItem) return;
+    const request = buildFleetCheckRequest(checkVmModalItem);
+    if (request) runFleetCheck(request, true);
+  }, [buildFleetCheckRequest, checkVmModalItem, runFleetCheck]);
+
+  // Wizard check runs only against the orchestrator (the endpoint is orchestrator-only).
+  const wizardCheckTarget = resolveDownloadTarget({
+    preferredTarget: forcedDownloadTarget ?? downloadVmForm.target,
+    hasHostModule,
+    hasOrchestratorModule,
+  });
+  const canCheckWizard = canRunRequirementCheck && wizardCheckTarget === 'orchestrator';
+
   const handleDownloadVm = useCallback(async () => {
     if (!downloadVmModalItem) return;
 
@@ -433,7 +484,7 @@ export const Catalogs: React.FC = () => {
       );
       closeDownloadVmModal();
     } catch (err: any) {
-      setDownloadVmError(err?.message ?? 'Failed to start VM download.');
+      setDownloadVmError(describeVmCapacityError(err)?.message ?? err?.message ?? 'Failed to start VM download.');
     } finally {
       setDownloadVmLoading(false);
     }
@@ -517,6 +568,7 @@ export const Catalogs: React.FC = () => {
                 setSelectedCatalogItem({ source, manifest });
               }}
               onDownloadRow={(row) => openDownloadVmModal({ source, row })}
+              onCheckRow={canRunRequirementCheck ? (row) => openCheckVmModal({ source, row }) : undefined}
               onStatsChange={(stats) => {
                 setSourceStats((prev) => ({ ...prev, [source.id]: stats }));
               }}
@@ -525,7 +577,7 @@ export const Catalogs: React.FC = () => {
           ),
         };
       }),
-    [allManagers, canDeleteManager, canEditManager, catalogReloadToken, hasCatalogManagers, hostname, openDownloadVmModal, openEditManagerModal, onManifestsChangeViaRef, query, sources, themeColor],
+    [allManagers, canDeleteManager, canEditManager, canRunRequirementCheck, catalogReloadToken, hasCatalogManagers, hostname, openCheckVmModal, openDownloadVmModal, openEditManagerModal, onManifestsChangeViaRef, query, sources, themeColor],
   );
 
   const panelEmptyState = () => (
@@ -720,10 +772,40 @@ export const Catalogs: React.FC = () => {
         hasHostModule={hasHostModule}
         hasOrchestratorModule={hasOrchestratorModule}
         forcedTarget={forcedDownloadTarget}
+        hostname={hostname}
+        canCheck={canCheckWizard}
+        manifestSpecs={downloadVmModalItem?.row.specs}
+        sizeBytes={downloadVmModalItem?.row.sizeBytes}
+        macOS={downloadVmModalItem ? inferMacOs([downloadVmModalItem.row.manifestId, downloadVmModalItem.row.name, downloadVmModalItem.row.tagsList]) : false}
         onClose={closeDownloadVmModal}
         onSubmit={() => void handleDownloadVm()}
         onFormChange={setDownloadVmForm}
       />
+
+      {/* "Can I run this?" — catalog-mode requirement check across the whole fleet. */}
+      {checkVmModalItem && (
+        <Modal
+          icon="Pull"
+          isOpen
+          onClose={closeCheckVmModal}
+          title={`Can I run ${checkVmModalItem.row.name !== '-' ? checkVmModalItem.row.name : checkVmModalItem.row.manifestId}?`}
+          description={`Live capacity check for ${checkVmModalItem.row.manifestId}${checkVmModalItem.row.version !== '-' ? ` v${checkVmModalItem.row.version}` : ''} (${checkVmModalItem.row.architecture}) against every orchestrator host. The disk probe runs live and may take a few seconds.`}
+          size="md"
+          actions={
+            <ModalActions>
+              <Button variant="soft" color="slate" onClick={closeCheckVmModal}>
+                Close
+              </Button>
+            </ModalActions>
+          }
+        >
+          {fleetCheckState.status === 'idle' ? (
+            <Alert tone="warning" variant="subtle" title="Check unavailable" description="Architecture is missing for this catalog item, so the requirement check cannot run." />
+          ) : (
+            <RequirementCheckResult state={fleetCheckState} onRetry={retryFleetCheck} />
+          )}
+        </Modal>
+      )}
     </div>
   );
 };
