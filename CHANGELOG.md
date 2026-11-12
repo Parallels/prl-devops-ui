@@ -3,6 +3,17 @@
 All notable changes to Parallels DevOps UI are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.6] - 2026-11-12
+
+- feat: add logic for building catalog and explicit check requests
+- feat: implement response classification for requirement checks
+- feat: create UI components for user input and displaying results
+- test: add unit tests for requirement check logic
+- test: add tests for VM capacity calculations and error handling
+- deps: bump 14 packages (minor-and-patch)
+- deps: bump the major group with 2 updates
+- deps: bump actions/add-to-project from 2.0.0 to 2.0.1 in the actions group
+- deps: bump the minor-and-patch group with 11 updates
 ## [0.2.5] - 2026-10-29
 
 - deps: bump the minor-and-patch group with 8 updates
