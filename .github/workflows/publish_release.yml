@@ -1,0 +1,153 @@
+name: Publish New Release
+
+# CONVENTIONS (release workflow):
+# - Merging the "Create release PR" (label: release-request) into `main` bumps
+#   VERSION + CHANGELOG.md and triggers THIS workflow automatically.
+# - It validates the changelog entry for the new version and creates a DRAFT
+#   GitHub Release from the committed CHANGELOG.md section (--from-changelog).
+# - A human clicks "Publish release" on the draft — that is the deployment gate:
+#   publishing triggers release.yml, which builds the desktop/Docker/Helm
+#   artifacts, attaches them to the release and deploys to production (prd).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "VERSION"
+      - "CHANGELOG.md"
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (defaults to the VERSION file)"
+        required: false
+
+jobs:
+  check-version-change:
+    outputs:
+      changed: ${{ steps.check-version.outputs.result }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check if version has changed
+        id: check-version
+        uses: actions/github-script@v9
+        with:
+          script: |
+            // Get the version from the workflow input, falling back to VERSION
+            let version = '${{ github.event.inputs.version }}';
+            if (!version) {
+              const fs = require('fs');
+              let v = '';
+              try {
+                v = fs.readFileSync('./VERSION', 'utf8').trim();
+                console.log(`Version found: ${v}`);
+              }
+              catch (err) {
+                return false;
+              }
+
+              if (!v) {
+                return false;
+              } else {
+                version = v;
+              }
+            }
+
+            // Find a release for that version
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: `v${version}`,
+            }).catch(() => null);
+
+            // If the release exists, the version has not changed
+            if (release) {
+              console.log(`Version ${version} has an existing release`);
+              console.log(release.data.html_url);
+              core.summary.addLink(`Release v${version}`, release.data.html_url);
+              await core.summary.write();
+              return "false";
+            }
+            console.log(`Version ${version} does not have a release`);
+            return true;
+
+  release:
+    needs: check-version-change
+    if: ${{ needs.check-version-change.outputs.changed == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: "" # will be set in the workflow
+    outputs:
+      version: ${{ env.VERSION }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Parse version from VERSION file
+        run: |
+          echo "VERSION=$(tr -d '[:space:]' < ./VERSION)" >> "$GITHUB_ENV"
+      - name: Validate changelog entry
+        run: |
+          chmod +x ./.github/workflow_scripts/validate-changelog-version.sh
+          ./.github/workflow_scripts/validate-changelog-version.sh
+      - name: Generate release notes
+        run: |
+          set -euo pipefail
+          chmod +x ./.github/workflow_scripts/generate-changelog.sh
+          ./.github/workflow_scripts/generate-changelog.sh \
+            --mode RELEASE \
+            --repo "${{ github.repository }}" \
+            --version "${VERSION}" \
+            --from-changelog \
+            --output-to-file \
+            --file release_notes.md
+
+          cat >> release_notes.md <<EOF
+
+          ## Release Details
+
+          **Version**: v${VERSION}
+          **Release Date**: $(date '+%Y-%m-%d')
+
+          ## Docker
+
+          The image is published to the GitHub Container Registry:
+
+          \`\`\`
+          docker pull ghcr.io/${{ github.repository }}:${VERSION}
+          \`\`\`
+
+          ## Helm
+
+          \`\`\`
+          helm upgrade --install prl-devops-ui ./helm/prl-devops-ui \\
+            --set image.tag=${VERSION}
+          \`\`\`
+
+          ## Desktop App
+
+          Installers for Linux, macOS and Windows (amd64 + ARM64) are attached to
+          this release once it is published. The built-in updater picks them up
+          automatically.
+          EOF
+          cat release_notes.md
+      - name: Create draft release
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require("fs");
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: fs.readFileSync("release_notes.md", "utf8"),
+              tag_name: "v${{ env.VERSION }}",
+              name: "v${{ env.VERSION }}",
+              draft: true,
+              prerelease: false
+            });
+            core.summary.addLink(`Draft release v${process.env.VERSION}`, release.data.html_url);
+            console.log(`Draft release created: ${release.data.html_url}`);

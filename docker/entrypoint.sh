@@ -36,6 +36,11 @@ if [ "$(printf '%s' "${ALLOW_INSECURE_STORAGE:-}" | tr '[:upper:]' '[:lower:]')"
   ALLOW_INSECURE_STORAGE_BOOL="true"
 fi
 
+# Pre-obfuscated Amplitude ingestion key (generate with
+# scripts/obfuscate-amplitude-key.mjs). Passed through as-is so the plaintext
+# key never appears in the served env-config.js.
+AMPLITUDE_API_KEY_OBFUSCATED_ESCAPED="$(js_escape "${AMPLITUDE_API_KEY_OBFUSCATED:-}")"
+
 # Write runtime environment config that the app can read via window.__ENV__
 cat > /usr/share/nginx/html/env-config.js <<EOF
 window.__ENV__ = {
@@ -44,7 +49,8 @@ window.__ENV__ = {
   VITE_DEFAULT_HOST_NAME: "${DEFAULT_HOST_NAME_ESCAPED}",
   VITE_DEFAULT_USERNAME: "${DEFAULT_USERNAME_ESCAPED}",
   VITE_DEFAULT_PASSWORD: "${DEFAULT_PASSWORD_ESCAPED}",
-  ALLOW_INSECURE_STORAGE: ${ALLOW_INSECURE_STORAGE_BOOL}
+  ALLOW_INSECURE_STORAGE: ${ALLOW_INSECURE_STORAGE_BOOL},
+  AMPLITUDE_API_KEY_OBFUSCATED: "${AMPLITUDE_API_KEY_OBFUSCATED_ESCAPED}"
 };
 EOF
 chmod 644 /usr/share/nginx/html/env-config.js

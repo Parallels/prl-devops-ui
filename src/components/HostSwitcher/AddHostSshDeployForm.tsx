@@ -1,4 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { AnalyticsEvent } from '@/services/analytics/events';
+import { trackEvent } from '@/services/analytics/trackEvent';
 import { invoke } from '@tauri-apps/api/core';
 import { useNavigate } from 'react-router-dom';
 import { ButtonSelector, CustomIcon, Panel, ThemeColor } from '@prl/ui-kit';
@@ -167,10 +169,14 @@ export const AddSshDeployHostForm = forwardRef<SshDeployFormHandle, AddSshDeploy
         type: 'Orchestrator',
         hardwareInfo,
       };
+      const isNewHost = existingIndex < 0;
       if (existingIndex >= 0) existingHosts[existingIndex] = hostEntry;
       else existingHosts.push(hostEntry);
       await config.set('hosts', existingHosts);
       await config.save();
+      if (isNewHost) {
+        trackEvent(AnalyticsEvent.HOST_ADDED, { connect_method: 'ssh_deploy', source: 'settings' });
+      }
 
       authService.currentHostname = hostname;
       const token = authService.getToken(hostname);

@@ -14,6 +14,9 @@ Fixes # <!-- issue number, or remove this line if not applicable -->
 <!-- REQUIRED — automation reads this section to generate release notes.
      List every user-visible change as a bullet point using one of the prefixes below.
      Keep one change per line. Delete this comment when done.
+     NOTE: on `dev` -> `main` integration PRs this section is filled and
+     regenerated automatically (update-dev-integration-pr.yml) — manual edits
+     there are overwritten.
 
      Prefixes:
        feat:     New feature or capability
@@ -21,6 +24,7 @@ Fixes # <!-- issue number, or remove this line if not applicable -->
        perf:     Performance improvement
        refactor: Code restructuring with no behaviour change
        docs:     Documentation only
+       test:     Test-only changes
        chore:    Dependency updates, tooling, CI changes
 
      Example:

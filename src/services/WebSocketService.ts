@@ -1,4 +1,6 @@
 import { WebSocketConfig, WebSocketListener, WebSocketMessage, WebSocketState } from '../types/WebSocket';
+import { AnalyticsEvent } from './analytics/events';
+import { trackEvent } from './analytics/trackEvent';
 
 const RECONNECT_DELAY_CAP_MS = 30_000;
 
@@ -199,6 +201,7 @@ export class WebSocketService {
 
     private handleOpen(serverId: string, _event: Event) {
         console.log(`[WS] Connected: ${serverId}`);
+        trackEvent(AnalyticsEvent.WEBSOCKET_CONNECTED);
         this.updateState(serverId, WebSocketState.OPEN);
         this.reconnectAttempts.set(serverId, 0);
         this.flushMessageQueue(serverId);
@@ -225,6 +228,10 @@ export class WebSocketService {
 
     private handleClose(serverId: string, event: CloseEvent) {
         console.log(`[WS] Closed: ${serverId} (code=${event.code})`);
+        trackEvent(AnalyticsEvent.WEBSOCKET_DISCONNECTED, {
+            intentional: this.intentionalDisconnects.has(serverId),
+            close_code: event.code,
+        });
         this.updateState(serverId, WebSocketState.CLOSED);
         this.connections.delete(serverId);
 

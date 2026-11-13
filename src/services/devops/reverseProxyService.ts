@@ -1,5 +1,7 @@
 import { apiService } from '../api';
 import { ReverseProxyResponse, ReverseProxyConfig, ReverseProxyHost, ReverseProxyHostHttpRoute, ReverseProxyHostTcpRoute } from '../../interfaces/ReverseProxy';
+import { AnalyticsEvent } from '../analytics/events';
+import { trackEvent, trackOperation } from '../analytics/trackEvent';
 
 /**
  * Reverse Proxy Service - Handles reverse proxy operations for Parallels DevOps API
@@ -71,6 +73,7 @@ class ReverseProxyService {
         {},
         { errorPrefix: 'Failed to enable reverse proxy' }
       );
+      trackEvent(AnalyticsEvent.PROXY_ENABLED);
 
       return true;
     } catch (error) {
@@ -99,6 +102,7 @@ class ReverseProxyService {
         {},
         { errorPrefix: 'Failed to disable reverse proxy' }
       );
+      trackEvent(AnalyticsEvent.PROXY_DISABLED);
 
       return true;
     } catch (error) {
@@ -121,11 +125,16 @@ class ReverseProxyService {
         ? `/api/v1/orchestrator/hosts/${hostId}/reverse-proxy/restart`
         : '/api/v1/reverse-proxy/restart';
 
-      await apiService.put(
-        hostname,
-        endpoint,
-        {},
-        { errorPrefix: 'Failed to restart reverse proxy' }
+      await trackOperation(
+        AnalyticsEvent.PROXY_RESTARTED,
+        AnalyticsEvent.PROXY_RESTART_FAILED,
+        undefined,
+        () => apiService.put(
+          hostname,
+          endpoint,
+          {},
+          { errorPrefix: 'Failed to restart reverse proxy' }
+        ),
       );
 
       return true;
@@ -293,11 +302,16 @@ class ReverseProxyService {
         ? `/api/v1/orchestrator/hosts/${hostId}/reverse-proxy/hosts/${reverseProxyHostId}/http_routes`
         : `/api/v1/reverse-proxy/hosts/${reverseProxyHostId}/http_routes`;
 
-      const createdRoute = await apiService.post<ReverseProxyHostHttpRoute>(
-        hostname,
-        endpoint,
-        route,
-        { errorPrefix: 'Failed to create/update HTTP route' }
+      const createdRoute = await trackOperation(
+        AnalyticsEvent.PROXY_ROUTE_UPSERTED,
+        AnalyticsEvent.PROXY_ROUTE_UPSERT_FAILED,
+        { protocol: 'http' },
+        () => apiService.post<ReverseProxyHostHttpRoute>(
+          hostname,
+          endpoint,
+          route,
+          { errorPrefix: 'Failed to create/update HTTP route' }
+        ),
       );
 
       return createdRoute;
@@ -323,10 +337,15 @@ class ReverseProxyService {
         ? `/api/v1/orchestrator/hosts/${hostId}/reverse-proxy/hosts/${reverseProxyHostId}/http_routes/${routeId}`
         : `/api/v1/reverse-proxy/hosts/${reverseProxyHostId}/http_routes/${routeId}`;
 
-      await apiService.delete(
-        hostname,
-        endpoint,
-        { errorPrefix: 'Failed to delete HTTP route' }
+      await trackOperation(
+        AnalyticsEvent.PROXY_ROUTE_DELETED,
+        AnalyticsEvent.PROXY_ROUTE_DELETE_FAILED,
+        { protocol: 'http' },
+        () => apiService.delete(
+          hostname,
+          endpoint,
+          { errorPrefix: 'Failed to delete HTTP route' }
+        ),
       );
 
       return true;
@@ -352,11 +371,16 @@ class ReverseProxyService {
         ? `/api/v1/orchestrator/hosts/${hostId}/reverse-proxy/hosts/${reverseProxyHostId}/http_routes/order`
         : `/api/v1/reverse-proxy/hosts/${reverseProxyHostId}/http_routes/order`;
 
-      await apiService.put(
-        hostname,
-        endpoint,
-        { id: routeId, order: order },
-        { errorPrefix: 'Failed to reorder HTTP route' }
+      await trackOperation(
+        AnalyticsEvent.PROXY_ROUTE_REORDERED,
+        AnalyticsEvent.PROXY_ROUTE_REORDER_FAILED,
+        undefined,
+        () => apiService.put(
+          hostname,
+          endpoint,
+          { id: routeId, order: order },
+          { errorPrefix: 'Failed to reorder HTTP route' }
+        ),
       );
 
       return true;
@@ -383,11 +407,16 @@ class ReverseProxyService {
         ? `/api/v1/orchestrator/hosts/${hostId}/reverse-proxy/hosts/${reverseProxyHostId}/tcp_route`
         : `/api/v1/reverse-proxy/hosts/${reverseProxyHostId}/tcp_route`;
 
-      const createdRoute = await apiService.post<ReverseProxyHostTcpRoute>(
-        hostname,
-        endpoint,
-        route,
-        { errorPrefix: 'Failed to create/update TCP route' }
+      const createdRoute = await trackOperation(
+        AnalyticsEvent.PROXY_ROUTE_UPSERTED,
+        AnalyticsEvent.PROXY_ROUTE_UPSERT_FAILED,
+        { protocol: 'tcp' },
+        () => apiService.post<ReverseProxyHostTcpRoute>(
+          hostname,
+          endpoint,
+          route,
+          { errorPrefix: 'Failed to create/update TCP route' }
+        ),
       );
 
       return createdRoute;

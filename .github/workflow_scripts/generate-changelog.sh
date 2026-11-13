@@ -14,14 +14,29 @@
 #   generate-changelog.sh [options]
 #
 # Options:
-#   -m | --mode          GENERATE (default) or RELEASE
+#   -m | --mode          GENERATE (default), RELEASE, or ENTRIES
 #   -v | --version       Version string, e.g. 1.2.3
 #   -r | --repo          GitHub repository, e.g. Parallels/prl-devops-ui
 #        --changelog     Path to CHANGELOG.md (default: CHANGELOG.md)
 #        --file          Path to release notes output file (default: release_notes.md)
 #        --output-to-file  Write output to file instead of stdout
+#        --from-changelog  RELEASE only: use the exact version's committed changelog
+#        --base          Base branch for merged-PR collection (default: main).
+#                        ENTRIES --base dev captures PRs merged into dev.
+#        --boundary-label  Label of the PRs that mark the collection boundary,
+#                        always searched on main (default: release-request;
+#                        dev integration uses: dev-integration)
+#        --since         Boundary timestamp (mergedAt), overrides the
+#                        boundary-label lookup
 #        --no-ai         Skip AI description generation even if ANTHROPIC_API_KEY is set
 #        --verbose       Enable verbose logging
+#
+# Modes:
+#   GENERATE  Collect entries (AI-summarised) and insert them into CHANGELOG.md.
+#   RELEASE   Write release notes (from CHANGELOG via --from-changelog, or from
+#             merged PRs) for a PR body / GitHub Release.
+#   ENTRIES   Print the collected raw bullets only — no AI, no file writes.
+#             Used by update-dev-integration-pr.yml to capture dev merges.
 
 set -euo pipefail
 
@@ -34,6 +49,10 @@ MODE="GENERATE"
 NEW_RELEASE=""
 REPO_NAME=""
 NO_AI="false"
+FROM_CHANGELOG="false"
+BASE_BRANCH="main"
+BOUNDARY_LABEL="release-request"
+SINCE=""
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
@@ -44,6 +63,10 @@ while [[ $# -gt 0 ]]; do
     --changelog)          CHANGELOG_FILE="$2";   shift 2 ;;
     --file)               RELEASE_NOTES_FILE="$2"; shift 2 ;;
     --output-to-file)     OUTPUT_TO_FILE="true"; shift ;;
+    --from-changelog)     FROM_CHANGELOG="true"; shift ;;
+    --base)               BASE_BRANCH="$2";    shift 2 ;;
+    --boundary-label)     BOUNDARY_LABEL="$2"; shift 2 ;;
+    --since)              SINCE="$2";          shift 2 ;;
     --no-ai)              NO_AI="true";          shift ;;
     --verbose)            VERBOSE="true";        shift ;;
     *) echo "Unknown argument: $1" >&2; exit 1 ;;
@@ -76,7 +99,7 @@ dependabot_entry_from_title() {
   # Grouped bump: "bump the <group> group ... with <N> updates"
   if echo "$bump" | grep -qiE "bump the .+ group .* with [0-9]+ updates?"; then
     local group count
-    group=$(echo "$bump" | sed -E 's/.*bump the ([^ ]+) group.*/\1/')
+    group=$(echo "$bump" | sed -E 's/.*[Bb]ump the ([^ ]+) group.*/\1/')
     count=$(echo "$bump" | sed -E 's/.*with ([0-9]+) updates?.*/\1/')
     echo "- deps: bump ${count} packages (${group})"
     return
@@ -85,7 +108,7 @@ dependabot_entry_from_title() {
   # Individual bump: "bump <package> from X to Y"
   if echo "$bump" | grep -qiE "^bump .+ from .+ to "; then
     local rest
-    rest=$(echo "$bump" | sed -E 's/^bump //')
+    rest=$(echo "$bump" | sed -E 's/^[Bb]ump //')
     echo "- deps: bump ${rest}"
     return
   fi
@@ -100,35 +123,40 @@ dependabot_entry_from_title() {
 collect_entries() {
   log "Fetching merged PRs for ${REPO_NAME}"
 
-  # Find when the most recent release PR was merged so we only include newer PRs
-  LAST_RELEASE_MERGED_AT=$(
-    gh pr list \
-      --repo "$REPO_NAME" \
-      --base main \
-      --state merged \
-      --json mergedAt \
-      --search "label:release-request" \
-      --limit 1 \
-    | jq -r '.[0].mergedAt // empty'
-  )
+  # Find when the most recent boundary PR (release PR, or dev-integration PR)
+  # was merged so we only include newer PRs. Boundary PRs always target main.
+  if [[ -n "$SINCE" ]]; then
+    LAST_RELEASE_MERGED_AT="$SINCE"
+  else
+    LAST_RELEASE_MERGED_AT=$(
+      gh pr list \
+        --repo "$REPO_NAME" \
+        --base main \
+        --state merged \
+        --json mergedAt \
+        --search "label:$BOUNDARY_LABEL" \
+        --limit 1 \
+      | jq -r '.[0].mergedAt // empty'
+    ) || return 1
+  fi
 
   if [[ -n "$LAST_RELEASE_MERGED_AT" ]]; then
-    log "Last release merged at: $LAST_RELEASE_MERGED_AT"
-    SEARCH_QUERY="merged:>${LAST_RELEASE_MERGED_AT} -label:release-request"
+    log "Last ${BOUNDARY_LABEL} PR merged at: $LAST_RELEASE_MERGED_AT"
+    SEARCH_QUERY="merged:>${LAST_RELEASE_MERGED_AT} -label:$BOUNDARY_LABEL"
   else
-    log "No previous release found — collecting all merged PRs"
-    SEARCH_QUERY="-label:release-request"
+    log "No previous ${BOUNDARY_LABEL} PR found — collecting all merged PRs"
+    SEARCH_QUERY="-label:$BOUNDARY_LABEL"
   fi
 
   CHANGELIST=$(
     gh pr list \
       --repo "$REPO_NAME" \
-      --base main \
+      --base "$BASE_BRANCH" \
       --state merged \
       --json number,title,body,author \
       --search "$SEARCH_QUERY" \
       --limit 200
-  )
+  ) || return 1
 
   PR_COUNT=$(echo "$CHANGELIST" | jq 'length')
   log "Found ${PR_COUNT} PR(s) to process"
@@ -349,8 +377,29 @@ run_release() {
   fi
 
   local entries ai_description
-  entries=$(collect_entries)
-  ai_description=$(generate_ai_description "$entries")
+  if [[ "$FROM_CHANGELOG" == "true" ]]; then
+    # Once the release PR merges, collect_entries starts AFTER that PR. The
+    # committed section retains the changes and summary collected before it.
+    if [[ -z "$NEW_RELEASE" || ! -f "$CHANGELOG_FILE" ]]; then
+      echo "--from-changelog requires --version and an existing changelog" >&2
+      return 1
+    fi
+    entries=$(awk -v heading="## [${NEW_RELEASE}]" '
+      /^## \[/ {
+        if (found) exit
+        if ($0 == heading || index($0, heading " ") == 1) { found=1; next }
+      }
+      found { print }
+      END { if (!found) exit 1 }
+    ' "$CHANGELOG_FILE") || {
+      echo "Missing changelog section for ${NEW_RELEASE}" >&2
+      return 1
+    }
+    ai_description=""
+  else
+    entries=$(collect_entries) || return 1
+    ai_description=$(generate_ai_description "$entries")
+  fi
 
   local output
   output=$(
@@ -381,9 +430,18 @@ run_release() {
   fi
 }
 
+# ── ENTRIES mode: print collected raw bullets only ───────────────────────────
+run_entries() {
+  if [[ -z "$REPO_NAME" ]]; then
+    echo "--repo is required" >&2; exit 1
+  fi
+  collect_entries
+}
+
 # ── Dispatch ──────────────────────────────────────────────────────────────────
 case "$MODE" in
   GENERATE) run_generate ;;
   RELEASE)  run_release  ;;
-  *) echo "Unknown mode: $MODE (use GENERATE or RELEASE)" >&2; exit 1 ;;
+  ENTRIES)  run_entries  ;;
+  *) echo "Unknown mode: $MODE (use GENERATE, RELEASE or ENTRIES)" >&2; exit 1 ;;
 esac

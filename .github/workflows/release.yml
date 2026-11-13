@@ -1,8 +1,15 @@
 name: "Release — Production"
 
-run-name: "Production release"
+run-name: "Production release ${{ github.event.release.tag_name || '(manual re-run)' }}"
+
+# PRIMARY TRIGGER: publishing the draft GitHub Release created by
+# publish_release.yml (i.e. merging the "Create release PR" produces the draft,
+# a human clicking "Publish release" runs this workflow). The manual dispatch
+# is kept only as an emergency re-run for an already-cut version.
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -31,7 +38,13 @@ jobs:
       - name: Read production version
         id: ver
         run: |
-          APP_VERSION=$(tr -d '[:space:]' < VERSION)
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            # Primary path: version comes from the published release tag (vX.Y.Z)
+            APP_VERSION="${GITHUB_REF_NAME#v}"
+          else
+            # Emergency re-run path: fall back to the VERSION file
+            APP_VERSION=$(tr -d '[:space:]' < VERSION)
+          fi
           echo "app_version=${APP_VERSION}"        >> "$GITHUB_OUTPUT"
           echo "release_version=${APP_VERSION}"    >> "$GITHUB_OUTPUT"
           echo "release_tag=v${APP_VERSION}"       >> "$GITHUB_OUTPUT"
@@ -254,10 +267,12 @@ jobs:
       - name: Extract changelog for this version
         id: changelog
         run: |
-          chmod +x ./.github/workflow_scripts/get-latest-changelog.sh
-          NOTES=$(./.github/workflow_scripts/get-latest-changelog.sh \
-            --mode GENERATE \
-            --changelog CHANGELOG.md)
+          chmod +x ./.github/workflow_scripts/generate-changelog.sh
+          NOTES=$(./.github/workflow_scripts/generate-changelog.sh \
+            --mode RELEASE \
+            --repo "${{ github.repository }}" \
+            --version "${{ needs.metadata.outputs.release_version }}" \
+            --from-changelog)
           DELIM=$(openssl rand -hex 8)
           echo "notes<<${DELIM}" >> "$GITHUB_OUTPUT"
           echo "$NOTES"          >> "$GITHUB_OUTPUT"

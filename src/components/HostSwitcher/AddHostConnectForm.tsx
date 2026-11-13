@@ -1,4 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { AnalyticsEvent } from '@/services/analytics/events';
+import { trackEvent } from '@/services/analytics/trackEvent';
 import { useNavigate } from 'react-router-dom';
 import { Panel, ThemeColor } from '@prl/ui-kit';
 import { Alert, Button, FormField, Input, Modal, PasswordInput, Toggle } from '../../controls';
@@ -177,10 +179,14 @@ export const AddHostConnectForm = forwardRef<ConnectFormHandle, AddHostConnectFo
           hardwareInfo,
         };
 
+        const isNewHost = existingIndex < 0;
         if (existingIndex >= 0) existingHosts[existingIndex] = hostEntry;
         else existingHosts.push(hostEntry);
         await config.set('hosts', existingHosts);
         await config.save();
+        if (isNewHost) {
+          trackEvent(AnalyticsEvent.HOST_ADDED, { connect_method: 'api_connect', source: 'settings' });
+        }
 
         authService.currentHostname = hostname;
         const token = authService.getToken(hostname);

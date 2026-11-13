@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AnalyticsEvent } from '@/services/analytics/events';
+import { trackEvent } from '@/services/analytics/trackEvent';
 import { useClickOutside } from '@/hooks/useClickOutside';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSession } from '@/contexts/SessionContext';
@@ -384,6 +386,7 @@ export const HostSwitcher: React.FC<HostSwitcherProps> = ({ color = 'blue' }) =>
 
     await config.set('hosts', updated);
     await config.save();
+    trackEvent(AnalyticsEvent.HOST_REMOVED);
     setHosts(updated);
   };
 
