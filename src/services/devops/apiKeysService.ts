@@ -1,6 +1,8 @@
 import { apiService } from '../api';
 import { DevOpsApiKey, DevOpsApiKeyCreateRequest, DevOpsApiKeyCreateResponse } from '../../interfaces/devops';
 import { authService } from '../authService';
+import { AnalyticsEvent } from '../analytics/events';
+import { trackEvent, trackOperation } from '../analytics/trackEvent';
 
 class ApiKeysService {
   async getApiKeys(hostname: string): Promise<DevOpsApiKey[]> {
@@ -15,17 +17,24 @@ class ApiKeysService {
   async createApiKey(hostname: string, request: DevOpsApiKeyCreateRequest): Promise<DevOpsApiKeyCreateResponse> {
     const target = hostname || authService.currentHostname;
     if (!target) throw new Error('No hostname provided');
-    return apiService.post<DevOpsApiKeyCreateResponse>(target, '/api/v1/auth/api_keys', request, {
+    const created = await apiService.post<DevOpsApiKeyCreateResponse>(target, '/api/v1/auth/api_keys', request, {
       errorPrefix: 'Failed to create API key',
     });
+    trackEvent(AnalyticsEvent.APIKEY_CREATED);
+    return created;
   }
 
   async deleteApiKey(hostname: string, id: string): Promise<void> {
     const target = hostname || authService.currentHostname;
     if (!target) throw new Error('No hostname provided');
-    await apiService.delete(target, `/api/v1/auth/api_keys/${id}`, {
-      errorPrefix: `Failed to delete API key ${id}`,
-    });
+    await trackOperation(
+      AnalyticsEvent.APIKEY_REVOKED,
+      AnalyticsEvent.APIKEY_REVOKE_FAILED,
+      undefined,
+      () => apiService.delete(target, `/api/v1/auth/api_keys/${id}`, {
+        errorPrefix: `Failed to delete API key ${id}`,
+      }),
+    );
   }
 }
 

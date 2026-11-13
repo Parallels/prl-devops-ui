@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { AnalyticsEvent } from '@/services/analytics/events';
+import { trackEvent } from '@/services/analytics/trackEvent';
 import { useNavigate } from 'react-router-dom';
 import { CustomIcon } from '@prl/ui-kit';
 import { Alert, Button, FormField, Input, Modal, Panel, PasswordInput, Toggle } from '../../../controls';
@@ -147,10 +149,14 @@ export const ConnectPanel: React.FC<ConnectPanelProps> = ({ prefill, onBack, onC
           hardwareInfo,
         };
 
+        const isNewHost = existingIndex < 0;
         if (existingIndex >= 0) existingHosts[existingIndex] = hostEntry;
         else existingHosts.push(hostEntry);
         await config.set('hosts', existingHosts);
         await config.save();
+        if (isNewHost) {
+          trackEvent(AnalyticsEvent.HOST_ADDED, { connect_method: 'api_connect', source: 'onboarding' });
+        }
 
         authService.currentHostname = hostname;
         const token = authService.getToken(hostname);

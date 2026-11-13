@@ -11,6 +11,15 @@ RUN npm ci --no-audit --no-fund
 
 # Copy source and build
 COPY . .
+
+# Amplitude ingestion key (optional). Passed as a build-arg so it never lives
+# in the repo; only the obfuscated form is baked into the bundle (see
+# vite.config.ts). This ARG is confined to the builder stage and does NOT end
+# up in the final image. Alternative without rebuilds: set the runtime env
+# AMPLITUDE_API_KEY_OBFUSCATED (generate with scripts/obfuscate-amplitude-key.mjs).
+ARG AMPLITUDE_API_KEY=""
+ENV AMPLITUDE_API_KEY=${AMPLITUDE_API_KEY}
+
 RUN npm run build:web
 
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────

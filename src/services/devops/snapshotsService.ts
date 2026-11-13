@@ -1,5 +1,7 @@
 import { apiService } from '../api';
 import { authService } from '../authService';
+import { AnalyticsEvent } from '../analytics/events';
+import { trackOperation } from '../analytics/trackEvent';
 import type {
   ListVMSnapshotResponse,
   VMSnapshot,
@@ -35,11 +37,16 @@ class SnapshotsService {
   ): Promise<CreateVMSnapshotResponse> {
     const targetHost = hostname || authService.currentHostname;
     if (!targetHost) throw new Error('No hostname provided');
-    return apiService.post<CreateVMSnapshotResponse>(
-      targetHost,
-      this.baseUrl(vmId, isOrchestrator),
-      request,
-      { errorPrefix: 'Failed to create snapshot' },
+    return trackOperation(
+      AnalyticsEvent.VM_SNAPSHOT_CREATED,
+      AnalyticsEvent.VM_SNAPSHOT_CREATE_FAILED,
+      undefined,
+      () => apiService.post<CreateVMSnapshotResponse>(
+        targetHost,
+        this.baseUrl(vmId, isOrchestrator),
+        request,
+        { errorPrefix: 'Failed to create snapshot' },
+      ),
     );
   }
 
@@ -52,18 +59,28 @@ class SnapshotsService {
   ): Promise<void> {
     const targetHost = hostname || authService.currentHostname;
     if (!targetHost) throw new Error('No hostname provided');
-    await apiService.delete<void>(targetHost, `${this.baseUrl(vmId, isOrchestrator)}/${snapshotId}`, {
-      errorPrefix: 'Failed to delete snapshot',
-      body: JSON.stringify(request),
-    });
+    await trackOperation(
+      AnalyticsEvent.VM_SNAPSHOTS_DELETED,
+      AnalyticsEvent.VM_SNAPSHOTS_DELETE_FAILED,
+      { scope: 'one' },
+      () => apiService.delete<void>(targetHost, `${this.baseUrl(vmId, isOrchestrator)}/${snapshotId}`, {
+        errorPrefix: 'Failed to delete snapshot',
+        body: JSON.stringify(request),
+      }),
+    );
   }
 
   async deleteAllSnapshots(hostname: string | undefined, vmId: string, isOrchestrator = false): Promise<void> {
     const targetHost = hostname || authService.currentHostname;
     if (!targetHost) throw new Error('No hostname provided');
-    await apiService.delete<void>(targetHost, this.baseUrl(vmId, isOrchestrator), {
-      errorPrefix: 'Failed to delete all snapshots',
-    });
+    await trackOperation(
+      AnalyticsEvent.VM_SNAPSHOTS_DELETED,
+      AnalyticsEvent.VM_SNAPSHOTS_DELETE_FAILED,
+      { scope: 'all' },
+      () => apiService.delete<void>(targetHost, this.baseUrl(vmId, isOrchestrator), {
+        errorPrefix: 'Failed to delete all snapshots',
+      }),
+    );
   }
 
   async revertSnapshot(
@@ -75,11 +92,16 @@ class SnapshotsService {
   ): Promise<void> {
     const targetHost = hostname || authService.currentHostname;
     if (!targetHost) throw new Error('No hostname provided');
-    await apiService.post<void>(
-      targetHost,
-      `${this.baseUrl(vmId, isOrchestrator)}/${snapshotId}/revert`,
-      request,
-      { errorPrefix: 'Failed to revert snapshot', expectNoContent: true },
+    await trackOperation(
+      AnalyticsEvent.VM_SNAPSHOT_REVERTED,
+      AnalyticsEvent.VM_SNAPSHOT_REVERT_FAILED,
+      undefined,
+      () => apiService.post<void>(
+        targetHost,
+        `${this.baseUrl(vmId, isOrchestrator)}/${snapshotId}/revert`,
+        request,
+        { errorPrefix: 'Failed to revert snapshot', expectNoContent: true },
+      ),
     );
   }
 }

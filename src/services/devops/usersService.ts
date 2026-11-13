@@ -1,5 +1,7 @@
 import { apiService } from '../api';
 import { DevOpsUser, DevOpsCreateUserRequest, DevOpsUpdateUserRequest } from '../../interfaces/devops';
+import { AnalyticsEvent } from '../analytics/events';
+import { trackEvent } from '../analytics/trackEvent';
 
 /**
  * Users Service - Handles user management operations for Parallels DevOps API
@@ -49,6 +51,7 @@ class UsersService {
         throw new Error('API returned empty response when creating user');
       }
 
+      trackEvent(AnalyticsEvent.USER_CREATED);
       return user;
     } catch (error) {
       console.error('Failed to create user:', error);
@@ -81,6 +84,7 @@ class UsersService {
       // If API returns 204 No Content (empty response), construct response from request
       // This is a valid success response - the update succeeded but server didn't return the updated resource
       if (!user) {
+        trackEvent(AnalyticsEvent.USER_UPDATED);
         return {
           id: userId,
           ...(request.name !== undefined ? { name: request.name } : {}),
@@ -89,6 +93,7 @@ class UsersService {
         } as DevOpsUser;
       }
 
+      trackEvent(AnalyticsEvent.USER_UPDATED);
       return user;
     } catch (error) {
       console.error(`Failed to update user ${userId}:`, error);
@@ -112,6 +117,7 @@ class UsersService {
         { errorPrefix: `Failed to remove user ${userId}` }
       );
 
+      trackEvent(AnalyticsEvent.USER_REMOVED);
       return true;
     } catch (error) {
       console.error(`Failed to remove user ${userId}:`, error);

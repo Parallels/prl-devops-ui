@@ -3,6 +3,8 @@ import { VirtualMachine } from '../../interfaces/VirtualMachine';
 import { VmCloneRequest } from '../../interfaces/devops';
 import { authService } from '../authService';
 import { CreateMachineAsyncRequest, MachineStateResponse } from '@/interfaces/Machine';
+import { AnalyticsEvent, type VmStateOperation } from '../analytics/events';
+import { trackOperation } from '../analytics/trackEvent';
 
 
 /**
@@ -71,7 +73,7 @@ class MachinesService {
   private async executeVmStateOperation(
     hostname: string | undefined,
     vmId: string,
-    operation: string,
+    operation: VmStateOperation,
     force = false,
     isOrchestrator = false
   ): Promise<MachineStateResponse> {
@@ -89,17 +91,27 @@ class MachinesService {
         endpoint += '?force=true';
       }
       if (isOrchestrator) {
-        const response = await apiService.put<MachineStateResponse>(
-          targetHost,
-          endpoint,
-          { errorPrefix: `Failed to ${operation} VM ${vmId}` }
+        const response = await trackOperation(
+          AnalyticsEvent.VM_STATE_CHANGE_SUCCEEDED,
+          AnalyticsEvent.VM_STATE_CHANGE_FAILED,
+          { operation },
+          () => apiService.put<MachineStateResponse>(
+            targetHost,
+            endpoint,
+            { errorPrefix: `Failed to ${operation} VM ${vmId}` }
+          ),
         );
         return response;
       } else {
-        const response = await apiService.get<MachineStateResponse>(
-          targetHost,
-          endpoint,
-          { errorPrefix: `Failed to ${operation} VM ${vmId}` }
+        const response = await trackOperation(
+          AnalyticsEvent.VM_STATE_CHANGE_SUCCEEDED,
+          AnalyticsEvent.VM_STATE_CHANGE_FAILED,
+          { operation },
+          () => apiService.get<MachineStateResponse>(
+            targetHost,
+            endpoint,
+            { errorPrefix: `Failed to ${operation} VM ${vmId}` }
+          ),
         );
         return response;
       }
@@ -196,10 +208,15 @@ class MachinesService {
         : `/api/v1/machines/${vmId}`;
       const endpoint = force ? `${base}?force=true` : base;
 
-      await apiService.delete(
-        targetHost,
-        endpoint,
-        { errorPrefix: `Failed to remove VM ${vmId}` }
+      await trackOperation(
+        AnalyticsEvent.VM_REMOVED,
+        AnalyticsEvent.VM_REMOVE_FAILED,
+        { mode: 'delete' },
+        () => apiService.delete(
+          targetHost,
+          endpoint,
+          { errorPrefix: `Failed to remove VM ${vmId}` }
+        ),
       );
 
       return true;
@@ -247,11 +264,16 @@ class MachinesService {
         clean_source_uuid: cleanSourceUuid
       };
 
-      await apiService.post(
-        targetHost,
-        endpoint,
-        request,
-        { errorPrefix: `Failed to unregister VM ${vmId}` }
+      await trackOperation(
+        AnalyticsEvent.VM_REMOVED,
+        AnalyticsEvent.VM_REMOVE_FAILED,
+        { mode: 'unregister' },
+        () => apiService.post(
+          targetHost,
+          endpoint,
+          request,
+          { errorPrefix: `Failed to unregister VM ${vmId}` }
+        ),
       );
 
       return true;
@@ -297,11 +319,16 @@ class MachinesService {
         destination_path: destinationPath,
       };
 
-      await apiService.put(
-        targetHost,
-        endpoint,
-        request,
-        { errorPrefix: `Failed to clone VM ${vmId}` }
+      await trackOperation(
+        AnalyticsEvent.VM_CLONED,
+        AnalyticsEvent.VM_CLONE_FAILED,
+        undefined,
+        () => apiService.put(
+          targetHost,
+          endpoint,
+          request,
+          { errorPrefix: `Failed to clone VM ${vmId}` }
+        ),
       );
 
       return true;
@@ -342,11 +369,16 @@ class MachinesService {
         ? '/api/v1/orchestrator/machines'
         : '/api/v1/machines';
 
-      const vm = await apiService.post<VirtualMachine>(
-        targetHost,
-        endpoint,
-        request,
-        { errorPrefix: 'Failed to create VM from catalog' }
+      const vm = await trackOperation(
+        AnalyticsEvent.VM_PROVISIONED,
+        AnalyticsEvent.VM_PROVISION_FAILED,
+        { mode: 'sync' },
+        () => apiService.post<VirtualMachine>(
+          targetHost,
+          endpoint,
+          request,
+          { errorPrefix: 'Failed to create VM from catalog' }
+        ),
       );
 
       return vm;
@@ -377,11 +409,16 @@ class MachinesService {
         ? '/api/v1/orchestrator/machines/async'
         : '/api/v1/machines/async';
 
-      await apiService.post<void>(
-        targetHost,
-        endpoint,
-        request,
-        { errorPrefix: 'Failed to start VM download from catalog', expectNoContent: true }
+      await trackOperation(
+        AnalyticsEvent.VM_PROVISIONED,
+        AnalyticsEvent.VM_PROVISION_FAILED,
+        { mode: 'async' },
+        () => apiService.post<void>(
+          targetHost,
+          endpoint,
+          request,
+          { errorPrefix: 'Failed to start VM download from catalog', expectNoContent: true }
+        ),
       );
     } catch (error) {
       console.error('Failed to create VM asynchronously from catalog:', error);
@@ -405,11 +442,16 @@ class MachinesService {
         throw new Error('No hostname provided and no active session found');
       }
 
-      await apiService.post<void>(
-        targetHost,
-        `/api/v1/orchestrator/hosts/${hostId}/machines/async`,
-        request,
-        { errorPrefix: 'Failed to start VM download from catalog on host', expectNoContent: true },
+      await trackOperation(
+        AnalyticsEvent.VM_PROVISIONED,
+        AnalyticsEvent.VM_PROVISION_FAILED,
+        { mode: 'async' },
+        () => apiService.post<void>(
+          targetHost,
+          `/api/v1/orchestrator/hosts/${hostId}/machines/async`,
+          request,
+          { errorPrefix: 'Failed to start VM download from catalog on host', expectNoContent: true },
+        ),
       );
     } catch (error) {
       console.error('Failed to create VM asynchronously from catalog on host:', error);

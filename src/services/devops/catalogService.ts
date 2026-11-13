@@ -1,5 +1,7 @@
 import { apiService } from '../api';
 import { CatalogManifestItem, CatalogPullRequest, CatalogPushRequest } from '../../interfaces/devops';
+import { AnalyticsEvent } from '../analytics/events';
+import { trackOperation } from '../analytics/trackEvent';
 
 /**
  * Catalog Service - Handles catalog-related operations for Parallels DevOps API
@@ -13,11 +15,16 @@ class CatalogService {
    */
   async pushCatalog(hostname: string, request: CatalogPushRequest): Promise<void> {
     try {
-      await apiService.post<void>(
-        hostname,
-        '/api/v1/catalog/push',
-        request,
-        { errorPrefix: 'Failed to push catalog', expectNoContent: true }
+      await trackOperation(
+        AnalyticsEvent.CATALOG_PUSHED,
+        AnalyticsEvent.CATALOG_PUSH_FAILED,
+        { mode: 'sync' },
+        () => apiService.post<void>(
+          hostname,
+          '/api/v1/catalog/push',
+          request,
+          { errorPrefix: 'Failed to push catalog', expectNoContent: true }
+        ),
       );
     } catch (error) {
       console.error('Failed to push catalog:', error);
@@ -32,11 +39,16 @@ class CatalogService {
    */
   async pullCatalog(hostname: string, request: CatalogPullRequest): Promise<void> {
     try {
-      await apiService.post<void>(
-        hostname,
-        '/api/v1/catalog/pull',
-        request,
-        { errorPrefix: 'Failed to pull catalog', expectNoContent: true }
+      await trackOperation(
+        AnalyticsEvent.CATALOG_PULLED,
+        AnalyticsEvent.CATALOG_PULL_FAILED,
+        { mode: 'sync' },
+        () => apiService.post<void>(
+          hostname,
+          '/api/v1/catalog/pull',
+          request,
+          { errorPrefix: 'Failed to pull catalog', expectNoContent: true }
+        ),
       );
     } catch (error) {
       console.error('Failed to pull catalog:', error);
@@ -51,11 +63,16 @@ class CatalogService {
    */
   async pushCatalogAsync(hostname: string, request: CatalogPushRequest): Promise<void> {
     try {
-      await apiService.post<void>(
-        hostname,
-        '/api/v1/catalog/push/async',
-        request,
-        { errorPrefix: 'Failed to push catalog async', expectNoContent: true }
+      await trackOperation(
+        AnalyticsEvent.CATALOG_PUSHED,
+        AnalyticsEvent.CATALOG_PUSH_FAILED,
+        { mode: 'async' },
+        () => apiService.post<void>(
+          hostname,
+          '/api/v1/catalog/push/async',
+          request,
+          { errorPrefix: 'Failed to push catalog async', expectNoContent: true }
+        ),
       );
     } catch (error) {
       console.error('Failed to push catalog async:', error);
@@ -70,11 +87,16 @@ class CatalogService {
    */
   async pullCatalogAsync(hostname: string, request: CatalogPullRequest): Promise<void> {
     try {
-      await apiService.post<void>(
-        hostname,
-        '/api/v1/catalog/pull/async',
-        request,
-        { errorPrefix: 'Failed to pull catalog async', expectNoContent: true }
+      await trackOperation(
+        AnalyticsEvent.CATALOG_PULLED,
+        AnalyticsEvent.CATALOG_PULL_FAILED,
+        { mode: 'async' },
+        () => apiService.post<void>(
+          hostname,
+          '/api/v1/catalog/pull/async',
+          request,
+          { errorPrefix: 'Failed to pull catalog async', expectNoContent: true }
+        ),
       );
     } catch (error) {
       console.error('Failed to pull catalog async:', error);
@@ -142,10 +164,15 @@ class CatalogService {
         ? `/api/v1/catalog/${manifestId}/${versionId}`
         : `/api/v1/catalog/${manifestId}`;
 
-      await apiService.delete(
-        hostname,
-        endpoint,
-        { errorPrefix: `Failed to remove catalog manifest ${manifestId}` }
+      await trackOperation(
+        AnalyticsEvent.CATALOG_MANIFEST_REMOVED,
+        AnalyticsEvent.CATALOG_MANIFEST_REMOVE_FAILED,
+        undefined,
+        () => apiService.delete(
+          hostname,
+          endpoint,
+          { errorPrefix: `Failed to remove catalog manifest ${manifestId}` }
+        ),
       );
 
       return true;
@@ -176,11 +203,16 @@ class CatalogService {
         throw new Error('Version and architecture are required');
       }
 
-      await apiService.patch(
-        hostname,
-        `/api/v1/catalog/${manifestId}/${versionId}/${architecture}/taint`,
-        undefined,
-        { errorPrefix: `Failed to taint catalog manifest ${manifestId}` }
+      await trackOperation(
+        AnalyticsEvent.CATALOG_MANIFEST_TAINTED,
+        AnalyticsEvent.CATALOG_MANIFEST_TAINT_FAILED,
+        { tainted: true },
+        () => apiService.patch(
+          hostname,
+          `/api/v1/catalog/${manifestId}/${versionId}/${architecture}/taint`,
+          undefined,
+          { errorPrefix: `Failed to taint catalog manifest ${manifestId}` }
+        ),
       );
 
       return true;
@@ -211,11 +243,16 @@ class CatalogService {
         throw new Error('Version and architecture are required');
       }
 
-      await apiService.patch(
-        hostname,
-        `/api/v1/catalog/${manifestId}/${versionId}/${architecture}/untaint`,
-        undefined,
-        { errorPrefix: `Failed to untaint catalog manifest ${manifestId}` }
+      await trackOperation(
+        AnalyticsEvent.CATALOG_MANIFEST_TAINTED,
+        AnalyticsEvent.CATALOG_MANIFEST_TAINT_FAILED,
+        { tainted: false },
+        () => apiService.patch(
+          hostname,
+          `/api/v1/catalog/${manifestId}/${versionId}/${architecture}/untaint`,
+          undefined,
+          { errorPrefix: `Failed to untaint catalog manifest ${manifestId}` }
+        ),
       );
 
       return true;

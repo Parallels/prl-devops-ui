@@ -1,5 +1,7 @@
 import { Subject } from 'rxjs';
 import { ApiError, ApiErrorResponse } from '../interfaces/api';
+import { AnalyticsEvent } from './analytics/events';
+import { classifyApiFailure, trackEvent } from './analytics/trackEvent';
 
 /**
   * Login request matching API specification
@@ -177,6 +179,7 @@ class AuthService {
    */
   private async performLogin(hostname: string, credentials: HostCredentials): Promise<string> {
     const loginUrl = this.buildLoginUrl(credentials.url);
+    const startedAt = Date.now();
 
   const loginCredentials: LoginRequest = {
     email: credentials.email,
@@ -213,6 +216,9 @@ class AuthService {
           statusCode: response.status,
           details: errorText
         };
+        trackEvent(AnalyticsEvent.AUTH_LOGIN_FAILED, {
+          failure_reason: classifyApiFailure({ statusCode: response.status }),
+        });
         throw apiError;
       }
 
@@ -226,12 +232,17 @@ class AuthService {
       };
 
       this.saveTokenToStorage(hostname, tokenData);
+      trackEvent(AnalyticsEvent.AUTH_LOGIN_SUCCEEDED, {
+        login_duration_ms: Date.now() - startedAt,
+      });
       return tokenData.token;
     } catch (error) {
-      // If it's already an ApiError, re-throw it
+      // If it's already an ApiError, re-throw it — the failure was already tracked
       if (this.isApiError(error)) {
         throw error;
       }
+
+      trackEvent(AnalyticsEvent.AUTH_LOGIN_FAILED, { failure_reason: 'network' });
 
       // Convert to ApiError
       const apiError: ApiError = {
@@ -320,6 +331,7 @@ class AuthService {
    * Logout from specific hostname or all hosts
    */
   logout(hostname?: string): void {
+    trackEvent(AnalyticsEvent.AUTH_LOGOUT);
     this.logoutSubject.next();
 
     if (hostname) {

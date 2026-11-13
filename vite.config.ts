@@ -10,9 +10,20 @@ const host = process.env.TAURI_DEV_HOST;
 
 import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
+import { obfuscateKey } from "./src/utils/keyObfuscation";
+
+// Amplitude ingestion key: never baked as plaintext. Only the XOR+base64
+// obfuscated form reaches the bundle. Set AMPLITUDE_API_KEY at build time
+// (Docker build-arg / CI env). Plaintext stays solely in the build env.
+const amplitudeApiKey = process.env.AMPLITUDE_API_KEY?.trim() ?? "";
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
+  define: {
+    __BAKED_AMPLITUDE_API_KEY__: JSON.stringify(
+      amplitudeApiKey ? obfuscateKey(amplitudeApiKey) : "",
+    ),
+  },
   plugins: [
     react(),
     tsconfigPaths(),

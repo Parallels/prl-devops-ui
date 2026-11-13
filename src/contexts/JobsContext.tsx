@@ -8,6 +8,8 @@ import { useOptionalNotifications } from './NotificationContext';
 import { drainUnseenMessages } from '@/utils/messageQueue';
 import { GLOBAL_NOTIFICATION_CHANNEL } from '@/constants/constants';
 import { resolveJobOutcome } from '@/utils/jobOutcomeResolver';
+import { AnalyticsEvent } from '@/services/analytics/events';
+import { trackEvent } from '@/services/analytics/trackEvent';
 
 const DELETED_JOB_TOMBSTONE_TTL_MS = 60_000;
 
@@ -87,6 +89,8 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const deletedJobsRef = useRef<Map<string, number>>(new Map());
+  /** Jobs already counted via DEVOPS_UI::JOB::RESOLVED (reliability dedup). */
+  const resolvedJobsRef = useRef<Set<string>>(new Set());
 
   const isLocallyDeletedJob = useCallback((id: string): boolean => {
     const deletedAt = deletedJobsRef.current.get(id);
@@ -148,6 +152,7 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (msg === 'JOB_DELETED') {
         dispatch({ type: 'REMOVE', id: job.id });
         deletedJobsRef.current.set(job.id, Date.now());
+        resolvedJobsRef.current.delete(job.id);
         continue;
       }
 
@@ -156,6 +161,15 @@ export const JobsProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       dispatch({ type: 'UPSERT', job });
+
+      // Analytics: exactly one RESOLVED per job; deduped against WS redeliveries.
+      if ((job.state === 'completed' || job.state === 'failed') && !resolvedJobsRef.current.has(job.id)) {
+        resolvedJobsRef.current.add(job.id);
+        trackEvent(AnalyticsEvent.JOB_RESOLVED, {
+          job_type: job.job_type,
+          outcome: job.state === 'completed' ? 'succeeded' : 'failed',
+        });
+      }
 
       const hostSuffix = forwardedHostId ? ` (host ${forwardedHostId})` : '';
       const jobLabel = `${titleCase(job.job_type)} · ${titleCase(job.job_operation)}${hostSuffix}`;

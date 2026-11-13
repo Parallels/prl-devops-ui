@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { AnalyticsEvent } from '@/services/analytics/events';
+import { trackEvent } from '@/services/analytics/trackEvent';
 import { invoke } from '@tauri-apps/api/core';
 import { useNavigate } from 'react-router-dom';
 import { ButtonSelector, type ButtonSelectorOption, CustomIcon, MultiToggle } from '@prl/ui-kit';
@@ -133,10 +135,14 @@ export const LocalAgentPanel: React.FC<LocalAgentPanelProps> = ({ onBack, onCont
         hardwareInfo,
       };
 
+      const isNewHost = existingIndex < 0;
       if (existingIndex >= 0) existingHosts[existingIndex] = hostEntry;
       else existingHosts.push(hostEntry);
       await config.set('hosts', existingHosts);
       await config.save();
+      if (isNewHost) {
+        trackEvent(AnalyticsEvent.HOST_ADDED, { connect_method: 'local_agent', source: 'onboarding' });
+      }
 
       authService.currentHostname = hostname;
       const token = authService.getToken(hostname);

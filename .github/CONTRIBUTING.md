@@ -13,6 +13,7 @@ Thank you for contributing! This document covers everything you need to get set 
 - [Branching strategy](#branching-strategy)
 - [Commit messages](#commit-messages)
 - [Pull requests](#pull-requests)
+- [Release process](#release-process)
 - [Tests](#tests)
 - [CI pipeline](#ci-pipeline)
 
@@ -110,13 +111,21 @@ docker compose --profile dev up     # Run dev profile (port 8081)
 
 | Branch | Purpose |
 |--------|---------|
-| `main` | Production-ready code. All PRs target this branch. |
+| `main` | Production-ready code. Bug fixes and small PRs merge straight into it. |
+| `dev` | Long-lived integration branch for big features. `main` is merged back into `dev` automatically after every push to `main` (`sync-main-to-dev.yml`). Never rebased or force-pushed. |
 | `feature/<short-description>` | New features |
 | `fix/<short-description>` | Bug fixes |
 | `chore/<short-description>` | Tooling, CI, dependency updates |
 | `docs/<short-description>` | Documentation only |
 
 Branch names should be lowercase and use hyphens, e.g. `feature/catalog-async-upload`.
+
+### Working with `dev`
+
+- **Big features** branch off `dev` and open PRs against `dev`.
+- **Bug fixes and small work** branch off `main` and target `main` directly.
+- When dev work is ready, a human opens the long-running **`dev` → `main` integration PR**. Its `## Changelog` section is filled and regenerated automatically by `update-dev-integration-pr.yml` from every PR merged into `dev` — never hand-edit that section, and never edit `CHANGELOG.md` on `dev` (it only changes on `main`, via release PRs).
+- If the automatic `main` → `dev` sync reports conflicts, resolve them with `git checkout dev && git merge main`, push, and re-run the workflow.
 
 ---
 
@@ -147,11 +156,37 @@ chore(deps): bump vitest to 4.1.0
 
 ## Pull requests
 
-1. Branch off `main` using the naming convention above
+1. Branch off `main` — or `dev` for big-feature work — using the naming convention above
 2. Keep PRs focused — one concern per PR
 3. Fill in the PR template completely, especially the **Changelog** section (automation reads it)
 4. Ensure all CI checks pass before requesting review
 5. At least one approval from a CODEOWNER is required to merge
+
+---
+
+## Release process
+
+One process, identical to the Parallels DevOps Service repo:
+
+1. **Every merged PR contributes changelog bullets.** The `## Changelog` section
+   of each PR body (`- feat: …`, `- fix: …`) is the single source for
+   `CHANGELOG.md` and the GitHub Release notes. Dependabot bumps are added
+   automatically from the PR titles.
+2. **Cut a release:** run **Actions → Create Release PR** and pick
+   `patch` / `minor` / `major`. It bumps `VERSION`, `package.json`, the Helm
+   chart and the Tauri app versions, generates the `CHANGELOG.md` section from
+   the merged PR bodies, and opens a release PR labelled `release-request`.
+3. **Merge the release PR into `main`.** That push automatically creates a
+   **draft GitHub Release** (`publish_release.yml`) whose notes come from the
+   committed `CHANGELOG.md` section.
+4. **Click "Publish release" on the draft — that is the deploy button.**
+   Publishing runs `release.yml`: desktop builds (Linux/macOS/Windows, amd64 +
+   ARM64), Docker image, `latest.json` for the updater, asset upload, then the
+   AKS production deploy. A human publishing the draft is the only gate.
+5. **Beta and Canary stay manual:** dispatch **Release — Beta** or
+   **Release — Canary** from the Actions tab for pre-release testing.
+
+The manual "Release — Production" dispatch is an emergency re-run path only.
 
 ---
 

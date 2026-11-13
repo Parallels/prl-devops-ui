@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { AnalyticsEvent } from '@/services/analytics/events';
+import { trackEvent } from '@/services/analytics/trackEvent';
 import { Alert, Button, FormField, FormLayout, Input, Modal, Panel, Toggle, UIModalConfirm } from '../../controls';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useSession } from '@/contexts/SessionContext';
@@ -213,6 +215,7 @@ export const EditHostModal: React.FC<EditHostModalProps> = ({ isOpen, onClose, h
 
       await config.set('hosts', existingHosts);
       await config.save();
+      trackEvent(AnalyticsEvent.HOST_UPDATED);
 
       // Update active session if editing the currently connected host
       if (session?.hostId === host.id) {

@@ -1,6 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button, Modal, ModalActions, type ThemeColor } from '@prl/ui-kit';
 import { useSystemSettings } from '@/contexts/SystemSettingsContext';
+import { useConfig } from '@/contexts/ConfigContext';
+import {
+    TELEMETRY_ENABLED_KEY,
+    amplitudeService,
+    getDeploymentApiKey,
+} from '@/services/AmplitudeService';
+import { AnalyticsEvent } from '@/services/analytics/events';
+import { trackEvent } from '@/services/analytics/trackEvent';
 
 // ── Color options ──────────────────────────────────────────────────────────────
 
@@ -23,6 +31,85 @@ const COLOR_OPTIONS: ColorOption[] = [
     { value: 'violet',    label: 'Violet',    bgClass: 'bg-violet-500', ringClass: 'ring-violet-400' },
     { value: 'cyan',      label: 'Cyan',      bgClass: 'bg-cyan-500',   ringClass: 'ring-cyan-400' },
 ];
+
+// ── Analytics (Amplitude) ─────────────────────────────────────────────────────
+
+const AnalyticsSection: React.FC = () => {
+    const config = useConfig();
+    const [enabled, setEnabled] = useState(true);
+    const [status, setStatus] = useState<'idle' | 'updated' | 'error'>('idle');
+    const keyAvailable = getDeploymentApiKey() !== null;
+
+    useEffect(() => {
+        let active = true;
+        void config.get<boolean>(TELEMETRY_ENABLED_KEY)
+            .then((value) => {
+                if (active && value !== null) setEnabled(value !== false);
+            })
+            .catch(() => undefined);
+        return () => { active = false; };
+    }, [config]);
+
+    const handleToggle = async () => {
+        const next = !enabled;
+        setEnabled(next);
+        setStatus('idle');
+        try {
+            await config.set(TELEMETRY_ENABLED_KEY, next);
+            await amplitudeService.setTelemetryEnabled(next);
+            // Only the opt-IN is reported; the opt-out must be honoured silently.
+            if (next) {
+                trackEvent(AnalyticsEvent.TELEMETRY_ENABLED);
+            }
+            setStatus('updated');
+        } catch {
+            setStatus('error');
+        }
+    };
+
+    return (
+        <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-neutral-400 mb-3">
+                Product Analytics
+            </p>
+
+            <button
+                type="button"
+                role="switch"
+                aria-checked={enabled}
+                onClick={() => void handleToggle()}
+                className="flex w-full items-center justify-between gap-3 text-left focus:outline-none focus-visible:outline-none"
+            >
+                <span className="text-sm text-neutral-800 dark:text-neutral-100">
+                    Send anonymous usage data
+                </span>
+                <span className={[
+                    'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+                    enabled ? 'bg-emerald-500' : 'bg-neutral-300 dark:bg-neutral-600',
+                ].join(' ')}>
+                    <span className={[
+                        'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all',
+                        enabled ? 'left-[22px]' : 'left-0.5',
+                    ].join(' ')} />
+                </span>
+            </button>
+
+            <p className="mt-2 text-[10px] leading-snug text-neutral-400 dark:text-neutral-500">
+                Only anonymous page views and session statistics are sent. IP address,
+                attribution, click, form and URL tracking are disabled; the device
+                identifier is a non-identifying fingerprint.
+                {!keyAvailable && ' No analytics key is injected in this build, so nothing is sent regardless of this setting.'}
+            </p>
+
+            {status === 'updated' && (
+                <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">Preference saved.</p>
+            )}
+            {status === 'error' && (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">Could not save the preference.</p>
+            )}
+        </div>
+    );
+};
 
 // ── Component ──────────────────────────────────────────────────────────────────
 
@@ -85,6 +172,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         })}
                     </div>
                 </div>
+
+                <AnalyticsSection />
             </div>
 
             <ModalActions>
