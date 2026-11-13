@@ -3,6 +3,13 @@
 All notable changes to Parallels DevOps UI are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [0.2.9] - 2026-11-13
+
+- feat: add AmplitudeService for managing analytics events
+- feat: create centralized event catalog for analytics event names
+- feat: implement key obfuscation for Amplitude API key
+- test: add unit tests for AmplitudeService and key obfuscation utilities
+- test: add tests for device fingerprinting and analytics event tracking
 ## [0.2.8] - 2026-11-12
 
 - chore: maintenance release
