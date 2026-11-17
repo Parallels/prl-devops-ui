@@ -47,6 +47,8 @@ const AUTH_STORAGE_KEY = 'auth_tokens';
 
 class AuthService {
   private tokens: Map<string, TokenData> = new Map();
+  /** In-flight token refreshes per hostname — concurrent getAccessToken callers share one re-login. */
+  private refreshPromises = new Map<string, Promise<boolean>>();
   private credentialsCache: Map<string, HostCredentials> = new Map();
 
   private logoutSubject = new Subject<void>();
@@ -263,16 +265,41 @@ class AuthService {
 
   /**
    * Refresh token by re-authenticating (API doesn't support token refresh)
+   *
+   * Single-flight: concurrent callers (e.g. a burst of API requests hitting
+   * getAccessToken() at page mount) share one re-login. Without this, each
+   * caller performed its own login, and the backend revokes prior tokens on
+   * a new login — so tokens already handed out to in-flight requests died
+   * mid-request, leaving pages stuck.
    */
   private async refreshTokenInternal(hostname: string): Promise<boolean> {
+    const inFlight = this.refreshPromises.get(hostname);
+    if (inFlight) {
+      return inFlight;
+    }
+    const flight = this.performTokenRefresh(hostname);
+    this.refreshPromises.set(hostname, flight);
     try {
-      this.clearTokenByHost(hostname);
+      return await flight;
+    } finally {
+      this.refreshPromises.delete(hostname);
+    }
+  }
+
+  private async performTokenRefresh(hostname: string): Promise<boolean> {
+    try {
       const credentials = await this.fetchCredentialsForHost(hostname);
       const newToken = await this.performLogin(hostname, credentials);
+      // saveTokenToStorage inside performLogin replaced the token atomically —
+      // the previous token stays readable/usable until that moment, so callers
+      // that read it concurrently never observe a missing token.
       this.tokenRefreshedSubject.next({ hostname, token: newToken });
       return true;
     } catch (error) {
       console.error(`Re-authentication failed for ${hostname}:`, error);
+      // The old token is only dropped once a replacement definitely failed —
+      // clearing it before the re-login attempt is what created the race.
+      this.clearTokenByHost(hostname);
       return false;
     }
   }

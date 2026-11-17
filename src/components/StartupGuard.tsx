@@ -86,10 +86,14 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                     const savedPassword = await config.getSecret(getPasswordKey(lockedHostname));
                     const loginPassword = lockedPassword ?? savedPassword;
 
-                    // A valid stored token restores the session directly, mirroring the
-                    // normal multi-host flow below. Auto-login credentials are only
-                    // required once the token is missing or expired — refreshing the
-                    // page within the token's lifetime must not log the user out.
+                    // A stored token that is still valid restores the session
+                    // directly, mirroring the normal multi-host flow below. The
+                    // token is requested through authService.getAccessToken() so
+                    // that an expired or near-expiry token is re-authenticated
+                    // (single-login) BEFORE any page mounts — mounting pages on a
+                    // stale token would rotate it mid-flight and leave requests
+                    // failing. Auto-login credentials remain the fallback when the
+                    // token can't be refreshed without them.
                     const storedToken = authService.getToken(lockedHostname);
                     const storedPayload = storedToken ? decodeToken(storedToken) : null;
                     if (storedPayload?.exp && (storedPayload.exp * 1000) > Date.now()) {
@@ -103,21 +107,31 @@ export const StartupGuard: React.FC<{ children: React.ReactNode }> = ({ children
                             });
                         }
                         authService.currentHostname = lockedHostname;
-                        console.log('[StartupGuard] restoring locked host from stored token', lockedHostname);
-                        if (!cancelled) {
-                            setSession({
-                                serverUrl: hostUrl!,
-                                hostname: lockedHostname,
-                                username: loginUsername || storedPayload.username || storedPayload.email,
-                                authType: 'credentials',
-                                hostId: savedHost?.id ?? `locked:${lockedHostname}`,
-                                connectedAt: new Date().toISOString(),
-                                tokenPayload: storedPayload,
-                                hardwareInfo: savedHost?.hardwareInfo,
-                            });
-                            setIsReady(true);
+                        try {
+                            const activeToken = await authService.getAccessToken(lockedHostname);
+                            const activePayload = activeToken === storedToken
+                                ? storedPayload
+                                : decodeToken(activeToken) ?? storedPayload;
+                            console.log('[StartupGuard] restoring locked host from stored token', lockedHostname);
+                            if (!cancelled) {
+                                setSession({
+                                    serverUrl: hostUrl!,
+                                    hostname: lockedHostname,
+                                    username: loginUsername || activePayload?.username || activePayload?.email || '',
+                                    authType: 'credentials',
+                                    hostId: savedHost?.id ?? `locked:${lockedHostname}`,
+                                    connectedAt: new Date().toISOString(),
+                                    tokenPayload: activePayload ?? undefined,
+                                    hardwareInfo: savedHost?.hardwareInfo,
+                                });
+                                setIsReady(true);
+                            }
+                            return;
+                        } catch {
+                            // Token expired and cannot be refreshed without credentials —
+                            // fall through to the auto-login / login-form paths below.
+                            console.warn('[StartupGuard] stored token unusable and no credentials — falling back to login');
                         }
-                        return;
                     }
 
                     if (!loginUsername || !loginPassword) {
