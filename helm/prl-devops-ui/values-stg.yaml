@@ -10,7 +10,7 @@ environment: development
 noIndex: true
 
 runtimeEnv:
-  defaultHostUrl: "https://prl-devops-orchestrator.stg.di.prls.space"
+  defaultHostUrl: "hhttps://prl-devops-orchestrator.myparallels.com"
   defaultHostName: ""
   defaultUsername: ""
   defaultPassword: ""
