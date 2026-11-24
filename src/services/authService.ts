@@ -44,8 +44,9 @@ export interface HostCredentials {
 
 // API_BASE_URL is no longer needed as URLs are configured per host
 const AUTH_STORAGE_KEY = 'auth_tokens';
+const LOGIN_PATH = '/api/v1/auth/token';
 
-class AuthService {
+export class AuthService {
   private tokens: Map<string, TokenData> = new Map();
   /** In-flight token refreshes per hostname — concurrent getAccessToken callers share one re-login. */
   private refreshPromises = new Map<string, Promise<boolean>>();
@@ -95,14 +96,9 @@ class AuthService {
       }
     }
 
-    // Use Vite's built-in DEV flag — true for any client connecting to the dev
-    // server regardless of the hostname they used (localhost, IP, remote domain).
-    // When DEV, use an empty base URL so every request goes through the Vite
-    // proxy (/api → VITE_DEVOPS_API_URL).  Using window.location.hostname here
-    // was wrong: it would be false when connecting remotely, causing the browser
-    // to send requests directly to the backend and bypassing the proxy (no CORS
-    // handling, no WS Origin rewrite, and "localhost" resolving on the client).
-    const url = import.meta.env.DEV ? '' : (import.meta.env.VITE_DEVOPS_API_URL || 'http://localhost:5680');
+    // Base URL resolution is delegated so a host that was never registered this
+    // session still targets the real server instead of a hardcoded dev address.
+    const url = this.resolveBaseUrl(hostname);
     const username = import.meta.env.VITE_DEVOPS_USERNAME || 'root';
     const password = import.meta.env.VITE_DEVOPS_PASSWORD || 'VeryStr0ngPassw0rd';
     const api_key = import.meta.env.VITE_DEVOPS_API_KEY || 'VeryStr0ngPassw0rd';
@@ -228,7 +224,7 @@ class AuthService {
 
       const tokenData: TokenData = {
         hostname: hostname,
-        url: loginUrl,
+        url: this.normalizeBaseUrl(credentials.url),
         token: data.token,
         expires_at: data.expires_at,
       };
@@ -256,11 +252,68 @@ class AuthService {
   }
 
   /**
+   * Normalise a candidate base URL: trim whitespace, drop any trailing slashes,
+   * and undo the legacy form where the full login URL was persisted.
+   */
+  private normalizeBaseUrl(value?: string): string {
+    if (!value) return '';
+    let url = value.trim();
+    if (!url) return '';
+    if (url.endsWith(LOGIN_PATH)) url = url.slice(0, -LOGIN_PATH.length);
+    return url.replace(/\/+$/, '');
+  }
+
+  /**
+   * Resolve the base URL that requests for `hostname` should target.
+   *
+   * Order, most specific first:
+   *   1. credentials registered for this host during this session;
+   *   2. the base URL persisted with the last successful login for this host,
+   *      which survives a page reload when the in-memory cache is gone;
+   *   3. runtime configuration (env-config.js served by the Docker image, i.e.
+   *      Helm `runtimeEnv.defaultHostUrl`), covering a locked host whose
+   *      credentials were never registered in this browser;
+   *   4. the build-time VITE_DEVOPS_API_URL override.
+   *
+   * In dev, requests stay same-origin so the Vite proxy owns /api — using
+   * window.location.hostname there was wrong, it would be false when connecting
+   * remotely, bypassing the proxy (no CORS handling, no WS Origin rewrite, and
+   * "localhost" resolving on the client).
+   *
+   * A production build must never invent an address: previously the fallback was
+   * a hardcoded http://localhost:5680, so any unresolvable hostname silently
+   * sent the browser a request to the visitor's own machine, which surfaced as
+   * an opaque backend failure rather than a configuration error.
+   */
+  private resolveBaseUrl(hostname: string): string {
+    const key = this.normalizeHostname(hostname);
+    const runtimeEnv = typeof window !== 'undefined' ? window.__ENV__ : undefined;
+    const candidates = [
+      this.credentialsCache.get(key)?.url,
+      this.tokens.get(key)?.url,
+      runtimeEnv?.VITE_DEFAULT_HOST_URL,
+      import.meta.env.VITE_DEVOPS_API_URL,
+    ];
+
+    for (const candidate of candidates) {
+      const normalized = this.normalizeBaseUrl(candidate);
+      if (normalized) return normalized;
+    }
+
+    if (import.meta.env.DEV) return '';
+
+    throw new Error(
+      `No base URL configured for host "${key}". Refusing to fall back to a local address. ` +
+      'Set runtimeEnv.defaultHostUrl (Helm values) or register the host before making API calls.'
+    );
+  }
+
+  /**
    * Build login URL from base URL
    */
   private buildLoginUrl(baseUrl: string): string {
     let url = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    return `${url}/api/v1/auth/token`;
+    return `${url}${LOGIN_PATH}`;
   }
 
   /**
@@ -377,8 +430,11 @@ class AuthService {
    * Manually set credentials for a hostname (optional - for testing or manual config)
    */
   setCredentials(hostname: string, credentials: HostCredentials): void {
-    this.credentialsCache.set(hostname, credentials);
-    console.log(`Credentials set for ${hostname}`);
+    const key = this.normalizeHostname(hostname);
+    // Stored canonical so every consumer — including the cache-hit fast path in
+    // fetchCredentialsForHost — sees the same base URL.
+    this.credentialsCache.set(key, { ...credentials, url: this.normalizeBaseUrl(credentials.url) });
+    console.log(`Credentials set for ${key}`);
   }
 
   /**
@@ -396,7 +452,7 @@ class AuthService {
     if (serverUrl) {
       const existing = this.credentialsCache.get(hostname);
       if (existing) {
-        this.credentialsCache.set(hostname, { ...existing, url: serverUrl });
+        this.credentialsCache.set(hostname, { ...existing, url: this.normalizeBaseUrl(serverUrl) });
       }
     }
     await this.refreshTokenInternal(hostname);

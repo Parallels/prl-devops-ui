@@ -5,3 +5,25 @@ src-tauri
 .github
 *.md
 helm
+
+# Secrets and local overrides. Vite reads .env* at build time, so a stray file
+# here would be baked straight into the shipped bundle.
+.env
+.env.*
+*.pem
+*.key
+
+# Desktop signing / notarization material — never needed by the web image.
+notarize
+
+# Generated and incidental files.
+coverage
+*.log
+npm-debug.log*
+.DS_Store
+.vscode
+.idea
+
+# Local compose/dev tooling, not part of the image build.
+docker-compose*.yml
+test
