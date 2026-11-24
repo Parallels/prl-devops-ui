@@ -10,8 +10,8 @@ environment: development
 noIndex: true
 
 runtimeEnv:
-  defaultHostUrl: "hhttps://prl-devops-orchestrator.myparallels.com"
-  defaultHostName: ""
+  defaultHostUrl: "https://prl-devops-orchestrator.myparallels.com"
+  defaultHostName: "Paralles Staging DevOps"
   defaultUsername: ""
   defaultPassword: ""
   allowInsecureStorage: false

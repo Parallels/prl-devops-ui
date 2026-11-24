@@ -12,7 +12,8 @@
 #   --owner        GitHub org or user owning the package
 #   --owner-type   org (default) or user
 #   --filter       Regex to match against version tags (e.g. '.*-canary.*')
-#   --keep         Tag to preserve even if it matches the filter (the just-published tag)
+#   --keep         Tag to preserve even if it matches the filter (the just-published tag).
+#                  Its architecture siblings are preserved too: --keep 1.2.3 also keeps 1.2.3-amd64.
 #   --dry-run      Print what would be deleted without deleting
 #   --verbose      Print all versions, not just matches
 
@@ -93,12 +94,15 @@ while IFS= read -r version_json; do
     continue
   fi
 
-  # Check keep tag
+  # Check keep tag.
+  # The multi-arch tag is an OCI index that references the per-architecture
+  # manifests (<release>-amd64 / <release>-arm64) by digest, so those siblings
+  # must survive cleanup or the index resolves to missing content on pull.
   SHOULD_KEEP="false"
   if [[ -n "$KEEP" ]]; then
     while IFS= read -r tag; do
       [[ -z "$tag" ]] && continue
-      if [[ "$tag" == "$KEEP" ]]; then
+      if [[ "$tag" == "$KEEP" || "$tag" == "$KEEP"-* ]]; then
         SHOULD_KEEP="true"
         break
       fi
